@@ -1,0 +1,23 @@
+Dim 3
+
+max_steps 50001
+log_freq 2500
+binary_freq 5000
+pmeorder 1
+
+delt 0.005
+
+read_data input.data
+integrator all GJF
+
+Nx 35
+Ny 35
+Nz 35
+
+bond 1 harmonic 1.5 0.0
+
+n_gaussians 3
+gaussian 1 1 1.5625  1.0
+gaussian 2 2 1.5625  1.0
+gaussian 1 2 3.5  1.0
+
