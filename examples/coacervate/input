@@ -18,6 +18,5 @@ Nz 225
 
 bond 1 harmonic 1.5 0.0
 
-n_gaussians 1
-gaussian 1 1 0.0003688  1.0
+potential gaussian 1 1 0.0003688  1.0
 
