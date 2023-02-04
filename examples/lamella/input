@@ -16,8 +16,7 @@ Nz 35
 
 bond 1 harmonic 1.5 0.0
 
-n_gaussians 3
-gaussian 1 1 1.5625  1.0
-gaussian 2 2 1.5625  1.0
-gaussian 1 2 3.5  1.0
+potential gaussian 1 1 1.5625  1.0
+potential gaussian 2 2 1.5625  1.0
+potential gaussian 1 2 3.5  1.0
 
