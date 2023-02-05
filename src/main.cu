@@ -70,10 +70,10 @@ int main(int argc, char** argv)
 	if(string_vec[1] == "-ft"){
 		std::cout << "Set simulation style to: FT" << std::endl;
 		set_ft_config();
-			input_file = "input";
-	ifstream in2(input_file);
+		input_file = "input";
+	    ifstream in2(input_file);
 
-	string word, line, rname;
+	    string word, line, rname;
 		while (!in2.eof()) {
 			getline(in2, line);
 
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	if (string_vec[1] == "-particle"){
+	else if (string_vec[1] == "-particle"){
 		std::cout << "Set simulation style to: TILD" << std::endl;
 
 		for (int i = 2; i < string_vec.size(); ++i) {
@@ -218,7 +218,11 @@ int main(int argc, char** argv)
 			write_lammps_traj();
 			write_gsd_traj();
 		}
-	}
+	}// if -particle
+
+    else {
+        die("Invalid simulation style!");
+    }
 
 	main_t_out = int(time(0));
 	int dt = main_t_out - main_t_in;
