@@ -221,7 +221,7 @@ int main(int argc, char** argv)
 	}// if -particle
 
     else {
-        die("Invalid simulation style!");
+        die("Invalid simulation style, argument must be '-ft' or '-particle'\n");
     }
 
 	main_t_out = int(time(0));
