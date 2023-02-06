@@ -1,0 +1,21 @@
+
+// Copyright (c) 2023 University of Pennsylvania
+// Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
+
+
+This example show how to extend the existing source code of MATILDA.FT
+It modifies the existing GroupRegion class to include additional type selection.
+Modfied files are included in the folder. In order to compile them with the rest of the code:
+
+1) Both files should be moved to the scr/ folder
+
+2) group_new.cu should be included in the source list in the make files
+
+3) The group factory file should include the constructor call for the new group.
+   It should include the header file with #include "group_new.h"
+
+    if (s1 == "new_group"){
+		return new GroupNew(iss);
+	}
+
+   This enables the new group type to be called from the input script using new_group keyword

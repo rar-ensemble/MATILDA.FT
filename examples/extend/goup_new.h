@@ -14,7 +14,8 @@ __global__ void d_CheckGroupMembers(
     const int n_walls,
     thrust::device_ptr<int> d_all_id,
     const int ns,
-    const int Dim);
+    const int Dim,
+    const int tp);
 
 
 #ifndef _GROUPS_NEW

@@ -1,18 +1,27 @@
 // Copyright (c) 2023 University of Pennsylvania
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
+/*
+    Dynamic group which selects particles confined within a specified region,
+    which are also of type "1".
+    This is a simple demonstration file to illustrate how easily extensible the code is,
+    and how to approach this task.
+
+    Changes to the original file "GroupRegion.cu" are explained in the comments
+*/
+
 
 #include "globals.h"
 #include "group.h"
-#include "group_region.h"
+#include "group_new.h" // change the header to match the new file
 #include <stdio.h>
 
 using namespace std;
 
 
-GroupRegion::~GroupRegion(){}
+GroupNew::~GroupNew(){} // Rename the class
 
-GroupRegion::GroupRegion(istringstream& iss) : Group(iss) {
+GroupNew::GroupNew(istringstream& iss) : Group(iss) {
 
     dynamic_group_flag = 1;
 
@@ -39,20 +48,21 @@ GroupRegion::GroupRegion(istringstream& iss) : Group(iss) {
     n_walls = int(w_size/3);
 }
 
-void GroupRegion::CheckGroupMembers(void){
+void GroupNew::CheckGroupMembers(void){
 
     d_CheckGroupMembers<<<GRID_ALL, BLOCK>>>(
         d_x,
         d_wall_data.data(), n_walls,
         d_all_id.data(),
         ns,
-        Dim);
+        Dim, d_tp); // add additional parameter
 
      UpdateGroupMembers();
 }
 
 /* kernel function to update group members
     based on their position and type */
+    
 __global__ void d_CheckGroupMembers(
     const float* x, //position array
     thrust::device_ptr<float> d_wall_data,
@@ -60,7 +70,7 @@ __global__ void d_CheckGroupMembers(
     thrust::device_ptr<int> d_all_id,
     const int ns, // group size
     const int Dim, // Dimensionality
-    const int* tp){
+    const int* tp){ // Additional type parameter
     // tp[] array stores particle types
     int list_ind = blockIdx.x * blockDim.x + threadIdx.x;
     if (list_ind >= ns)
