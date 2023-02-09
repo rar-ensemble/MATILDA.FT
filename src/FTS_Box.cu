@@ -107,6 +107,7 @@ void FTS_Box::initializeSim() {
     }
 
 
+    thrust::host_vector<thrust::complex<double>> htmp(M);
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         Molecs[i]->calcDensity();
@@ -124,7 +125,7 @@ void FTS_Box::initializeSim() {
     for ( int i=0 ; i<Potentials.size(); i++ ) {
         Potentials[i]->writeFields(i);
     }
-    die("here3!");
+    die("here666");
 }
 
 

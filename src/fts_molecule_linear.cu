@@ -222,6 +222,7 @@ void LinearMolec::calcPropagators() {
         }// b=0:numBlocks
     }// Calculating complimentary propagator
 
+    // debug
     if ( intSpecies[0] == 1 ) {
         thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
         thrust::copy(d_q.begin()+0, d_q.begin()+mybox->M, htmp.begin());
@@ -238,6 +239,10 @@ void LinearMolec::calcPropagators() {
     // Calculate the partition function
     this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
                         thrust::plus<thrust::complex<double>>()) * mybox->gvol / mybox->V;
+
+
+    // debug
+    std::cout << "species " << intSpecies[0] << " Q: " << this->Q << std::endl;
 
 }
 
@@ -256,6 +261,7 @@ void LinearMolec::calcDensity() {
 
     int M = mybox->M;
     thrust::complex<double> factor = nmolecs / Q / mybox->V;
+    std::cout << "species " << intSpecies[0] << " factor: " << factor << " nK: " << nmolecs << std::endl;
 
     thrust::device_vector<thrust::complex<double>> W(mybox->M);
     thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
@@ -303,6 +309,10 @@ void LinearMolec::calcDensity() {
     // with shape functions once those are implemented.
     d_density = d_cDensity;
 
+    thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
+    htmp = d_density;
+    if ( intSpecies[0] == 0 ) mybox->writeTComplexGridData("rho0molec.dat", htmp);
+    else mybox->writeTComplexGridData("rho1molec.dat", htmp);
     
 
     // Finally, accumulate density onto the relevant species field
@@ -318,7 +328,7 @@ void LinearMolec::calcDensity() {
 // Once smearing is implemented, smear functions need to 
 // be included in the linear coefficients
 void LinearMolec::computeLinearTerms() {
-    nmolecs = mybox->rho0 * phi * mybox->V / (double(Ntot));
+    nmolecs = mybox->C * phi * mybox->V * mybox->Nr / (double(Ntot));
 
     double alpha = double(Ntot) / double(mybox->Nr);
 

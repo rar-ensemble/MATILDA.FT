@@ -13,10 +13,6 @@ void run_fts_sim() {
 
     std::cout << "Number of boxes: " << box.size() << std::endl;
 
-    thrust::host_vector<double> a1(10,0.0);
-    thrust::host_vector<double> a2(10,1.0);
-
-
     box[0]->initializeSim();
 
 
