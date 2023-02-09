@@ -141,7 +141,11 @@ void PotentialFlory::updateFields() {
     // Forces are generated in real space
     d_makeFloryForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdwpl, _d_dHdwmi, _d_wpl,
         _d_wmi, _d_rhoI, _d_rhoJ, mybox->C, chiN, mybox->Nr, mybox->M);
-    
+        
+    // debug stuff
+    mybox->cufftWrapperDouble(d_dHdwmi, d_dHdwmi, -1);
+    mybox->writeTComplexGridData("Fwmi.dat", d_dHdwmi);
+    die("done69420!");    
 
 
     // Update the fields
@@ -157,10 +161,7 @@ void PotentialFlory::updateFields() {
         mybox->cufftWrapperDouble(d_wpl, d_wpl, 1);
         mybox->cufftWrapperDouble(d_wmi, d_wmi, 1);
 
-        // debug stuff
-        mybox->cufftWrapperDouble(d_dHdwmi, d_dHdwmi, -1);
-        mybox->writeTComplexGridData("Fwmi.dat", d_dHdwmi);
-        die("done69420!");
+
 
         // Pointers to linear coefficients
         cuDoubleComplex* _d_Akpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Akpl.data());

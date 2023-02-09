@@ -117,14 +117,14 @@ void FTS_Box::initializeSim() {
     OTP.close();
 
 
-    // // Debugging stuff
-    // for ( int i=0 ; i<Species.size(); i++ ) {
-    //         Species[i].writeDensity(i);
-    // }
-    // for ( int i=0 ; i<Potentials.size(); i++ ) {
-    //     Potentials[i]->writeFields(i);
-    // }
-    // die("here3!");
+    // Debugging stuff
+    for ( int i=0 ; i<Species.size(); i++ ) {
+            Species[i].writeDensity(i);
+    }
+    for ( int i=0 ; i<Potentials.size(); i++ ) {
+        Potentials[i]->writeFields(i);
+    }
+    die("here3!");
 }
 
 
