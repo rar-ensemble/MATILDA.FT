@@ -61,7 +61,7 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
             break;
         }
     }
-    std::cout << "Is molecule symmetric: " << isSymmetric << std::endl;
+    //std::cout << "Is molecule symmetric: " << isSymmetric << std::endl;
 
     // Determine integer block Species
     for ( int j=0 ; j<numBlocks; j++ ) {
@@ -223,18 +223,18 @@ void LinearMolec::calcPropagators() {
     }// Calculating complimentary propagator
 
     // debug
-    if ( intSpecies[0] == 1 ) {
-        thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-        thrust::copy(d_q.begin()+0, d_q.begin()+mybox->M, htmp.begin());
-        mybox->writeTComplexGridData("q0.dat", htmp);
+    // if ( intSpecies[0] == 1 ) {
+    //     thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
+    //     thrust::copy(d_q.begin()+0, d_q.begin()+mybox->M, htmp.begin());
+    //     mybox->writeTComplexGridData("q0.dat", htmp);
 
-        thrust::copy(d_q.begin()+mybox->M, d_q.begin()+2*mybox->M, htmp.begin());
-        mybox->writeTComplexGridData("q1.dat", htmp);
+    //     thrust::copy(d_q.begin()+mybox->M, d_q.begin()+2*mybox->M, htmp.begin());
+    //     mybox->writeTComplexGridData("q1.dat", htmp);
 
-        thrust::host_vector<thrust::complex<double>> hW(mybox->M);
-        hW = W;
-        mybox->writeTComplexGridData("wField.dat", hW);
-    }
+    //     thrust::host_vector<thrust::complex<double>> hW(mybox->M);
+    //     hW = W;
+    //     mybox->writeTComplexGridData("wField.dat", hW);
+    // }
 
     // Calculate the partition function
     this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
@@ -242,7 +242,7 @@ void LinearMolec::calcPropagators() {
 
 
     // debug
-    std::cout << "species " << intSpecies[0] << " Q: " << this->Q << std::endl;
+    // std::cout << "species " << intSpecies[0] << " Q: " << this->Q << std::endl;
 
 }
 
@@ -261,7 +261,7 @@ void LinearMolec::calcDensity() {
 
     int M = mybox->M;
     thrust::complex<double> factor = nmolecs / Q / mybox->V;
-    std::cout << "species " << intSpecies[0] << " factor: " << factor << " nK: " << nmolecs << std::endl;
+    // std::cout << "species " << intSpecies[0] << " factor: " << factor << " nK: " << nmolecs << std::endl;
 
     thrust::device_vector<thrust::complex<double>> W(mybox->M);
     thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
@@ -309,10 +309,10 @@ void LinearMolec::calcDensity() {
     // with shape functions once those are implemented.
     d_density = d_cDensity;
 
-    thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-    htmp = d_density;
-    if ( intSpecies[0] == 0 ) mybox->writeTComplexGridData("rho0molec.dat", htmp);
-    else mybox->writeTComplexGridData("rho1molec.dat", htmp);
+    // thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
+    // htmp = d_density;
+    // if ( intSpecies[0] == 0 ) mybox->writeTComplexGridData("rho0molec.dat", htmp);
+    // else mybox->writeTComplexGridData("rho1molec.dat", htmp);
     
 
     // Finally, accumulate density onto the relevant species field

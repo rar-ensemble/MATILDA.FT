@@ -138,13 +138,13 @@ void PotentialFlory::updateFields() {
     cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
     cuDoubleComplex* _d_wmi = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wmi.data());
 
-    thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-    htmp = d_wmi;
-    mybox->writeTComplexGridData("wmi-pre.dat", htmp);
-    htmp = d_rhoI;
-    mybox->writeTComplexGridData("rhoA-pre.dat", htmp);
-    htmp = d_rhoJ;
-    mybox->writeTComplexGridData("rhoB-pre.dat", htmp);
+    // thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
+    // htmp = d_wmi;
+    // mybox->writeTComplexGridData("wmi-pre.dat", htmp);
+    // htmp = d_rhoI;
+    // mybox->writeTComplexGridData("rhoA-pre.dat", htmp);
+    // htmp = d_rhoJ;
+    // mybox->writeTComplexGridData("rhoB-pre.dat", htmp);
 
     // Forces are generated in real space
     d_makeFloryForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdwpl, _d_dHdwmi, _d_wpl,
@@ -152,13 +152,13 @@ void PotentialFlory::updateFields() {
         
     // debug stuff
     //mybox->cufftWrapperDouble(d_dHdwmi, d_dHdwmi, -1);
-    htmp = d_dHdwmi;
-    mybox->writeTComplexGridData("Fwmi.dat", htmp);
-    htmp = d_rhoI;
-    mybox->writeTComplexGridData("rhoA-post.dat", htmp);
-    htmp = d_rhoJ;
-    mybox->writeTComplexGridData("rhoB-post.dat", htmp);
-    die("done69420!");    
+    // htmp = d_dHdwmi;
+    // mybox->writeTComplexGridData("Fwmi.dat", htmp);
+    // htmp = d_rhoI;
+    // mybox->writeTComplexGridData("rhoA-post.dat", htmp);
+    // htmp = d_rhoJ;
+    // mybox->writeTComplexGridData("rhoB-post.dat", htmp);
+    // die("done69420!");    
 
 
     // Update the fields
@@ -243,8 +243,7 @@ __global__ void d_makeFloryForce(
     // dHdwmi = 2 C wmi / chiN + (rhoJ - rhoI) / Nr;
     dHdwmi[ind].x = 2.0 * C * wmi[ind].x / chiN + (rhoJ[ind].x - rhoI[ind].x) / Nr;
     dHdwmi[ind].y = 2.0 * C * wmi[ind].y / chiN + (rhoJ[ind].y - rhoI[ind].y) / Nr;
-    dHdwmi[ind].x = rhoI[ind].x ; //(rhoJ[ind].x - rhoI[ind].x) / Nr; // 
-    dHdwmi[ind].y = rhoI[ind].y ; //(rhoJ[ind].y - rhoI[ind].y) / Nr; // 
+
 }
 
 

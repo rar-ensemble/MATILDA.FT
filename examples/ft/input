@@ -15,10 +15,10 @@ molecule linear 0.5 1 25 B
 potential Helfand 50.0 0.1 modify zeromean updateScheme 1S
 
 # potential keyword, style Flory, type I, type J, chi*Nr, delt+, delt-
-potential Flory A B 1.65 0.1 0.05 initialize sin 0 0.2 1.0 updateScheme 1S
+potential Flory A B 2.9 0.1 0.01 initialize sin 0 0.2 1.0 updateScheme 1S
 
-maxSteps 751
-logFreq 25
-chemFieldFreq 25
-densityFieldFreq 25
+maxSteps 2551
+logFreq 250
+chemFieldFreq 250
+densityFieldFreq 250
 endBox
