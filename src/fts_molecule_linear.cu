@@ -104,9 +104,7 @@ struct NegExponential {
 
 void LinearMolec::calcPropagators() {
     
-    //thrust::device_vector<thrust::complex<double>> &W = mybox->Species[intSpecies[0]].d_w;
     thrust::device_vector<thrust::complex<double>> W(mybox->M);
-    // W = mybox->Species[intSpecies[0]].d_w;
 
     thrust::device_vector<thrust::complex<double>> qf(mybox->M);
     thrust::device_vector<thrust::complex<double>> hf(mybox->M);
@@ -222,27 +220,11 @@ void LinearMolec::calcPropagators() {
         }// b=0:numBlocks
     }// Calculating complimentary propagator
 
-    // debug
-    // if ( intSpecies[0] == 1 ) {
-    //     thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-    //     thrust::copy(d_q.begin()+0, d_q.begin()+mybox->M, htmp.begin());
-    //     mybox->writeTComplexGridData("q0.dat", htmp);
-
-    //     thrust::copy(d_q.begin()+mybox->M, d_q.begin()+2*mybox->M, htmp.begin());
-    //     mybox->writeTComplexGridData("q1.dat", htmp);
-
-    //     thrust::host_vector<thrust::complex<double>> hW(mybox->M);
-    //     hW = W;
-    //     mybox->writeTComplexGridData("wField.dat", hW);
-    // }
 
     // Calculate the partition function
     this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
                         thrust::plus<thrust::complex<double>>()) * mybox->gvol / mybox->V;
 
-
-    // debug
-    // std::cout << "species " << intSpecies[0] << " Q: " << this->Q << std::endl;
 
 }
 
@@ -261,12 +243,12 @@ void LinearMolec::calcDensity() {
 
     int M = mybox->M;
     thrust::complex<double> factor = nmolecs / Q / mybox->V;
-    // std::cout << "species " << intSpecies[0] << " factor: " << factor << " nK: " << nmolecs << std::endl;
 
     thrust::device_vector<thrust::complex<double>> W(mybox->M);
     thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
     thrust::device_vector<thrust::complex<double>> temp(mybox->M);
     thrust::device_vector<thrust::complex<double>> expW(mybox->M);
+
     // Zero all block density fields
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
     int ind = 0;
@@ -308,11 +290,6 @@ void LinearMolec::calcDensity() {
     // Define total density as juts center density for now. needs to be convolved
     // with shape functions once those are implemented.
     d_density = d_cDensity;
-
-    // thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-    // htmp = d_density;
-    // if ( intSpecies[0] == 0 ) mybox->writeTComplexGridData("rho0molec.dat", htmp);
-    // else mybox->writeTComplexGridData("rho1molec.dat", htmp);
     
 
     // Finally, accumulate density onto the relevant species field
