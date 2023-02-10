@@ -45,10 +45,10 @@ class FTS_Box : public Box {
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);
         void writeComplexGridData(std::string, std::vector<std::complex<double>>);
         void writeTComplexGridData(std::string, thrust::host_vector<thrust::complex<double>>);
-        void computeHomopolyDebye(thrust::host_vector<thrust::complex<double>>& , double);
-        void computeIntRABlockDebye(thrust::host_vector<thrust::complex<double>>&, double, double);
-        void computeIntERBlockDebye(thrust::host_vector<thrust::complex<double>>&, double, 
-            double, double, double);
+        void computeHomopolyDebye(thrust::host_vector<thrust::complex<double>>& , const double);
+        void computeIntRABlockDebye(thrust::host_vector<thrust::complex<double>>&, const double, const double);
+        void computeIntERBlockDebye(thrust::host_vector<thrust::complex<double>>&, const double, 
+            const double, const double, const double);
 };
 
 #endif // FTS_BOX

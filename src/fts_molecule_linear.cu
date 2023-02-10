@@ -358,22 +358,73 @@ void LinearMolec::computeLinearTerms() {
     }// numBlocks == 1 (homopolymer)
 
 
-/*    // Block polymers
+    // Block polymers
     else {
         thrust::host_vector<thrust::complex<double>> gaa(mybox->M);
         thrust::host_vector<thrust::complex<double>> gac(mybox->M);
         thrust::host_vector<thrust::complex<double>> gcc(mybox->M);
+        thrust::host_vector<thrust::complex<double>> gMT(mybox->M);
 
         for ( int i=0; i<mybox->Potentials.size() ; i++ ) {
             if ( mybox->Potentials[i]->printStyle() == "Flory" ) {
                 for ( int j=0 ; j<numBlocks-1 ; j++ ) {
-                    for ( int k=j+1 ; k<numBlocks ; k++ ) {
+                    // does this potential act on block j?
+                    if ( blockSpecies[j] != mybox->Potentials[i]->actsOn[0] &&
+                         blockSpecies[j] != mybox->Potentials[i]->actsOn[1] ) {
+                            continue;
+                    }
 
+                    double fA = double(N[j]) / double(Ntot);
+                    
+                    mybox->computeIntRABlockDebye(gaa, fA, alpha);
+                    gMT = gaa;
+
+                    int Nbetween = 0;
+                    for ( int k=j+1 ; k<numBlocks ; k++ ) {
+                        // does this potential act on block k?
+                        if ( blockSpecies[k] != mybox->Potentials[i]->actsOn[0] &&
+                             blockSpecies[k] != mybox->Potentials[i]->actsOn[1] ) {
+                            continue;
+                        }
+
+                        std::cout << "potential " << i << "accumulating species " << blockSpecies[j] << " and " << blockSpecies[k] << std::endl;
+
+                        double fC = double(N[k]) / double(Ntot);
+                        double fB = double(Nbetween) / double(Ntot);
+
+                        mybox->computeIntRABlockDebye(gcc, fC, alpha);
+                        thrust::transform(gMT.begin(), gMT.end(), gcc.begin(), gMT.begin(), 
+                            thrust::plus<thrust::complex<double>>());
+
+                        // interblock Debye includes 2.0 prefactor
+                        mybox->computeIntERBlockDebye(gac, fA, fB, fC, alpha );
+
+                        // gMT = gaa + gcc + 2.0 * gac
+                        thrust::transform(gMT.begin(), gMT.end(), gac.begin(), gMT.begin(), 
+                            thrust::plus<thrust::complex<double>>());
+
+                        // htmp = prefactor * gMT
+                        thrust::transform(pref.begin(), pref.end(), gMT.begin(), htmp.begin(),
+                            thrust::multiplies<thrust::complex<double>>());
+
+                        // copy prefactor to host   
+                        thrust::host_vector<thrust::complex<double>> Atmp(mybox->M);
+                        Atmp = mybox->Potentials[i]->d_Akpl;
+
+                        // accumulate htmp
+                        thrust::transform(htmp.begin(), htmp.end(), Atmp.begin(), Atmp.begin(),
+                                            thrust::plus<thrust::complex<double>>());
+
+                        // prefactor back to device
+                        mybox->Potentials[i]->d_Akpl = Atmp;                            
+
+                        // accumulate Nbetween
+                        Nbetween += N[k];
                     }// k=j+1:numBlocks
                 }// j=0:numBlocks
             }// if potentialStyle == "Flory"
         }
 
     }// numBlocks > 1
-*/
+
 }

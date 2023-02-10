@@ -334,7 +334,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
 void FTS_Box::computeHomopolyDebye(
     thrust::host_vector<thrust::complex<double>> &g,// Debye function
-    double alpha                                    // N/Nr
+    const double alpha                                    // N/Nr
     ) {
 
     g[0] = 1.0;
@@ -349,8 +349,8 @@ void FTS_Box::computeHomopolyDebye(
 
 void FTS_Box::computeIntRABlockDebye(
     thrust::host_vector<thrust::complex<double>> &gaa,// Debye function
-    double f,   // f = Nblock / N
-    double alpha                                    // N/Nr
+    const double f,   // f = Nblock / N
+    const double alpha                                    // N/Nr
     ) {
 
     gaa[0] = 0.0;
@@ -366,12 +366,13 @@ void FTS_Box::computeIntRABlockDebye(
 
 // The cross correlation term between blocks A and C
 // for an A-B-C triblock. Compatible with fB = 0.0
+// Includes the prefactor of 2.0
 void FTS_Box::computeIntERBlockDebye(
     thrust::host_vector<thrust::complex<double>> &gac,// Debye function
-    double fA,   // f = Na / N
-    double fB,   // f = Nb / N
-    double fC,   // f = Nc / N
-    double alpha                                    // N/Nr
+    const double fA,   // f = Na / N
+    const double fB,   // f = Nb / N
+    const double fC,   // f = Nc / N
+    const double alpha                                    // N/Nr
     ) {
 
     gac[0] = 0.0;
@@ -379,7 +380,7 @@ void FTS_Box::computeIntERBlockDebye(
         double kv[3];
         double k2 = get_kD(i, kv);
 
-        gac[i] = (1.0 - exp(-k2*alpha*fA)) * exp(-k2*alpha*fB) * (1.0 - exp(-k2*alpha*fC)) / (k2 * k2) ;
+        gac[i] = 2. * (1.0 - exp(-k2*alpha*fA)) * exp(-k2*alpha*fB) * (1.0 - exp(-k2*alpha*fC)) / (k2 * k2) ;
     }
 }
 
