@@ -36,12 +36,13 @@ int Box::returnDimension() {
 
 
 void Box::cufftWrapperDouble(
-    int startTime = time(0);
     thrust::device_vector<thrust::complex<double>> in,
     thrust::device_vector<thrust::complex<double>> &out,
     const int fftDir)      // fftDir = 1 for forward, -1 for backwards FFT
     {
 
+    int startTime = time(0);
+	
     cuDoubleComplex* _in = (cuDoubleComplex*)thrust::raw_pointer_cast(in.data());
     cuDoubleComplex* _out = (cuDoubleComplex*)thrust::raw_pointer_cast(out.data());
 
