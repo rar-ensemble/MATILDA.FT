@@ -20,5 +20,6 @@ void run_fts_sim() {
         box[0]->doTimeStep(step);
     }
 
+    box[0]->writeTime();
 
 }

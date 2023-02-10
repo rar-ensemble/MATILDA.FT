@@ -7,7 +7,7 @@ CFLAGS = -std=c++14 -rdc=true -O3 -I/usr/local/cuda-11.4/include -Wno-deprecated
 #CFLAGS = -std=c++11 -rdc=true -O3 -I/usr/local/cuda-10.2/include -Wno-deprecated-gpu-targets
 CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
 #CFLAGS = -std=c++11 -rdc=true -arch=sm_37 -dlto -O3 -I/usr/local/cuda-10.2/include -lineinfo -g #delete lineinfo later and -g
-LIBS = -lm -lcudart -lcufft -L/usr/local/cuda-11.8/lib
+LIBS = -lm -lcudart -lcufft -L/usr/local/cuda-11.4/lib
 
        
 SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_posits.cu \

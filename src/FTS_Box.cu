@@ -20,18 +20,24 @@ void FTS_Box::doTimeStep(int step) {
 
     // Update the potential fields
     for ( int i=0 ; i<Potentials.size(); i++ ) {
+        int ti = time(0);
         Potentials[i]->updateFields();
+        fieldUpdateTimer += time(0) - ti;
     }
     
     // Zero the species densities and rebuilt the fields
     for ( int i=0 ; i<Species.size(); i++ ) {
+        int ti = time(0);
         Species[i].zeroDensity();
         Species[i].buildPotentialField();
+        speciesTimer += time(0) - ti;
     }
 
     // Recalculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
+        int ti = time(0);
         Molecs[i]->calcDensity();
+        moleculeTimer += time(0) - ti;
     }
 
 
@@ -319,7 +325,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
         std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [b^-3]" << std::endl;
     }
 
-    ftTimer = speciesTimer = moleculeTimer = 0;
+    simTime = time(0);
+    ftTimer = speciesTimer = moleculeTimer = fieldUpdateTimer = 0;
 
     // Initialize linear coeffs
     for ( int i=0 ; i<Potentials.size(); i++ ) {
@@ -333,8 +340,21 @@ void FTS_Box::readInput(std::ifstream& inp) {
 }
 
 void FTS_Box::writeTime() {
-    dt = time(0) - ftTimer;
+
+    int dt = time(0) - simTime;
+    std::cout << "Total simulation time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+    
+    dt = ftTimer;
     std::cout << "Total FT time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+
+    dt = fieldUpdateTimer;
+    std::cout << "Total Field Update time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+
+    dt = speciesTimer;
+    std::cout << "Total species class time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+
+    dt = moleculeTimer;
+    std::cout << "Total molecule class time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
 }
 
 void FTS_Box::computeHomopolyDebye(
