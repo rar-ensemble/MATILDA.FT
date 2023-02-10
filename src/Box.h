@@ -36,6 +36,7 @@ class Box {
         int logFreq;                        // Frequency to print energies
         int densityFieldFreq;               // Frequency to write configs
         int maxSteps;                       // Max number of steps to run
+        long int ftTimer;
 
         cufftHandle fftplan;                // FFT Plan
         void cufftWrapperDouble(thrust::device_vector<thrust::complex<double>>,
@@ -54,6 +55,7 @@ class Box {
         std::string printCommand();
         virtual void readInput(std::ifstream&) = 0;
         virtual void writeFields() = 0;
+        virtual void writeTime() = 0;
 
         virtual void writeData(int) = 0;
 

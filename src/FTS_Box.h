@@ -30,6 +30,7 @@ class FTS_Box : public Box {
         std::vector<FTS_Species> Species;       // Contains the density of each species
         std::vector<FTS_Molec*> Molecs;         // Calculates properties of each species
         std::vector<FTS_Potential*> Potentials; // Stores and updates potentials
+        long int speciesTimer, moleculeTimer;  // stores time spent in various algorithms
 
         std::ofstream OTP;
         std::string returnFTSstyle();
@@ -40,6 +41,7 @@ class FTS_Box : public Box {
         void writeData(int) override;
         void computeHamiltonian();
         void writeFields() override;
+        void writeTime() override;
 
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);

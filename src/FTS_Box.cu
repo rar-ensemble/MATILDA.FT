@@ -319,6 +319,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
         std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [b^-3]" << std::endl;
     }
 
+    ftTimer = speciesTimer = moleculeTimer = 0;
 
     // Initialize linear coeffs
     for ( int i=0 ; i<Potentials.size(); i++ ) {
@@ -331,7 +332,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
     }
 }
 
-
+void FTS_Box::writeTime() {
+    dt = ftTimer;
+    std::cout << "Total FT time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+}
 void FTS_Box::computeHomopolyDebye(
     thrust::host_vector<thrust::complex<double>> &g,// Debye function
     const double alpha                                    // N/Nr

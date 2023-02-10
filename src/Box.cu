@@ -36,6 +36,7 @@ int Box::returnDimension() {
 
 
 void Box::cufftWrapperDouble(
+    int startTime = time(0);
     thrust::device_vector<thrust::complex<double>> in,
     thrust::device_vector<thrust::complex<double>> &out,
     const int fftDir)      // fftDir = 1 for forward, -1 for backwards FFT
@@ -59,6 +60,8 @@ void Box::cufftWrapperDouble(
         cufftExecZ2Z(fftplan, _in, _out, CUFFT_INVERSE);        
     }
 
+
+    ftTime += time(0) - startTime;
 }
 
 // Receives index id in [0 , M ) and makes array
