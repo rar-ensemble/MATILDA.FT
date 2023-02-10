@@ -62,7 +62,7 @@ void Box::cufftWrapperDouble(
     }
 
 
-    ftTime += time(0) - startTime;
+    ftTimer += time(0) - startTime;
 }
 
 // Receives index id in [0 , M ) and makes array
