@@ -333,9 +333,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
 }
 
 void FTS_Box::writeTime() {
-    dt = ftTimer;
+    dt = time(0) - ftTimer;
     std::cout << "Total FT time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
 }
+
 void FTS_Box::computeHomopolyDebye(
     thrust::host_vector<thrust::complex<double>> &g,// Debye function
     const double alpha                                    // N/Nr
