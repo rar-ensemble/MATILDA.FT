@@ -14,7 +14,6 @@ void fftw_fwd(float* in, complex<double>* out) {
   fftw_execute(fwd0);       //runs the fourier transform
 
   double norm = 1.0 / double(M);
-
   // Store fft output
   for (i=0; i<ML; i++)
       // real part + immarginary I * complex part normalized to number of grid points
@@ -59,21 +58,23 @@ int fft_init( ) {
  
   NxL[Dim-1] = NxLtp;
   for (i=0; i<Dim-1; i++)
-    NxL[i] = Nx[Dim-i-1];
+    NxL[i] = Nx[i];
  
   zstart = ztp;
-  
   fmin0 = (fftw_complex*) fftw_malloc( size * sizeof(fftw_complex) );
   fmot0 = (fftw_complex*) fftw_malloc( size * sizeof(fftw_complex) );
   
+  if ( fmin0 == NULL ) { cout << "ERROR ALLOCATING fmin0!" << endl; }
+
   fwd0 = fftw_mpi_plan_dft(Dim, Nfp, fmin0, fmot0,
       MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE );
   fbk0 = fftw_mpi_plan_dft(Dim, Nfp, fmin0, fmot0,
       MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE );
 
   ML = 1;
-  for (i=0; i<Dim; i++)
+  for (i=0; i<Dim; i++) {
     ML *= NxL[i];
+  }
   
   total_alloced += size*sizeof(fftw_complex)*2 ;
 

@@ -50,7 +50,10 @@ int main( int argc, char** argv ) {
 
   // Print variables
   cout << "Dim = " << Dim << endl;
-  cout << "Nx[0]: " << Nx[0] << " Nx[1]: " << Nx[1] << endl; //only does 2 evein if dim == 3
+  cout << "Nx[0]: " << Nx[0] << " Nx[1]: " << Nx[1] ;
+  if ( Dim == 3 ) cout << " Nx[2]: " << Nx[2];
+  cout << endl;
+
   cout << "ntypes: " << ntypes << endl;
 
   // Check to see if initialized correctly
@@ -70,6 +73,7 @@ int main( int argc, char** argv ) {
   }
   if ( Dim == 2 )
     dx[2] = 1.0;
+  cout << "M: " << M << " ML: " << ML << endl;
 
   all_rho = new float[ntypes*M];
   
@@ -106,6 +110,7 @@ int main( int argc, char** argv ) {
       for ( int i=0 ; i<ntypes ; i++ ) {
         for ( int j=0 ; j<M ; j++ )
           rho[i][j] = all_rho[i*M+j]; // pull out the denity from all rho for just molecule i
+        
         fftw_fwd( rho[i], sk[i] ) ;         // fft the density to get strucutre factor
 
         for ( int j=0 ; j<M ; j++ ) 
@@ -121,7 +126,6 @@ int main( int argc, char** argv ) {
     nframes++;
   }
   fclose(inp);
-  cout << "There are " << ntypes << " types!" << endl;
 
   return 0;
 
