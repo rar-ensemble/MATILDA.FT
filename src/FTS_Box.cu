@@ -424,6 +424,15 @@ void FTS_Box::computeHamiltonian() {
     }
 }
 
+void FTS_Box::initSmearGaussian(thrust::host_vector<thrust::complex<double>> &smear, const double amplitude, const double sigma) {
+    double kv[3], k2;
+
+    // Define smearing Gaussian in k-space
+    for ( int i=0 ; i<M; i++ ) {
+        k2 = get_kD(i, kv);
+        smear[i] = exp(-k2 * sigma * sigma / 2.0 ) * amplitude;
+    }
+}
 
 
 // Write the species densities

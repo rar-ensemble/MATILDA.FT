@@ -43,6 +43,7 @@ class FTS_Box : public Box {
         void computeHamiltonian();
         void writeFields() override;
         void writeTime() override;
+        void initSmearGaussian(thrust::host_vector<thrust::complex<double>>&, const double, const double);
 
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);

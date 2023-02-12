@@ -10,6 +10,7 @@
 #include <thrust/copy.h>
 #include "FTS_Box.h"
 #include "fts_species.h"
+void die(const char*);
 
 LinearMolec::~LinearMolec(){}
 
@@ -43,6 +44,23 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
         Ntot += N[j];
     }
 
+    if ( iss.tellg() != -1 ) {
+        std::string s1;
+        iss >> s1;
+        if ( s1 == "smear" || s1 == "Smear" ) {
+            iss >> s1 ; 
+            if ( s1 == "Gaussian" || s1 == "gaussian" ) {
+                iss >> smearLength;
+                std::cout << "Smearing with unit Gaussian with width " << smearLength << std::endl;
+
+                mybox->initSmearGaussian(smearFunc, 1.0, smearLength);
+                mybox->writeTComplexGridData("smearGaussian.dat", smearFunc);
+                die("deader than dead");
+                d_smearFunc = smearFunc;
+            }
+        }
+    }
+
     // Copy block lengths to device
     d_N = N;
 
@@ -61,7 +79,6 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
             break;
         }
     }
-    //std::cout << "Is molecule symmetric: " << isSymmetric << std::endl;
 
     // Determine integer block Species
     for ( int j=0 ; j<numBlocks; j++ ) {

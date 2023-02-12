@@ -24,6 +24,17 @@ class FTS_Molec {
         std::string input_command;
     public:
         std::string molec_type;     // what kind of molecule (linear, star, bottle brush)
+        
+        // Smearing parameters
+        int doSmear;                // flag for whether smearing is implemented
+        std::string smearStyle;     // name of smearing function
+        double smearLength;         // length scale for smear function
+        double smearWidth;          // interfacial width (if needed)
+
+        // smearing functions
+        thrust::host_vector<thrust::complex<double>> smearFunc;     // smearing function
+        thrust::device_vector<thrust::complex<double>> d_smearFunc; // smearing function, k-space
+        
 
         // density, d_density is the total density field associated with this type
         // If shape functions are used, they should be the total density, not the
