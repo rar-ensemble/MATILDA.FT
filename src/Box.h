@@ -42,6 +42,8 @@ class Box {
         cufftHandle fftplan;                // FFT Plan
         void cufftWrapperDouble(thrust::device_vector<thrust::complex<double>>,
             thrust::device_vector<thrust::complex<double>>&, const int);
+        void convolveTComplexDouble(thrust::device_vector<thrust::complex<double>>,
+            thrust::device_vector<thrust::complex<double>>&, thrust::device_vector<thrust::complex<double>>);
 
         Box();
         Box(std::istringstream&);

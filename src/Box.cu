@@ -34,6 +34,27 @@ int Box::returnDimension() {
     return Dim;
 }
 
+// This routine assumes all received data is device thrust vectors
+// Typical use case for this is to convolve density fields and
+// potential fields with smearing functions, so it is expected that
+// the smear function will be stored in k-space.
+void Box::convolveTComplexDouble(
+    thrust::device_vector<thrust::complex<double>> input_r,     // Input data, assumed in real-space to convolved
+    thrust::device_vector<thrust::complex<double>> &dest_r,     // destiny array to store result
+    thrust::device_vector<thrust::complex<double>> convFunc_k)  // Convolution function, assumed stored in k-space
+    {
+
+        // Take input to k-space
+        cufftWrapperDouble(input_r, dest_r, 1);
+
+        // Affect convolution in k-space
+        thrust::transform(dest_r.begin(), dest_r.end(), convFunc_k.begin(),
+            dest_r.begin(), thrust::multiplies<thrust::complex<double>>());        
+
+        // Back to real space
+        cufftWrapperDouble(dest_r, dest_r, -1);
+
+}
 
 void Box::cufftWrapperDouble(
     thrust::device_vector<thrust::complex<double>> in,
