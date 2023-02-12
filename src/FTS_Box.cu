@@ -424,7 +424,11 @@ void FTS_Box::computeHamiltonian() {
     }
 }
 
-void FTS_Box::initSmearGaussian(thrust::host_vector<thrust::complex<double>> &smear, const double amplitude, const double sigma) {
+void FTS_Box::initSmearGaussian(
+    thrust::host_vector<thrust::complex<double>> &smear, // Stores the smearing function
+    const double amplitude, // prefactor of smearing function, generally 1.0
+    const double sigma) {   // std dev of the Gaussian 
+
     double kv[3], k2;
 
     // Define smearing Gaussian in k-space
