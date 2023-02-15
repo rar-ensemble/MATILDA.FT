@@ -207,7 +207,13 @@ void LinearMolec::calcPropagators() {
         ind=0;
 
         for ( int b=0 ; b<numBlocks ; b++ ) {
-            W = mybox->Species[intSpecies[numBlocks-b-1]].d_w;
+            if ( doSmear ) {
+                mybox->convolveTComplexDouble(mybox->Species[intSpecies[numBlocks-b-1]].d_w, 
+                    W, d_smearFunc);
+            }
+            else {
+                W = mybox->Species[intSpecies[numBlocks-b-1]].d_w;
+            }            
             
             thrust::transform(W.begin(), W.end(), expW.begin(), NegExponential()); 
 
