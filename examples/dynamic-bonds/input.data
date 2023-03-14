@@ -1,0 +1,27 @@
+arrrr
+
+7 atoms
+0 bonds
+0 angles
+
+1 atom types
+0 bond types
+0 angle types
+
+0.000000 20 xlo xhi
+0.000000 20 ylo yhi
+0.000000 20 zlo zhi
+
+Masses
+
+1 1.000000
+
+Atoms
+
+1 1 1  0 1 1 1
+2 2 1  0 2 2 2
+3 3 1  0 2 3 2
+4 4 1  0 5 4 6
+5 5 1  0 12 13 11
+6 6 1  0 14.5 14.5 14.5
+7 7 1  0 15 14 14
