@@ -45,10 +45,10 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
      cout << "qind: " << qind << endl;
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
+    readRequiredParameter(iss, bond_log_freq);
+    cout << "bond_log_freq: " << bond_freq << endl;
     readRequiredParameter(iss, file_name);
-
-    
-    
+    cout << "output_file: " << file_name << endl;
 
     cout << "Group size: " << group->nsites << endl;
     cout << "Donors: " << nlist->n_donors << endl;
@@ -82,11 +82,13 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 
 void Lewis::AddExtraForce()
 {   
-    if (nlist->CheckTrigger() == 1){
-        nlist->MakeNList();
-    }
+    // if (nlist->CheckTrigger() == 1){
+    //     nlist->MakeNList();
+    // }
 
     if (step % bond_freq == 0 && step != 0){
+        
+        nlist->MakeNList();
 
         // Update the d_BONDED/FREE lists
 
@@ -243,8 +245,7 @@ void Lewis::AddExtraForce()
             group->d_index.data(), group->nsites, Dim);
     }
 
-    bond_log_freq = 1;
-    if (step % bond_log_freq == 0)
+    if (step % bond_log_freq == 0 && step != 0)
     {
         Lewis::WriteBonds();
     }
@@ -478,8 +479,8 @@ void Lewis::WriteBonds(void)
         for (int j = 0; j < group->nsites; ++j)
         {
             if (BONDS[2 * j + 1] != -1)
-            bond_file << group->index[j] + 1 << " " << this->BONDS[2 * j] << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
-            else bond_file << group->index[j] + 1 << " " << this->BONDS[2 * j] << " -1"<< endl;
+            bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
+
         }
         flag = 0;
     }
