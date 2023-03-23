@@ -65,12 +65,6 @@ public:
     // Override functions
 
     void MakeNList() override;
-
-
-    // Additional functions
-
-    int getDonors();
-    int getAcceptors();
     
 };
 

@@ -44,7 +44,7 @@ NList::NList(istringstream& iss) {
 
     // sanity check
 
-    if (delta_r <= 0){die("delta_r cannot be negative or 0!");}
+    // if (delta_r <= 0){die("delta_r cannot be negative or 0!");}
 
     std::cout << "Group name: " << group_name << ", id: " << id << endl;
     std::cout << "Style: " << style << endl;
@@ -80,17 +80,24 @@ NList::NList(istringstream& iss) {
 
     d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
     d_MASTER_GRID_counter.resize(xyz);
+
     d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
     d_RN_ARRAY_COUNTER.resize(group->nsites);
+
     d_LOW_DENS_FLAG.resize(group->nsites);
 
     thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
     thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
     thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
     thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
+    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
     std::cout << "Distance parameters || xyz: " << xyz << ", ad_hoc_density: " << ad_hoc_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
     std::cout << "Size: " << d_RN_ARRAY.size() << endl;
+
+    NList::KillingMeSoftly();
 }
 
 NList::~NList(){}
@@ -104,11 +111,6 @@ NList* NListFactory(istringstream &iss){
 
     // Specialized constructors
 
-	// stores full neighbour list
-	// if (s1 == "distance"){
-	// 	return new NListDistance(iss);
-	// }
-
 	// stores a "half" neighbour list - particle only stores a neioghbour with an index lower than its own
 	if (s1 == "half_distance"){
 		return new NListHalfDistance(iss);
@@ -118,16 +120,8 @@ NList* NListFactory(istringstream &iss){
 		return new NListBonding(iss);
 	}	
 
-	die(s1 + " is not a walid neighbour list style");
+	die(s1 + " is not a valid neighbour list style");
 	return 0;
-}
-
-
-
-void NList::KillingMeSoftly(){
-	// if (xyz < nncells || Nxx[0] < Dim || Nxx[1] < Dim){
-	// 	cout << "The total number of cells needs to be greater than "<< nncells << " and at least " << Dim << " cells in each direction. Check documentation for more details." << endl; exit(1);
-	// }
 }
 
 
@@ -198,11 +192,21 @@ void NList::ResetArrays(){
         ldc = 0;
     }
 
-    thrust::fill(d_MASTER_GRID.begin(), d_MASTER_GRID.end(), 0);
-    thrust::fill(d_MASTER_GRID_counter.begin(), d_MASTER_GRID_counter.end(), 0);
 
-    thrust::fill(d_RN_ARRAY.begin(), d_RN_ARRAY.end(), 0);
-    thrust::fill(d_RN_ARRAY_COUNTER.begin(), d_RN_ARRAY_COUNTER.end(), 0);
+    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
     thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+}
+
+
+void NList::KillingMeSoftly(){
+	if (Dim == 3)
+        if(Nxx[0] < 5 || Nxx[1] < 5 || Nxx[2] < 5)
+        {
+		    cout << "Must have at least 5 cells in each direction!" << endl; exit(1);
+        }
 }

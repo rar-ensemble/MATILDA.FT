@@ -60,6 +60,7 @@ int main(int argc, char** argv)
 	main_t_in = int(time(0));
 	init_t_in = main_t_in;
 	std::vector<std::string> string_vec;
+	std::cout << std::flush;
 
 	for (int i = 0; i < argc; i++)
 	{
