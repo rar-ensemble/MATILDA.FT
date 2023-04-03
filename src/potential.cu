@@ -53,7 +53,7 @@ void Potential::Initialize_Potential() {
     this->vir = (float**)calloc(n_off_diag, sizeof(float*));
 
     this->u_k = (complex<float>*) calloc(M, sizeof(complex<float>));
-    this->f_k = (complex<float>**) calloc(Dim * M, sizeof(complex<float>*));
+    this->f_k = (complex<float>**) calloc(Dim, sizeof(complex<float>*));
     this->vir_k = (complex<float>**) calloc(n_off_diag, sizeof(complex<float>*));
 
     for (int i = 0; i < Dim; i++) {
