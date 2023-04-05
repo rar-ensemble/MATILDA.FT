@@ -80,7 +80,7 @@ allocate_velocities,// Flag to allocate particle velocities
 gsd_freq,           // Frequency to write GSD file
 global_step,
 LOW_DENS_FLAG,
-
+log_bin_flag, log_grid_flag, log_gsd_flag, log_traj_flag, n_frames, // Flags for logarithmic output and number of frames for output
 
 n_groups,           // Total number of group definitions.
 n_integrators,      // total number of integrators
