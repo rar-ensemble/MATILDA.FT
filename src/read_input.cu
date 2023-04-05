@@ -93,6 +93,15 @@ void read_input() {
 
 			else if (word == "binary_freq") {
 				iss >> bin_freq;
+				while(iss >> tmp){
+					if (tmp == "log"){ //check for logarithmic output flag
+						log_bin_flag = 1;
+						iss >> n_frames;
+						//calculate multiplicative factor to use
+						bin_mult_factor = pow(1.0*max_steps/bin_freq, 1.0/(n_frames - 1));
+
+					}
+				}
 			}
 
 			else if (word == "equil_binary_freq"){
@@ -192,12 +201,30 @@ void read_input() {
 
 			else if (word == "grid_freq") {
 				iss >> grid_freq;
+				while(iss >> tmp){
+					if (tmp == "log"){ //check for logarithmic output flag
+						log_grid_flag = 1;
+						iss >> n_frames;
+						//calculate necessary multiplicative factor
+						grid_mult_factor = pow(1.0*max_steps/grid_freq, 1.0/(n_frames - 1));
+
+					}
+				}
 			}
 
 
 
-      else if (word == "gsd_freq"){
+     			else if (word == "gsd_freq"){
 				iss >> gsd_freq;
+				while(iss >> tmp){
+					if (tmp == "log"){//check for logarithmic output flag
+						log_gsd_flag = 1;
+						iss >> n_frames;
+						//calculate necessary multiplicative factor
+						gsd_mult_factor = pow(1.0*max_steps/gsd_freq, 1.0/(n_frames - 1));
+
+					}
+				}
 			}
 
 			else if (word == "gsd_name"){
@@ -416,6 +443,15 @@ void read_input() {
 
 			else if (word == "traj_freq") {
 				iss >> traj_freq;
+				while(iss >> tmp){
+					if (tmp == "log"){ //check for logarithmic output flag
+						log_traj_flag = 1;
+						iss >> n_frames;
+						// calculate necessary multiplicative factor
+						traj_mult_factor = pow(1.0*max_steps/traj_freq, 1.0/(n_frames - 1));
+
+					}
+				}
 			}
 
 			else if (word == "equil_traj_freq"){
