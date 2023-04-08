@@ -1,13 +1,25 @@
-# -rdc=true   FLAG for remote cu code
-CC = /usr/local/cuda-11.4/bin/nvcc
-GIT_VERSION := $(shell git describe --abbrev=9 --dirty --always --tags)
-GIT_DIRECTORY := $(shell git rev-parse --show-toplevel)
-EIGEN_LOC = $(GIT_DIRECTORY)/include/eigen-3.4.0
-CFLAGS = -std=c++14 -rdc=true -O3 -I/usr/local/cuda-11.4/include -Wno-deprecated-gpu-targets
-#CFLAGS = -std=c++11 -rdc=true -O3 -I/usr/local/cuda-10.2/include -Wno-deprecated-gpu-targets
+# Copyright (c) 2023 University of Pennsylvania
+# Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
+#
+####################################################
+# Modify the line below to point to the CUDA library
+CUDA_LOC = /usr/local/cuda-11.4
+
+
+
+
+CC = ${CUDA_LOC}/bin/nvcc
+# GIT_VERSION := $(shell git describe --abbrev=9 --dirty --always --tags)
+# GIT_DIRECTORY := $(shell git rev-parse --show-toplevel)
+
+EIGEN_LOC = ../include/eigen-3.4.0
+
+CFLAGS = -std=c++14 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
 CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
-#CFLAGS = -std=c++11 -rdc=true -arch=sm_37 -dlto -O3 -I/usr/local/cuda-10.2/include -lineinfo -g #delete lineinfo later and -g
-LIBS = -lm -lcudart -lcufft -L/usr/local/cuda-11.4/lib
+
+#CFLAGS = -std=c++11 -rdc=true -arch=sm_37 -dlto -O3 -I${CUDA_LOC}/include -lineinfo -g 
+
+LIBS = -lm -lcudart -lcufft -L${CUDA_LOC}/lib
 
        
 SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_posits.cu \
