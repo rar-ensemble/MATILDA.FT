@@ -51,11 +51,6 @@ float ** avg_sk;
 #ifndef MAIN
 extern
 #endif
-long idum;
-
-#ifndef MAIN
-extern
-#endif
 int n_avg_calc;
 
 #ifndef MAIN

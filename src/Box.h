@@ -57,6 +57,7 @@ class Box {
         virtual void readInput(std::ifstream&) = 0;
         virtual void writeFields() = 0;
         virtual void writeTime() = 0;
+        virtual int converged(int) = 0;
 
         virtual void writeData(int) = 0;
 

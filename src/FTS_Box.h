@@ -25,6 +25,7 @@ class FTS_Box : public Box {
         double C;           // System concentration
         int chemFieldFreq;  // Frequency to write potential fields
         std::complex<double> Heff;  // Effective Hamiltonian
+        double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
         
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
@@ -43,6 +44,7 @@ class FTS_Box : public Box {
         void computeHamiltonian();
         void writeFields() override;
         void writeTime() override;
+        int converged(int) override;
 
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);

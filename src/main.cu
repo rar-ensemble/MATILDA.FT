@@ -5,6 +5,7 @@
 #define MAIN
 #include "globals.h"
 #include "timing.h"
+#include "random.h"
 #include <vector>
 #include <fstream>
 #include "git-version.h"
