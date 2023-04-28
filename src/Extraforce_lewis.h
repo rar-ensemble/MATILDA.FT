@@ -15,13 +15,18 @@ __global__ void d_break_bonds(
     thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
     thrust::device_ptr<int> d_BONDED,
     int n_bonded,
+    int nncells,
+    int ad_hoc_density,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
     float k_spring,
     float e_bond,
+    float r0,
     float qind,
-    const int D,
+    float *L,
+    float *Lh,
+    int D,
     float* d_charges);
 
 __global__ void d_make_bonds(
@@ -41,6 +46,7 @@ __global__ void d_make_bonds(
     float k_spring,
     float e_bond,
     float r0,
+    float r_n,
     float qind,
     float *L,
     float *Lh,

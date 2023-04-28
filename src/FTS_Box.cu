@@ -188,6 +188,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
     maxSteps = 10000;
     chemFieldFreq = 0;
     densityFieldFreq = 0;
+    Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
+    tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
 
     std::string line, firstWord;
 
@@ -271,12 +273,20 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 Potentials.push_back(FTS_PotentialFactory(iss, this));
             }
 
+            else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
+                iss >> idum;
+            }
+
             else if (firstWord == "rho0") {
                 iss >> rho0;
             }
 
             else if ( firstWord == "species" ) {
                 Species.push_back(FTS_Species(iss, this));
+            }
+
+            else if ( firstWord == "tolerance" ) {
+                iss >> tolerance;
             }
 
             else {
@@ -487,6 +497,30 @@ std::complex<double> FTS_Box::integComplexD(std::complex<double> *dat) {
     sum *= this->gvol;
     return sum;
 }
+
+
+// Check convergence of SCFT simulation
+int FTS_Box::converged(int step) {
+
+    // Immediately return if not an SCFT calculation
+    if ( ftsStyle != "scft" ) return 0;
+    
+    // Check if H has been updated
+    if ( step % logFreq != 0 ) return 0;
+    
+    // Check if Hamiltonian change is less than the tolerance
+    if ( fabs(Hold - real(Heff)) < tolerance ) {
+        std::cout << "SCFT converged on step " << step << " deltaH: " << fabs(Hold - real(Heff)) << std::endl;
+        std::cout << Hold << " " << real(Heff) << std::endl;
+        return 1;
+    }
+
+    else {
+        Hold = real(Heff);
+        return 0;
+    }
+}
+
 
 std::string FTS_Box::returnFTSstyle() {
     return ftsStyle;

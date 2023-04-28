@@ -1,11 +1,11 @@
 box fts scft
 Dim 2
-grid 81 45
-boxLengths 20.0 10.0
+grid 125 125
+boxLengths 20.0 20.0
 species A
 species B
-rho0 3.125
-Nr 25
+Nr 50
+rho0 50
 
 # molecule keyword, molecule type, vol fraction number of blocks, block N, block type, block N, block type...
 molecule linear 0.5 1 25 A smear Gaussian 0.15
@@ -17,8 +17,8 @@ potential Helfand 50.0 0.1 modify zeromean updateScheme 1S
 # potential keyword, style Flory, type I, type J, chi*Nr, delt+, delt-
 potential Flory A B 2.9 0.1 0.01 initialize sin 0 0.2 1.0 updateScheme 1S
 
-maxSteps 2551
-logFreq 250
-chemFieldFreq 250
-densityFieldFreq 250
+maxSteps 3001
+logFreq 500
+chemFieldFreq 500
+densityFieldFreq 500
 endBox

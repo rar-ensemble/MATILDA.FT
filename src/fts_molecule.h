@@ -16,6 +16,7 @@
 #define _FTS_MOLEC
 
 #include "include_libs.h"
+#include "random.h"
 
 class FTS_Box;
 

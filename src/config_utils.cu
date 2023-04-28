@@ -604,7 +604,7 @@ void write_gsd_traj() {
 
 	for (i = 0; i < ns; i++) {
 		for (int j = 0; j < Dim; j++) {
-			h_ns_float[i * 3 + j] -= Lh[j];
+			h_ns_float[i * Dim + j] -= Lh[j];
 		}
 	}
 

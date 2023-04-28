@@ -5,6 +5,7 @@
 #define MAIN
 #include "globals.h"
 #include "timing.h"
+#include "random.h"
 #include <vector>
 #include <fstream>
 #include "git-version.h"
@@ -56,10 +57,18 @@ __global__ void d_multiplyComplex(cufftComplex*, cufftComplex*,
 
 int main(int argc, char** argv)
 {
+	if ( argc < 2 ) {
+		std::cout << "ERROR: simulation style not specified!" << std::endl;
+		std::cout << "Execute matilda.ft as either\nmatilda.ft -particle\nfor a particle-based simulation or"<< std::endl;
+		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
+		die("Insufficient arguments");
+	}
+	
 	// printf("Git Version hash: %s\n", MY_GIT_VERSION);
 	main_t_in = int(time(0));
 	init_t_in = main_t_in;
 	std::vector<std::string> string_vec;
+	std::cout << std::flush;
 
 	for (int i = 0; i < argc; i++)
 	{

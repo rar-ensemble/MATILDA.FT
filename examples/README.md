@@ -1,6 +1,11 @@
 This folder contains several read-to-go demonstration simulations that highlight some of the features of MATILDA.FT.
 
 PARTICLE-BASED MODELS:
+
+From the subfolder containing the input file, run the command:
+
+../../matilda.ft -particle
+
 coacervate:
 Particle-based simulation of the system considered in Riggleman, Kumar, and Fredrickson (J. Chem. Phys. 2012). This particular simulation is run at dimensionless excluded volume parameter B = 0.05 and dimensionless Bjerrum length E = 10000
 .
@@ -26,6 +31,11 @@ Small liquid crystal system that ramps the Maier-Saupe parameter from 5 to 120. 
 
 
 FIELD-THEORETIC SIMULATIONS
+
+From the subfolder containing the input file, run the command:
+
+../../matilda.ft -ft
+
 ft:
 Calculates the equilibrium structure of an A-B homopolymer blend at chi*N = 3.5. The system is initialized to a sine wave potential profile.
 

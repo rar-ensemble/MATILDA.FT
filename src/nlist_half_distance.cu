@@ -29,6 +29,23 @@ NListHalfDistance::NListHalfDistance(istringstream &iss) : NList(iss)
 void NListHalfDistance::MakeNList()
 {   
 
+    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+
+    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+
+    d_make_nlist<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+        d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+        d_Nxx.data(), d_Lg.data(),
+        d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+        d_LOW_DENS_FLAG.data(),
+        step,nncells,r_skin, ad_hoc_density,
+        group->d_index.data(), group->nsites, Dim);
+
 
     int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
     LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
@@ -45,22 +62,16 @@ void NListHalfDistance::MakeNList()
         // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
 
         LOW_DENS_FLAG = 0;
+
+        d_make_nlist<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+            d_Nxx.data(), d_Lg.data(),
+            d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+            d_LOW_DENS_FLAG.data(),
+            step,nncells,r_skin, ad_hoc_density,
+            group->d_index.data(), group->nsites, Dim);
+
     }
-
-    thrust::fill(d_MASTER_GRID.begin(), d_MASTER_GRID.end(), 0);
-    thrust::fill(d_MASTER_GRID_counter.begin(), d_MASTER_GRID_counter.end(), 0);
-    thrust::fill(d_RN_ARRAY.begin(), d_RN_ARRAY.end(), 0);
-    thrust::fill(d_RN_ARRAY_COUNTER.begin(), d_RN_ARRAY_COUNTER.end(), 0);
-    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
-
-
-    d_make_nlist<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-        d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-        d_Nxx.data(), d_Lg.data(),
-        d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
-        d_LOW_DENS_FLAG.data(),
-        step,nncells,r_skin, ad_hoc_density,
-        group->d_index.data(), group->nsites, Dim);
 }
 
 
