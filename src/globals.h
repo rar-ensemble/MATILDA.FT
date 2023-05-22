@@ -38,6 +38,13 @@
 
 #include "Box.h"
 
+#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
+#include <thrust/extrema.h>
+#include <thrust/device_ptr.h>
+#include <thrust/count.h>
+#include <thrust/device_vector.h>
+
 #define PI 3.141592654f
 #define PI2 6.2831853071f
 #define PI4 12.56637061435917295384f
