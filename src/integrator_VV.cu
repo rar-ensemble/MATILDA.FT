@@ -96,7 +96,7 @@ __global__ void d_VV_integrator_1(float* x, float* f, float*v, int *typ, float *
 		else if (x[ind * D + j] < 0.0)
 			x[ind * D + j] += L[j];
 	}
-    d_TDISP[list_ind] += sqrt(disp_sq);
+    d_TDISP[list_ind] = d_TDISP[list_ind] + sqrt(disp_sq);
 }
 
 __global__ void d_VV_integrator_2(float* x, float* f, float*v, int *typ, float *mass, float delt, 

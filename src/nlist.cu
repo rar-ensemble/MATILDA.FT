@@ -52,7 +52,7 @@ NList::NList(istringstream& iss) {
 
     for (int i = 0; i < Dim; i++)
     {
-        tmp = floor(2.0 * L[i]/r_skin);
+        tmp = floor(L[i]/r_skin);
         Nxx.push_back(tmp);
         xyz *= int(tmp);
     }
@@ -75,8 +75,8 @@ NList::NList(istringstream& iss) {
     d_Lg.resize(3);
     d_Lg = Lg;
 
-    if (Dim == 3){nncells = 125;}
-    if (Dim == 2){nncells = 25;}          
+    if (Dim == 3){nncells = 25;}
+    if (Dim == 2){nncells = 9;}          
 
     d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
     d_MASTER_GRID_counter.resize(xyz);
