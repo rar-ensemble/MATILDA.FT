@@ -209,11 +209,11 @@ __global__ void d_nlist_bonding_update_nlist(
     counter = 0;
 
     if (D == 3){
-        for (int i1 = -2; i1 < 3; i1++)
+        for (int i1 = -1; i1 < 2; i1++)
         {
-            for (int i2 = -2; i2 < 3; i2++)
+            for (int i2 = -1; i2 < 2; i2++)
             {
-                for (int i3 = -2; i3 < 3; i3++)
+                for (int i3 = -1; i3 < 2; i3++)
                 {
                     nxi = (xi + i1 + dxx) % dxx;
                     nyi = (yi + i2 + dyy) % dyy;
@@ -226,9 +226,9 @@ __global__ void d_nlist_bonding_update_nlist(
     }
 
     else if (D == 2){
-        for (int i1 = -2; i1 < 3; i1++)
+        for (int i1 = -1; i1 < 2; i1++)
         {
-            for (int i2 = -2; i2 < 3; i2++)
+            for (int i2 = -1; i2 < 2; i2++)
             {
                 nxi = (xi + i1 + dxx) % dxx;
                 nyi = (yi + i2 + dyy) % dyy;

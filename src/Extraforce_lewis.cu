@@ -97,12 +97,11 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 
 void Lewis::AddExtraForce()
 {   
-    // update neighbour list
-    if (nlist->CheckTrigger() == 1){
-        nlist->MakeNList();
-    }
 
     if (step % bond_freq == 0 && step >= bond_freq){
+        if (nlist->CheckTrigger() == 1){
+            nlist->MakeNList();
+            }
         
         int rnd = random()%2; //decide move sequence
 
