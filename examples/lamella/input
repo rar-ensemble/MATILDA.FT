@@ -1,6 +1,6 @@
 Dim 3
 
-max_steps 50001
+max_steps 2000001
 log_freq 2500
 binary_freq 5000
 pmeorder 1
