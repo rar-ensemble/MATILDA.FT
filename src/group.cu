@@ -7,6 +7,10 @@
 #include "group_type.h"
 #include "group_region.h"
 #include "group_id.h"
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
+#include <thrust/count.h>
 
 
 using namespace std;
