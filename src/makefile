@@ -3,9 +3,7 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-CUDA_LOC = /usr/local/cuda
-
-
+CUDA_LOC = /usr/local/cuda-12.1
 
 
 CC = ${CUDA_LOC}/bin/nvcc
@@ -15,6 +13,7 @@ CC = ${CUDA_LOC}/bin/nvcc
 EIGEN_LOC = ../include/eigen-3.4.0
 
 CFLAGS = -std=c++14 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
+# --default-stream per-thread
 CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
 
 #CFLAGS = -std=c++11 -rdc=true -arch=sm_37 -dlto -O3 -I${CUDA_LOC}/include -lineinfo -g 

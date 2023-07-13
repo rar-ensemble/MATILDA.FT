@@ -53,50 +53,15 @@ NListBonding::NListBonding(istringstream &iss) : NList(iss)
 void NListBonding::MakeNList()
 {   
 
-    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
-    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+    if (CheckTrigger() == 1){
 
-    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
-    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+        thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+        thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
 
-    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+        thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+        thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
-    d_nlist_bonding_update_grid<<<AGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-        d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-        d_Nxx.data(), d_Lg.data(),
-        d_LOW_DENS_FLAG.data(),
-        d_ACCEPTORS.data(),
-        nncells, n_acceptors, ad_hoc_density,
-        group->d_index.data(), group->nsites, Dim);
-
-    // Updates n-list for the donors
-
-    d_nlist_bonding_update_nlist<<<DGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-        d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-        d_Nxx.data(), d_Lg.data(),
-        d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
-        d_DONORS.data(),
-        nncells, n_donors, r_skin, ad_hoc_density,
-        group->d_index.data(), group->nsites, Dim);
-
-
-    // Updates the distribution of acceptors on the grid
-
-    int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-    LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
-    if (LOW_DENS_FLAG > 0){
-        
-        cout << "Input density was: " << ad_hoc_density <<" but at least "<< ad_hoc_density + LOW_DENS_FLAG <<" is required"<<endl;
-        ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
-        cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
-
-        d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
-        d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-        // MASTER_GRID.resize(xyz * ad_hoc_density);                 
-        // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-        LOW_DENS_FLAG = 0;
+        thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
 
         d_nlist_bonding_update_grid<<<AGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
             d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
@@ -116,7 +81,45 @@ void NListBonding::MakeNList()
             nncells, n_donors, r_skin, ad_hoc_density,
             group->d_index.data(), group->nsites, Dim);
 
-    }
+
+        // Updates the distribution of acceptors on the grid
+
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+        if (LOW_DENS_FLAG > 0){
+            
+            cout << "Input density was: " << ad_hoc_density <<" but at least "<< ad_hoc_density + LOW_DENS_FLAG <<" is required"<<endl;
+            ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
+            cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
+
+            d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
+            d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+            // MASTER_GRID.resize(xyz * ad_hoc_density);                 
+            // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+            LOW_DENS_FLAG = 0;
+
+            d_nlist_bonding_update_grid<<<AGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                d_Nxx.data(), d_Lg.data(),
+                d_LOW_DENS_FLAG.data(),
+                d_ACCEPTORS.data(),
+                nncells, n_acceptors, ad_hoc_density,
+                group->d_index.data(), group->nsites, Dim);
+
+            // Updates n-list for the donors
+
+            d_nlist_bonding_update_nlist<<<DGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                d_Nxx.data(), d_Lg.data(),
+                d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+                d_DONORS.data(),
+                nncells, n_donors, r_skin, ad_hoc_density,
+                group->d_index.data(), group->nsites, Dim);
+
+        }
+    } // if (CheckTrigger() == 1)
 }
 
 __global__ void d_nlist_bonding_update_grid(
@@ -164,7 +167,6 @@ __global__ void d_nlist_bonding_update_grid(
     else{
         ++d_LOW_DENS_FLAG[list_ind];
     }
-    __syncthreads();
 }
 
 
@@ -203,10 +205,10 @@ __global__ void d_nlist_bonding_update_nlist(
     int dyy = d_Nxx[1];
     int dzz = d_Nxx[2];
 
-    int *ngs = new int[nncells];
-
     int nxi, nyi, nzi, nid, counter, lnid;
     counter = 0;
+
+    int ngs[27];
 
     if (D == 3){
         for (int i1 = -1; i1 < 2; i1++)
@@ -248,8 +250,8 @@ __global__ void d_nlist_bonding_update_nlist(
     for (int i = 0; i < nncells; ++i){
         for (int j = 0; j < d_MASTER_GRID_counter[ngs[i]]; j++){
 
-            float dist = 0.0;                
-            float dr_2 = 0.0;
+            float dist = 0.0f;                
+            float dr_2 = 0.0f;
             float dr0;
 
             lnid = d_MASTER_GRID[ngs[i] * ad_hoc_density + j];
@@ -259,8 +261,8 @@ __global__ void d_nlist_bonding_update_nlist(
             for (int j = 0; j < D; j++){
                 dr0 = my_x[j] - x[nid * D + j];
 
-                if (dr0 >  Lh[j]){dr_arr[j] = -1.0 * (L[j] - dr0);}
-                else if (dr0 < -1.0 * Lh[j]){dr_arr[j] = (L[j] + dr0);}
+                if (dr0 >  Lh[j]){dr_arr[j] = -1.0f * (L[j] - dr0);}
+                else if (dr0 < -1.0f * Lh[j]){dr_arr[j] = (L[j] + dr0);}
                 else{dr_arr[j] = dr0;}
 
                 dr_2 += dr_arr[j] * dr_arr[j];
@@ -279,6 +281,4 @@ __global__ void d_nlist_bonding_update_nlist(
             }
         }
     } 
-    delete[] ngs;
-    __syncthreads();       
 }

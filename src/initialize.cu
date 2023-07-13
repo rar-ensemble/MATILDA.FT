@@ -59,6 +59,7 @@ void initialize() {
 	compute_tot_time = 0;
     MaierSaupe_tot_time = 0;
     extraForce_tot_time = 0;
+	nList_tot_time = 0;
     DPD_time = 0;
     nl_time = 0;
 

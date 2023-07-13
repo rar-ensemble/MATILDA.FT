@@ -194,6 +194,10 @@ void read_input() {
 				iss >> grid_freq;
 			}
 
+			else if (word == "grid_update_freq"){
+				iss >> GRID_UPDATE_FREQ;
+			}
+
 
 
       else if (word == "gsd_freq"){
@@ -485,6 +489,7 @@ void set_defaults() {
 	prod_grid_freq = 0;
 	global_step = 0;
 	LOW_DENS_FLAG = 0;
+	GRID_UPDATE_FREQ = 1;
 }
 
 

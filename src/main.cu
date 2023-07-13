@@ -63,6 +63,9 @@ int main(int argc, char** argv)
 		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
 		die("Insufficient arguments");
 	}
+
+
+	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
 	
 	// printf("Git Version hash: %s\n", MY_GIT_VERSION);
 	main_t_in = int(time(0));
@@ -164,6 +167,7 @@ int main(int argc, char** argv)
 				set_write_status();
 			}
 
+
 			for (auto Iter: Groups){
 				Iter->CheckGroupMembers();
 			}
@@ -172,19 +176,31 @@ int main(int argc, char** argv)
 				Iter->Integrate_1();
 			}
 
-			check_cudaError("Integrator step 1");
-
+			check_cudaError("Integrator step 1");	
+			
+			if ( NLists.size() > 0 ) {
+				nList_t_in = time(0);
+				for (auto Iter: NLists)
+					Iter->MakeNList();
+				check_cudaError("Error in N-lists");
+				nList_tot_time += time(0) - nList_t_in;
+			}		
 
 			forces();
-
+			
+			if ( ExtraForces.size() > 0 ) {
+				extraForce_t_in = time(0);
+				for (auto Iter: ExtraForces)
+					Iter->AddExtraForce();
+				check_cudaError("extraForces");
+				extraForce_tot_time += time(0) - extraForce_t_in;
+			}
 
 			for (auto Iter: Integrators){
 				Iter->Integrate_2();
 			}
 
 			check_cudaError("Integrator step 2");
-
-
 			
 			// Run computes
 			run_computes();	
@@ -257,10 +273,12 @@ int main(int argc, char** argv)
         cout << "DPD Forces time: " << dt / 60 << "m" << dt % 60 << "sec" << endl;
     }
     
-    if ( nl_time > 0 ) {
-        dt = nl_time;
+    if ( nList_tot_time > 0 ) {
+        dt = nList_tot_time;
         cout << "NList time: " << dt / 60 << "m" << dt % 60 << "sec" << endl;
     }
+
+	// cudaStreamDestroy(stream1);
 
 	return 0;
 }
@@ -301,6 +319,7 @@ int print_timestep() {
     dout << endl;
 	cout<<endl;
 	return die_flag;
+
 }
 
 
@@ -363,6 +382,7 @@ void run_frame_printing() {
     write_binary();
     print_t_out = int(time(0));
     print_tot_time += print_t_out - print_t_in;
+
   }
 }
 

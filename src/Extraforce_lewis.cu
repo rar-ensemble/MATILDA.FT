@@ -77,16 +77,23 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
         d_VirArr[i] = 0.0f;
     }
 
-    d_BONDED.resize(0);
-    d_FREE.resize(0);
+    d_BONDED.resize( group->nsites);
+    d_FREE.resize( group->nsites);
+
+    BONDED.resize( group->nsites);
+    FREE.resize( group->nsites);
 
 
     for (int i = 0; i < nlist->n_donors; ++i){
-        d_FREE.push_back(nlist->d_DONORS[i]);
+        FREE[i] = nlist->d_DONORS[i];
+        BONDED[i] = -1;
     }
 
     n_bonded = 0;
-    n_free = d_FREE.size();
+    n_free = group->nsites;
+
+    d_FREE = FREE;
+    d_BONDED = BONDED;
 
     BGRID = (int)ceil((float)(n_bonded) / threads);
     FGRID = (int)ceil((float)(n_free) / threads);
@@ -99,10 +106,7 @@ void Lewis::AddExtraForce()
 {   
 
     if (step % bond_freq == 0 && step >= bond_freq){
-        if (nlist->CheckTrigger() == 1){
-            nlist->MakeNList();
-            }
-        
+
         int rnd = random()%2; //decide move sequence
 
         if (rnd == 0){
@@ -115,32 +119,32 @@ void Lewis::AddExtraForce()
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges);
 
-                d_BONDED.resize(0);
-                d_FREE.resize(0);
 
+            n_bonded = 0;
+            n_free = 0;
 
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && d_BONDS[2*i] == 1){
-                        d_BONDED.push_back(i);
-                    }
-                    else if (nlist->AD[i] == 1 && d_BONDS[2*i] == 0){
-                        d_FREE.push_back(i);
-                    }
+            BONDS = d_BONDS;
+            for (int i = 0; i < group->nsites; ++i){
+                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                    BONDED[n_bonded++] = i;
                 }
-
-                n_bonded = d_BONDED.size();
-                n_free = d_FREE.size();
+                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                    FREE[n_free++] = i;
+                }
+            }
+            d_BONDED = BONDED;
+            d_FREE = FREE;
 
                 BGRID = (int)ceil((float)(n_bonded) / threads);
                 FGRID = (int)ceil((float)(n_free) / threads);
                 if (BGRID == 0) BGRID = 1;
                 if (FGRID == 0) FGRID = 1;
-
                 //Update charges
                 if (qind != 0.0){
                     cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
                 }
             } 
+            
             if (n_bonded > 0){
                 d_break_bonds<<<FGRID, group->BLOCK>>>(d_x,
                     d_BONDS.data(),
@@ -162,26 +166,28 @@ void Lewis::AddExtraForce()
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges);
 
-                d_BONDED.resize(0);
-                d_FREE.resize(0);
 
 
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && d_BONDS[2*i] == 1){
-                        d_BONDED.push_back(i);
-                    }
-                    else if (nlist->AD[i] == 1 && d_BONDS[2*i] == 0){
-                        d_FREE.push_back(i);
-                    }
+
+            n_bonded = 0;
+            n_free = 0;
+
+            BONDS = d_BONDS;
+            for (int i = 0; i < group->nsites; ++i){
+                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                    BONDED[n_bonded++] = i;
                 }
+                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                    FREE[n_free++] = i;
+                }
+            }
+            d_BONDED = BONDED;
+            d_FREE = FREE;
 
-                n_bonded = d_BONDED.size();
-                n_free = d_FREE.size();
-
-                BGRID = (int)ceil((float)(n_bonded) / threads);
-                FGRID = (int)ceil((float)(n_free) / threads);
-                if (BGRID == 0) BGRID = 1;
-                if (FGRID == 0) FGRID = 1;
+            BGRID = (int)ceil((float)(n_bonded) / threads);
+            FGRID = (int)ceil((float)(n_free) / threads);
+            if (BGRID == 0) BGRID = 1;
+            if (FGRID == 0) FGRID = 1;
 
                 //Update charges
                 if (qind != 0.0){
@@ -203,21 +209,20 @@ void Lewis::AddExtraForce()
 
         // update the bonded array
 
-        d_BONDED.resize(0);
-        d_FREE.resize(0);
+            n_bonded = 0;
+            n_free = 0;
 
-
-        for (int i = 0; i < group->nsites; ++i){
-            if (nlist->AD[i] == 1 && d_BONDS[2*i] == 1){
-                d_BONDED.push_back(i);
+            BONDS = d_BONDS;
+            for (int i = 0; i < group->nsites; ++i){
+                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                    BONDED[n_bonded++] = i;
+                }
+                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                    FREE[n_free++] = i;
+                }
             }
-            else if (nlist->AD[i] == 1 && d_BONDS[2*i] == 0){
-                d_FREE.push_back(i);
-            }
-        }
-
-        n_bonded = d_BONDED.size();
-        n_free = d_FREE.size();
+            d_BONDED = BONDED;
+            d_FREE = FREE;
 
         BGRID = (int)ceil((float)(n_bonded) / threads);
         FGRID = (int)ceil((float)(n_free) / threads);
@@ -241,7 +246,6 @@ void Lewis::AddExtraForce()
     if (step == 0){
         const char* fname = file_name.c_str();
         remove(fname);
-        remove("bonding_info");
     }
 
     if (step % bond_log_freq == 0 && step >= bond_freq)
@@ -439,8 +443,6 @@ __global__ void d_make_bonds(
 
         }
     } // if particle got locked
-
-    __syncthreads();   
 }
 
 
@@ -519,7 +521,6 @@ __global__ void d_break_bonds(
         atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
         atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
     }
-    __syncthreads();   
 }
 
 void Lewis::WriteBonds(void)
@@ -563,7 +564,7 @@ void Lewis::UpdateVirial(void){
     // Column 4 stores mf
     // d_VirArr is updated in UpdateForces or make_bonds routines
 
-    for (int k = 0; k < d_BONDED.size(); ++k){
+    for (int k = 0; k < n_bonded; ++k){
         int j = d_BONDED[k];
         Udynamicbond += VirArr[j*5+3];
         float mf = VirArr[j*5+4];

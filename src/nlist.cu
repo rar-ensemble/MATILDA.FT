@@ -75,7 +75,7 @@ NList::NList(istringstream& iss) {
     d_Lg.resize(3);
     d_Lg = Lg;
 
-    if (Dim == 3){nncells = 25;}
+    if (Dim == 3){nncells = 27;}
     if (Dim == 2){nncells = 9;}          
 
     d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
@@ -131,7 +131,7 @@ int NList::CheckTrigger(){
 		MAX_DISP = -1.0;
 		return 1;
 	}
-	else if(nlist_freq > 0 && step%nlist_freq == 0){
+	else if(nlist_freq > 0 && step%nlist_freq == 0 && step > 0){
 		return 1;
 	}
 	else {

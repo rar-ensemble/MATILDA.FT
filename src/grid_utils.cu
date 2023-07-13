@@ -9,14 +9,22 @@
 __global__ void d_charge_grid_charges(float*, float*, int*, int*, float*, const int*,
     const float*, const float, const int, const int, const int, const int, float*, float*, int);
 __global__ void d_charge_grid(float*, float*, int*, int*, float*, const int*,
-    const float*, const float, const int, const int, const int, const int);
+    const float*, const float, const int, const int, const int, const int, int);
+__global__ void d_charge_grid2(float* d_x, float* d_grid_W, int* d_grid_inds,
+    int* d_tp,
+    const int* d_Nx, const float* d_dx, const float V,
+    const int ns, const int pmeorder, const int M, const int Dim);
+
 __global__ void d_zero_all_ntyp(float*, int, int);
 __global__ void d_prep_components(float*, float*, float*,
 	const int, const int, const int);
 __global__ void d_zero_float_vector(float*, int);
 
 void prepareDensityFields() {
-
+    if (step%GRID_UPDATE_FREQ == 0){
+        GFLAG = 1;
+    }
+    else {GFLAG = 0;}
 
     // Zeros the types*M density field
     d_zero_all_ntyp<<<M_Grid, M_Block>>>(d_all_rho, M, ntypes);
@@ -38,10 +46,13 @@ void prepareDensityFields() {
             V, ns, pmeorder, M, Dim, d_charge_density_field, d_charges, Charges::do_charges);
         
     }
+
     else {
+        
         d_charge_grid<<<ns_Grid, ns_Block>>>(d_x, d_grid_W,
             d_grid_inds, d_typ, d_all_rho, d_Nx, d_dx,
-            V, ns, pmeorder, M, Dim);
+            V, ns, pmeorder, M, Dim, GFLAG);
+
     }
 
     check_cudaError("d_charge_grid");

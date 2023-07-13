@@ -1,0 +1,29 @@
+Dim 3
+
+#2000001
+
+max_steps 10001 
+log_freq 100
+binary_freq 25000
+pmeorder 1
+
+delt 0.002
+read_data input.data
+
+
+Nx 35
+Ny 35
+Nz 35
+
+group mygroup id id_file
+nlist mygroup bonding mylist 1 1 10 50 ad_input
+
+#k_spring e_bond r0 q_induced bond_freq bond_log_freq out_file
+extraforce all lewis mylist 1.0 2.0 0.0 0.0 10 200 bonds_out
+
+bond 1 harmonic 1.5 0.0
+
+potential gaussian 1 1 1.5625  1.0
+potential gaussian 2 2 1.5625  1.0
+potential gaussian 1 2 3.5  1.0
+

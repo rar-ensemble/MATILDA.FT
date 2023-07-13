@@ -49,6 +49,12 @@
 #define PI2 6.2831853071f
 #define PI4 12.56637061435917295384f
 
+// #ifndef MAIN
+// extern
+// #endif
+// cudaStream_t stream1;
+
+
 /// Variables for s(k) calculations
 #ifndef MAIN
 extern
@@ -93,7 +99,9 @@ n_extra_forces,     // Number of ''extraforce'' routines
 n_MaierSaupe,       // Number of Maier-Saupe pair styles
 particle_sim,       // Flag for whether we're doing a particle simulation
 field_sim,          // Flag for whether we're doing a field-based simulation
-do_charges;
+do_charges,
+GFLAG,
+GRID_UPDATE_FREQ;
 
 #ifndef MAIN
 extern

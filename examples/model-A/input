@@ -1,19 +1,29 @@
 Dim 3
 
-max_steps 2000001
+#2000001
+
+max_steps 101 
 log_freq 1500
 binary_freq 25000
 pmeorder 1
 
 delt 0.005
 read_data input.data
+
 integrator all GJF
 
 Nx 21
 Ny 21
 Nz 21
 
+# nlist all half_distance nlistname 1.0 2.0 40 5
+# extraforce all dpd nlistname 0.5 1.0
+# integrator all VV 0 0
+
+nlist all bonding mylist 1 2 50 5 ad_input
+extraforce all lewis mylist 1.0 5.0 0.0 0.0 5 20 bonds_out
 
 bond 1 harmonic 1.5 0.0
 
 potential gaussian 1 1 1.5625  1.0
+

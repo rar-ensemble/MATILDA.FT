@@ -29,64 +29,17 @@ NListHalfDistance::NListHalfDistance(istringstream &iss) : NList(iss)
 void NListHalfDistance::MakeNList()
 {   
 
-    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
-    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+    if (CheckTrigger() == 1){
 
-    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
-    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+        thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+        thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
 
-    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+        thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+        thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
-    if (Dim==3){
-        d_make_nlist_3d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-            d_Nxx.data(), d_Lg.data(),
-            d_LOW_DENS_FLAG.data(),
-            step,nncells, ad_hoc_density,
-            group->d_index.data(), group->nsites, Dim);   
-
-        d_make_nlist_3d_2<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-            d_Nxx.data(), d_Lg.data(),
-            d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
-            step,nncells,r_skin, ad_hoc_density,
-            group->d_index.data(), group->nsites, Dim);  
-    }
-    else if (Dim == 2){
-        d_make_nlist_2d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-            d_Nxx.data(), d_Lg.data(),
-            d_LOW_DENS_FLAG.data(),
-            step,nncells, ad_hoc_density,
-            group->d_index.data(), group->nsites, Dim);   
-
-        d_make_nlist_2d_2<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-            d_Nxx.data(), d_Lg.data(),
-            d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
-            step,nncells,r_skin, ad_hoc_density,
-            group->d_index.data(), group->nsites, Dim);       
-    }
-
-
-    int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-    LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
-    if (LOW_DENS_FLAG > 0){
-        
-        cout << "Input density was: " << ad_hoc_density <<" but at least "<< ad_hoc_density + LOW_DENS_FLAG <<" is required"<<endl;
-        ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
-        cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
-
-        d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
-        d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-        // MASTER_GRID.resize(xyz * ad_hoc_density);                 
-        // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-        LOW_DENS_FLAG = 0;
+        thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
 
         if (Dim==3){
-
             d_make_nlist_3d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
                 d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
                 d_Nxx.data(), d_Lg.data(),
@@ -99,11 +52,9 @@ void NListHalfDistance::MakeNList()
                 d_Nxx.data(), d_Lg.data(),
                 d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
                 step,nncells,r_skin, ad_hoc_density,
-                group->d_index.data(), group->nsites, Dim);      
-
+                group->d_index.data(), group->nsites, Dim);  
         }
         else if (Dim == 2){
-
             d_make_nlist_2d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
                 d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
                 d_Nxx.data(), d_Lg.data(),
@@ -116,10 +67,62 @@ void NListHalfDistance::MakeNList()
                 d_Nxx.data(), d_Lg.data(),
                 d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
                 step,nncells,r_skin, ad_hoc_density,
-                group->d_index.data(), group->nsites, Dim);        
-
+                group->d_index.data(), group->nsites, Dim);       
         }
 
+
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+        if (LOW_DENS_FLAG > 0){
+            
+            cout << "Input density was: " << ad_hoc_density <<" but at least "<< ad_hoc_density + LOW_DENS_FLAG <<" is required"<<endl;
+            ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
+            cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
+
+            d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
+            d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+            // MASTER_GRID.resize(xyz * ad_hoc_density);                 
+            // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+            LOW_DENS_FLAG = 0;
+
+            if (Dim==3){
+
+                d_make_nlist_3d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_LOW_DENS_FLAG.data(),
+                    step,nncells, ad_hoc_density,
+                    group->d_index.data(), group->nsites, Dim);   
+
+                d_make_nlist_3d_2<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+                    step,nncells,r_skin, ad_hoc_density,
+                    group->d_index.data(), group->nsites, Dim);      
+
+            }
+            else if (Dim == 2){
+
+                d_make_nlist_2d_1<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_LOW_DENS_FLAG.data(),
+                    step,nncells, ad_hoc_density,
+                    group->d_index.data(), group->nsites, Dim);   
+
+                d_make_nlist_2d_2<<<group->GRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+                    step,nncells,r_skin, ad_hoc_density,
+                    group->d_index.data(), group->nsites, Dim);        
+
+            }
+
+        }
     }
 }
 

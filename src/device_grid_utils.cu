@@ -237,7 +237,7 @@ __global__ void d_charge_grid_charges(float* d_x, float* d_grid_W, int* d_grid_i
 }
 
 
-__global__ void d_charge_grid(float* d_x, float* d_grid_W, int* d_grid_inds,
+__global__ void d_charge_grid_slim(float* d_x, float* d_grid_W, int* d_grid_inds,
     int* d_tp, float* d_rho, // d_rho, Has dimensions ntypes*M
     const int* d_Nx, const float* d_dx, const float V,
     const int ns, const int pmeorder, const int M, const int Dim) {
@@ -274,7 +274,120 @@ __global__ void d_charge_grid(float* d_x, float* d_grid_W, int* d_grid_inds,
     }
 
 
-    // 
+        // 
+        if (Dim == 2) {
+            int order_shift = pmeorder / 2;
+
+            for (int ix = 0; ix < pmeorder + 1; ix++) {
+
+                nn[0] = g_ind[0] + ix - order_shift;
+
+                if (nn[0] < 0) nn[0] += d_Nx[0];
+                else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+
+                for (int iy = 0; iy < pmeorder + 1; iy++) {
+
+                    nn[1] = g_ind[1] + iy - order_shift;
+
+                    if (nn[1] < 0) nn[1] += d_Nx[1];
+                    else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+
+                    Mindex = nn[1] * d_Nx[0] + nn[0];
+                    rho_ind = id_typ * M + Mindex;
+
+                    W3 = W[0][ix] * W[1][iy] / gvol;
+
+                    atomicAdd(&d_rho[rho_ind], W3);
+                    d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
+                    d_grid_W[id * grid_per_partic + grid_ct] = W3;
+
+                    grid_ct++;
+
+                }// iy = 0:pmeorder+1
+            }// ix=0:pmeorder+1
+        }// if Dim==2
+
+        else if (Dim == 3) {
+            int order_shift = pmeorder / 2;
+
+            for (int ix = 0; ix < pmeorder + 1; ix++) {
+
+                nn[0] = g_ind[0] + ix - order_shift;
+
+                if (nn[0] < 0) nn[0] += d_Nx[0];
+                else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+
+                for (int iy = 0; iy < pmeorder + 1; iy++) {
+
+                    nn[1] = g_ind[1] + iy - order_shift;
+
+                    if (nn[1] < 0) nn[1] += d_Nx[1];
+                    else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+
+                    for (int iz = 0; iz < pmeorder + 1; iz++) {
+
+                        nn[2] = g_ind[2] + iz - order_shift;
+
+                        if (nn[2] < 0) nn[2] += d_Nx[2];
+                        else if (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
+
+                        Mindex = nn[0] + (nn[1] + nn[2] * d_Nx[1]) * d_Nx[0];
+                        rho_ind = id_typ * M + Mindex;
+
+                        W3 = W[0][ix] * W[1][iy] * W[2][iz] / gvol;
+
+                        atomicAdd(&d_rho[rho_ind], W3);
+
+                        d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
+                        d_grid_W[id * grid_per_partic + grid_ct] = W3;
+
+                        grid_ct++;
+                    }
+                }
+            }// for ix
+
+        }// if Dim == 3
+
+}
+
+__global__ void d_charge_grid2(float* d_x, float* d_grid_W, float* d_rho, int* d_grid_inds,
+    int* d_tp,
+    const int* d_Nx, const float* d_dx, const float V,
+    const int ns, const int pmeorder, const int M, const int Dim) {
+
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns)
+        return;
+
+    float W[3][6];
+    float gdx, W3, gvol;
+    int g_ind[3];
+    int nn[3];
+    int grid_ct = 0;
+    int Mindex, rho_ind, grid_per_partic = 1;
+    int id_typ = d_tp[id];
+
+    gvol = 1.0f;
+    for (int j = 0; j < Dim; j++) {
+        gvol *= d_dx[j];
+        grid_per_partic *= (pmeorder + 1);
+    }
+
+
+    for (int j = 0; j < Dim; j++) {
+        if (pmeorder % 2 == 0) {
+            g_ind[j] = int((d_x[id * Dim + j] + 0.5f * d_dx[j]) / d_dx[j]);
+            gdx = d_x[id * Dim + j] - float(g_ind[j]) * d_dx[j];
+        }
+        else {
+            g_ind[j] = int(d_x[id * Dim + j] / d_dx[j]);
+            gdx = d_x[id * Dim + j] - (float(g_ind[j]) + 0.5f) * d_dx[j];
+        }
+        spline_get_weights(gdx, d_dx[j], W[j], pmeorder);
+    }
+
+
+        // 
     if (Dim == 2) {
         int order_shift = pmeorder / 2;
 
@@ -297,7 +410,6 @@ __global__ void d_charge_grid(float* d_x, float* d_grid_W, int* d_grid_inds,
 
                 W3 = W[0][ix] * W[1][iy] / gvol;
 
-                atomicAdd(&d_rho[rho_ind], W3);
                 d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
                 d_grid_W[id * grid_per_partic + grid_ct] = W3;
 
@@ -336,7 +448,121 @@ __global__ void d_charge_grid(float* d_x, float* d_grid_W, int* d_grid_inds,
 
                     W3 = W[0][ix] * W[1][iy] * W[2][iz] / gvol;
 
+                    d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
+                    d_grid_W[id * grid_per_partic + grid_ct] = W3;
+
+                    grid_ct++;
+                }
+            }
+        }// for ix
+
+    }// if Dim == 3
+
+}
+
+__global__ void d_charge_grid(float* d_x, float* d_grid_W, int* d_grid_inds,
+    int* d_tp, float* d_rho, // d_rho, Has dimensions ntypes*M
+    const int* d_Nx, const float* d_dx, const float V,
+    const int ns, const int pmeorder, const int M, const int Dim, int FLAG) {
+
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns)
+        return;
+
+    float W[3][6];
+    float gdx, W3, gvol;
+    int g_ind[3];
+    int nn[3];
+    int grid_ct = 0;
+    int Mindex, rho_ind, grid_per_partic = 1;
+    int id_typ = d_tp[id];
+
+    gvol = 1.0f;
+    for (int j = 0; j < Dim; j++) {
+        gvol *= d_dx[j];
+        grid_per_partic *= (pmeorder + 1);
+    }
+
+
+    for (int j = 0; j < Dim; j++) {
+        if (pmeorder % 2 == 0) {
+            g_ind[j] = int((d_x[id * Dim + j] + 0.5f * d_dx[j]) / d_dx[j]);
+            gdx = d_x[id * Dim + j] - float(g_ind[j]) * d_dx[j];
+        }
+        else {
+            g_ind[j] = int(d_x[id * Dim + j] / d_dx[j]);
+            gdx = d_x[id * Dim + j] - (float(g_ind[j]) + 0.5f) * d_dx[j];
+        }
+        spline_get_weights(gdx, d_dx[j], W[j], pmeorder);
+    }
+
+
+        // 
+    if (Dim == 2) {
+        int order_shift = pmeorder / 2;
+
+        for (int ix = 0; ix < pmeorder + 1; ix++) {
+
+            nn[0] = g_ind[0] + ix - order_shift;
+
+            if (nn[0] < 0) nn[0] += d_Nx[0];
+            else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+
+            for (int iy = 0; iy < pmeorder + 1; iy++) {
+
+                nn[1] = g_ind[1] + iy - order_shift;
+
+                if (nn[1] < 0) nn[1] += d_Nx[1];
+                else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+
+                Mindex = nn[1] * d_Nx[0] + nn[0];
+                rho_ind = id_typ * M + Mindex;
+
+                W3 = W[0][ix] * W[1][iy] / gvol;
+                if (FLAG == 1){
                     atomicAdd(&d_rho[rho_ind], W3);
+                }
+                d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
+                d_grid_W[id * grid_per_partic + grid_ct] = W3;
+
+                grid_ct++;
+
+            }// iy = 0:pmeorder+1
+        }// ix=0:pmeorder+1
+    }// if Dim==2
+
+    else if (Dim == 3) {
+        int order_shift = pmeorder / 2;
+
+        for (int ix = 0; ix < pmeorder + 1; ix++) {
+
+            nn[0] = g_ind[0] + ix - order_shift;
+
+            if (nn[0] < 0) nn[0] += d_Nx[0];
+            else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+
+            for (int iy = 0; iy < pmeorder + 1; iy++) {
+
+                nn[1] = g_ind[1] + iy - order_shift;
+
+                if (nn[1] < 0) nn[1] += d_Nx[1];
+                else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+
+                for (int iz = 0; iz < pmeorder + 1; iz++) {
+
+                    nn[2] = g_ind[2] + iz - order_shift;
+
+                    if (nn[2] < 0) nn[2] += d_Nx[2];
+                    else if (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
+
+                    Mindex = nn[0] + (nn[1] + nn[2] * d_Nx[1]) * d_Nx[0];
+                    rho_ind = id_typ * M + Mindex;
+
+                    W3 = W[0][ix] * W[1][iy] * W[2][iz] / gvol;
+
+                    if (FLAG == 1){
+                        atomicAdd(&d_rho[rho_ind], W3);
+                    }
 
                     d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
                     d_grid_W[id * grid_per_partic + grid_ct] = W3;
@@ -448,11 +674,12 @@ __global__ void d_add_grid_forces3D(float* fp, const float* fgx,
         W3 = d_grid_W[id * grid_per_partic + m];
 
         typ_ind = id_typ * M + gind;
-
-        if (d_t_rho[typ_ind] > 0.f) {
-            fp[id * Dim + 0] += fgx[typ_ind] * W3 * gvol / d_t_rho[typ_ind];
-            fp[id * Dim + 1] += fgy[typ_ind] * W3 * gvol / d_t_rho[typ_ind];
-            fp[id * Dim + 2] += fgz[typ_ind] * W3 * gvol / d_t_rho[typ_ind];
+        float rho_gp = d_t_rho[typ_ind];
+        if (rho_gp > 0.f) {
+            float rho_div = 1.0f/rho_gp;
+            fp[id * Dim + 0] += fgx[typ_ind] * W3 * gvol * rho_div;
+            fp[id * Dim + 1] += fgy[typ_ind] * W3 * gvol * rho_div;
+            fp[id * Dim + 2] += fgz[typ_ind] * W3 * gvol * rho_div;
         }
 
     }

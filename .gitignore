@@ -36,9 +36,14 @@ matilda.ft
 *.png
 *.jph
 *.mp4
+*.dat
+examples/**/*.lammpstrj
+examples/**/*.input
+examples/**/*.sqlite
+examples/**/*.bin
+examples/**/*.nsys-rep
 
 # Extras
 git-version.h
-
-examples/*
 makefile
+

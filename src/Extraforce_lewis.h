@@ -84,7 +84,7 @@ protected:
     
     std::string file_name;
 
-    thrust::host_vector<int> AD, BONDS;
+    thrust::host_vector<int> AD, BONDS, BONDED, FREE;
     thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED;//, d_FLAG_LIST, d_AD;
     
     thrust::device_vector<float> d_VirArr;

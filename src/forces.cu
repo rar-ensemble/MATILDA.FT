@@ -41,7 +41,7 @@ __global__ void d_make_dens_step(float*, float*, float*, int*, int, int, int);
 void prepareDensityFields(void);
 
 void forces() {
-	
+
     prepareDensityFields();
 
 	d_zero_all_ntyp<<<M_Grid, M_Block>>>(d_all_fx, M, ntypes);
@@ -119,12 +119,6 @@ void forces() {
         check_cudaError("angle forces");
     }
 
-    if ( ExtraForces.size() > 0 ) {
-        extraForce_t_in = time(0);
-        for (auto Iter: ExtraForces)
-            Iter->AddExtraForce();
-        check_cudaError("extraForces");
-        extraForce_tot_time += time(0) - extraForce_t_in;
-    }
+
 
 }

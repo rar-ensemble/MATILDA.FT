@@ -8,7 +8,7 @@ traj_freq 10
 
 charges 0.05 1.0
 
-delt 0.002
+delt 0.005
 read_data input.data
 
 
