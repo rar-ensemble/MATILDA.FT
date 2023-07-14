@@ -3,6 +3,7 @@
 
 
 #define MAIN
+#include <string.h>
 #include "globals.h"
 #include "timing.h"
 #include "random.h"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include "git-version.h"
 #include "Box.h"
+#include <mpi.h>
 
 using namespace std;
 
@@ -23,7 +25,7 @@ void cuda_collect_x(void);
 void cuda_collect_f(void);
 void cuda_collect_rho(void);
 void write_binary(void);
-void write_data_header(const char*);
+void write_data_header(std::string);
 void set_write_status(void);
 void init_binary_output(void);
 void write_struc_fac(void);
@@ -57,12 +59,42 @@ __global__ void d_multiplyComplex(cufftComplex*, cufftComplex*,
 
 int main(int argc, char** argv)
 {
+
+
+/////// Initialize MPI ////////
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm communicator = MPI_COMM_WORLD;
+
+    int size, rank;
+    MPI_Comm_size(communicator, &size);
+    MPI_Comm_rank(communicator, &rank);
+	srank = std::to_string(rank);
+
+	T = rank;
+
+    const char* nl_rank = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
+    int node_local_rank = atoi(nl_rank);
+
+    int num_devices = 0;
+    cudaGetDeviceCount(&num_devices);
+
+    int device_id = node_local_rank % num_devices;
+    cudaSetDevice(device_id);
+
+	int my_device_id;
+	cudaGetDevice(&my_device_id);
+
+
 	if ( argc < 2 ) {
 		std::cout << "ERROR: simulation style not specified!" << std::endl;
 		std::cout << "Execute matilda.ft as either\nmatilda.ft -particle\nfor a particle-based simulation or"<< std::endl;
 		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
 		die("Insufficient arguments");
 	}
+
+	printf("\n\n##### MPI INFO #####\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n##########\n\n",
+		rank, size, node_local_rank, device_id, my_device_id, num_devices);
 
 
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
@@ -160,11 +192,28 @@ int main(int argc, char** argv)
 		// BEGINNING OF MAIN SIMULATION LOOP //
 		///////////////////////////////////////
 
+			printf("\n\n##### MPI INFO #####\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n##########\n\n",
+		rank, size, node_local_rank, device_id, my_device_id, num_devices);
+
 		for (step = 1, global_step = global_step + 1; step <= max_steps; step++, global_step++) {
 			if (equil  && step >= equil_steps) {
 				dout.close();
 				equil = false;
 				set_write_status();
+			}
+
+			if (step%100 == 0 && step > 0){
+				if (rank == 0){
+					oldT = T;
+					MPI_Send(&oldT,1,MPI_INT,1, 0,communicator);
+					MPI_Recv(&T, 1, MPI_INT, 1, 0, communicator, MPI_STATUS_IGNORE);
+
+				}
+				else if(rank == 1){
+					oldT = T;
+					MPI_Recv(&T, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
+					MPI_Send(&oldT,1,MPI_INT,0, 0,communicator);
+				}
 			}
 
 
@@ -279,7 +328,7 @@ int main(int argc, char** argv)
     }
 
 	// cudaStreamDestroy(stream1);
-
+    MPI_Finalize();
 	return 0;
 }
 
@@ -314,7 +363,9 @@ int print_timestep() {
 	}
 	cout << " UDBond: " << Udynamicbond;
 	dout << " " << Udynamicbond;
-	
+
+	cout << " T: " << T;
+	dout << " " << T;
 
     dout << endl;
 	cout<<endl;
@@ -386,7 +437,7 @@ void run_frame_printing() {
   }
 }
 
-void write_data_header(const char* lbl){
+void write_data_header(std::string lbl){
     dout.open(lbl);
 	dout << "# step global_step Upe Ubond ";
 	if ( n_total_angles > 0 )
@@ -404,6 +455,7 @@ void write_data_header(const char* lbl){
 			dout << " Lambda" + Iter->potential_type << Iter->type_specific_id;
 	}
 	dout << " UDBond";
+	dout << " T";
 
 	dout << endl;
 
@@ -446,7 +498,7 @@ void set_write_status(){
 			struc_freq = equil_struc_freq;
 	}
 	else{
-		write_data_header("data.dat");
+		write_data_header("data" + srank + ".dat");
 		if (prod_traj_freq > 0)
 			traj_freq = prod_traj_freq;
 		if (prod_grid_freq > 0)

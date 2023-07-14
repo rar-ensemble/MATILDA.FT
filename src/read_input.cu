@@ -474,7 +474,8 @@ void set_defaults() {
 	struc_freq = 0;
 	skip_steps = 20000;
 	bin_freq = 5000;
-	dump_name = "traj.lammpstrj";
+
+	dump_name = "traj" + srank + ".lammpstrj";
 	equil_name = "equil.lammpstrj";
 	gsd_name = "traj.gsd";
 	equil = false;

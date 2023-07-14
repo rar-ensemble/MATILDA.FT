@@ -101,7 +101,8 @@ particle_sim,       // Flag for whether we're doing a particle simulation
 field_sim,          // Flag for whether we're doing a field-based simulation
 do_charges,
 GFLAG,
-GRID_UPDATE_FREQ;
+GRID_UPDATE_FREQ,
+T, oldT;
 
 #ifndef MAIN
 extern
@@ -174,6 +175,11 @@ bool* d_nan;
 extern
 #endif
 cufftHandle fftplan;
+
+#ifndef MAIN
+extern
+#endif
+std::string srank;
 
 #ifndef MAIN
 extern
