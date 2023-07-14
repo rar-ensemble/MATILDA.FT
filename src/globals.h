@@ -163,7 +163,7 @@ float* d_x, * d_v, * d_f, * d_L, * d_Lh,
 #ifndef MAIN
 extern
 #endif
-cufftComplex* d_cpx1, * d_cpx2, * cpx1, * cpx2;
+cufftComplex* d_cpx1, * d_cpx2, * cpx1, * cpx2, *d_cpxx, *d_cpxy, *d_cpxz;
 
 #ifndef MAIN
 extern

@@ -218,6 +218,9 @@ void allocate_device_memory() {
 
 	cudaMalloc(&d_cpx1, M * sizeof(cufftComplex));
 	cudaMalloc(&d_cpx2, M * sizeof(cufftComplex));
+	cudaMalloc(&d_cpxx, M * sizeof(cufftComplex));
+	cudaMalloc(&d_cpxy, M * sizeof(cufftComplex));
+	cudaMalloc(&d_cpxz, M * sizeof(cufftComplex));
 	device_mem_use += sizeof(cufftComplex) * (2 * M);
 
 	cudaMalloc(&d_nan, sizeof(bool));

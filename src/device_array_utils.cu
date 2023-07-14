@@ -248,9 +248,27 @@ __global__ void d_prepareElectrostaticPotential(cufftComplex* d_tc, cufftComplex
 //calculates electric field
 // d_ep = -grad d_ef
 // In k-space: d_ep = -i*k*d_ef
-__global__ void d_prepareElectricField(cufftComplex* d_ef, cufftComplex* d_ep,
+// __global__ void d_prepareElectricField(cufftComplex* d_ef, cufftComplex* d_ep,
+// 	float length_scale, const int M, const int Dim, const float* L,
+// 	const int* Nx, const int dir) {
+	
+// 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+
+// 	if (ind >= M)
+// 		return;
+
+// 	float k[3], k2;
+// 	k2 = d_get_k(ind, k, L, Nx, Dim);
+
+// 	d_ef[ind].x = k[dir] * d_ep[ind].y * exp(-k2 * length_scale * length_scale /2.0);
+// 	d_ef[ind].y = -k[dir] * d_ep[ind].x * exp( -k2 * length_scale * length_scale / 2.0);
+// 	//d_ef[ind].x = k[dir] * d_ep[ind].x * exp(-1 * k2 / (2 * length_scale * length_scale));
+// 	//d_ef[ind].y = 0.f;
+// }
+
+__global__ void d_prepareElectricField(cufftComplex* d_cpxx, cufftComplex* d_cpxy,cufftComplex* d_cpxz, cufftComplex* d_ep,
 	float length_scale, const int M, const int Dim, const float* L,
-	const int* Nx, const int dir) {
+	const int* Nx) {
 	
 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -258,10 +276,32 @@ __global__ void d_prepareElectricField(cufftComplex* d_ef, cufftComplex* d_ep,
 		return;
 
 	float k[3], k2;
+	int dir;
 	k2 = d_get_k(ind, k, L, Nx, Dim);
 
-	d_ef[ind].x = k[dir] * d_ep[ind].y * exp(-k2 * length_scale * length_scale /2.0);
-	d_ef[ind].y = -k[dir] * d_ep[ind].x * exp( -k2 * length_scale * length_scale / 2.0);
+	float exp_k = exp(-k2 * length_scale * length_scale /2.0);
+	float d_ep_y = d_ep[ind].y;
+	float d_ep_x = d_ep[ind].x;
+
+	dir = 0; //z
+
+	d_cpxx[ind].x = k[dir] * d_ep_y * exp_k;
+	d_cpxx[ind].y = -k[dir] * d_ep_x * exp_k;
+
+	dir = 1; //z
+
+	d_cpxy[ind].x = k[dir] * d_ep_y * exp_k;
+	d_cpxy[ind].y = -k[dir] * d_ep_x * exp_k;
+
+	if (Dim == 3){
+
+		dir = 2; //z
+
+		d_cpxz[ind].x = k[dir] * d_ep_y * exp_k;
+		d_cpxz[ind].y = -k[dir] * d_ep_x * exp_k;
+
+	}
+
 	//d_ef[ind].x = k[dir] * d_ep[ind].x * exp(-1 * k2 / (2 * length_scale * length_scale));
 	//d_ef[ind].y = 0.f;
 }
@@ -336,6 +376,58 @@ __global__ void d_prepareForceKSpace(cufftComplex* fk, cufftComplex* rhok,
 		+ fk[ind * Dim + dir].y * rhok[ind].x) / float(M);
 
 }
+
+
+// __global__ void d_prepareForceKSpace(cufftComplex* fk, cufftComplex* rhok, cufftComplex* rhofkx, cufftComplex* rhofky, cufftComplex* rhofkz, const int Dim, const int M) { 
+	
+// 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+// 	if (ind >= M)
+// 		return;
+
+// 	float rhok_x = rhok[ind].x;
+// 	float rhok_y = rhok[ind].y;
+
+// 	float f_M = float(M);
+
+// 	int dir;
+
+// 	// Divides by float(M) to normalize the FFT
+// 	dir = 0;
+
+// 	float fk_y = fk[ind * Dim + dir].y;
+// 	float fk_x = fk[ind * Dim + dir].x;
+
+// 	rhofkx[ind].x = (fk_x * rhok_x
+// 		- fk_y * rhok_y) / f_M;
+
+// 	rhofkx[ind].y = (fk_x * rhok_y 
+// 		+ fk_y * rhok_x) / f_M;
+
+// //y
+// 	dir = 1;
+
+// 	fk_y = fk[ind * Dim + dir].y;
+// 	fk_x = fk[ind * Dim + dir].x;
+
+// 	rhofkx[ind].x = (fk_x * rhok_x
+// 		- fk_y * rhok_y) / f_M;
+
+// 	rhofkx[ind].y = (fk_x * rhok_y 
+// 		+ fk_y * rhok_x) / f_M;
+// //z
+// 	if (Dim == 3){
+// 		dir = 2;
+
+// 		fk_y = fk[ind * Dim + dir].y;
+// 		fk_x = fk[ind * Dim + dir].x;
+
+// 		rhofkx[ind].x = (fk_x * rhok_x
+// 			- fk_y * rhok_y) / f_M;
+
+// 		rhofkx[ind].y = (fk_x * rhok_y 
+// 			+ fk_y * rhok_x) / f_M;
+// 	}
+// }
 
 __global__ void d_multiplyComplex(cufftComplex* uk, cufftComplex* rhok,
 	cufftComplex* rhouk, const int M) {

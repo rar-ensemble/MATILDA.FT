@@ -12,7 +12,7 @@ CC = ${CUDA_LOC}/bin/nvcc
 
 EIGEN_LOC = ../include/eigen-3.4.0
 
-CFLAGS = -std=c++14 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
+CFLAGS = -std=c++14 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets -lineinfo
 # --default-stream per-thread
 CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
 

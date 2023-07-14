@@ -42,6 +42,9 @@ examples/**/*.input
 examples/**/*.sqlite
 examples/**/*.bin
 examples/**/*.nsys-rep
+examples/**/*.ncu-rep
+examples/**/*.qdstrm
+
 
 # Extras
 git-version.h

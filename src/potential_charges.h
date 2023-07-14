@@ -33,8 +33,10 @@ public:
 __global__ void d_prepareChargeDensity(float*, cufftComplex*, int);
 __global__ void d_prepareElectrostaticPotential(cufftComplex*, cufftComplex*,
     float, float, const int, const int, const float*, const int*);
-__global__ void d_prepareElectricField(cufftComplex*, cufftComplex*,
-    float, const int, const int, const float*, const int*, const int);
+// __global__ void d_prepareElectricField(cufftComplex*, cufftComplex*,
+//     float, const int, const int, const float*, const int*, const int);
+__global__ void d_prepareElectricField(cufftComplex*, cufftComplex*,cufftComplex*, cufftComplex*,
+    float, const int, const int, const float*, const int*);
 __global__ void d_divideByDimension(cufftComplex*, const int);
 __global__ void d_accumulateGridForceWithCharges(cufftComplex*,
     float*, float*, const int);

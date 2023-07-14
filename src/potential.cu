@@ -397,3 +397,118 @@ Potential* PotentialFactory(istringstream &iss){
 	die("Unsupported potential");
 	return 0;
 }
+
+
+
+
+// // Calculates forces on rho1, rho2 for this pairstyle
+// void Potential::CalcForces() {
+
+//     /////////////////////////
+//     // rho2 acting on rho1 //
+//     /////////////////////////
+//  //cudaDeviceSynchronize();
+//     // fft rho2
+//     d_prepareDensity<<<M_Grid, M_Block>>>(type2, d_all_rho, d_cpx1, M);
+
+//     check_cudaError("d_prepareDensity");
+
+//  //cudaDeviceSynchronize();
+//     cufftExecC2C(fftplan, d_cpx1, d_cpx2, CUFFT_FORWARD);
+//     check_cudaError("cufftExec1");
+
+//      //cudaDeviceSynchronize();
+//     // for (int j = 0; j < Dim; j++) {
+//     //     // d_cpx1 = d_cpx2 * d_f_k
+//     //     d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, 
+//     //         d_cpx2, d_cpx1, j, Dim, M);
+
+//     //     check_cudaError("d_prepareForceKSpace");
+//     //      //cudaDeviceSynchronize();
+//     //     // back to real space, in-place transform
+//     //     cufftExecC2C(fftplan, d_cpx1, d_cpx1, CUFFT_INVERSE);
+//     //     //cudaDeviceSynchronize();
+
+//     //     check_cudaError("cufftExec1");
+        
+        
+//     //     // Accumulate the forces on type 1
+//     //     if (j == 0)
+//     //         d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1, 
+//     //             d_all_rho, d_all_fx, type1, M);
+//     //     if (j == 1)
+//     //         d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1,
+//     //             d_all_rho, d_all_fy, type1, M);
+//     //     if (j == 2)
+//     //         d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1,
+//     //             d_all_rho, d_all_fz, type1, M);
+     	 	
+//     //     check_cudaError("d_accumulateGridForce");
+        
+//     // }
+
+
+//     d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_cpx2, d_cpxx, d_cpxy, d_cpxz, Dim, M);
+
+//     check_cudaError("d_prepareForceKSpace");
+//         //cudaDeviceSynchronize();
+//     // back to real space, in-place transform
+//     cufftExecC2C(fftplan, d_cpxx, d_cpxx, CUFFT_INVERSE);
+//     cufftExecC2C(fftplan, d_cpxy, d_cpxy, CUFFT_INVERSE);
+//     cufftExecC2C(fftplan, d_cpxz, d_cpxz, CUFFT_INVERSE);
+//     //cudaDeviceSynchronize();
+
+//     check_cudaError("cufftExec1");
+    
+    
+//     // Accumulate the forces on type 1
+
+//     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxx, 
+//         d_all_rho, d_all_fx, type1, M);
+
+//     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxy,
+//         d_all_rho, d_all_fy, type1, M);
+//     if (Dim == 3){
+//         d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxz,
+//             d_all_rho, d_all_fz, type1, M);
+//     }    	 	
+//     check_cudaError("d_accumulateGridForce");
+
+
+//     // fft rho1
+//     d_prepareDensity<<<M_Grid, M_Block>>> (type1, d_all_rho, d_cpx1, M);
+//     cufftExecC2C(fftplan, d_cpx1, d_cpx2, CUFFT_FORWARD);
+
+//     check_cudaError("cufftExec");
+
+    
+
+//     d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_cpx2, d_cpxx, d_cpxy, d_cpxz, Dim, M);
+
+//     check_cudaError("d_prepareForceKSpace");
+//         //cudaDeviceSynchronize();
+//     // back to real space, in-place transform
+//     cufftExecC2C(fftplan, d_cpxx, d_cpxx, CUFFT_INVERSE);
+//     cufftExecC2C(fftplan, d_cpxy, d_cpxy, CUFFT_INVERSE);
+//     cufftExecC2C(fftplan, d_cpxz, d_cpxz, CUFFT_INVERSE);
+//     //cudaDeviceSynchronize();
+
+//     check_cudaError("cufftExec1");
+    
+    
+//     // Accumulate the forces on type 1
+
+//     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxx, 
+//         d_all_rho, d_all_fx, type1, M);
+
+//     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxy,
+//         d_all_rho, d_all_fy, type1, M);
+//     if (Dim == 3){
+//         d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpxz,
+//             d_all_rho, d_all_fz, type1, M);
+//     }    	 	
+//     check_cudaError("d_accumulateGridForce");
+
+
+// }
+

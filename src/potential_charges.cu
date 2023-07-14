@@ -163,29 +163,59 @@ void Charges::CalcCharges() {
 
     check_cudaError("d_prepareElectrostaticPotential");
 
-    for (int j = 0; j < Dim; j++) {
-        d_prepareElectricField<<<M_Grid, M_Block>>>(d_cpx2, d_cpx1, charge_smearing_length, M, Dim, d_L, d_Nx, j);//new data for electric field in cpx2
+    // for (int j = 0; j < Dim; j++) {
+    //     d_prepareElectricField<<<M_Grid, M_Block>>>(d_cpx2, d_cpx1, charge_smearing_length, M, Dim, d_L, d_Nx, j);//new data for electric field in cpx2
 
-        check_cudaError("d_prepareElectrostaticField");
+    //     check_cudaError("d_prepareElectrostaticField");
 
-        cufftExecC2C(fftplan, d_cpx2, d_cpx2, CUFFT_INVERSE); //d_cpx2 now holds the electric field, in place transform
+    //     cufftExecC2C(fftplan, d_cpx2, d_cpx2, CUFFT_INVERSE); //d_cpx2 now holds the electric field, in place transform
 
-        check_cudaError("cufftExec2");
+    //     check_cudaError("cufftExec2");
 
-        if (j == 0)
-            d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
-                d_charge_density_field, d_all_fx_charges, M);
-        if (j == 1)
-            d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
-                d_charge_density_field, d_all_fy_charges, M);
-        if (j == 2)
-            d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
-                d_charge_density_field, d_all_fz_charges, M);
+    //     if (j == 0)
+    //         d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
+    //             d_charge_density_field, d_all_fx_charges, M);
+    //     if (j == 1)
+    //         d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
+    //             d_charge_density_field, d_all_fy_charges, M);
+    //     if (j == 2)
+    //         d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpx2,
+    //             d_charge_density_field, d_all_fz_charges, M);
 
-        check_cudaError("d_accumulateGridForceWithCharges");
+    //     check_cudaError("d_accumulateGridForceWithCharges");
 
-        d_setElectricField<<<M_Grid, M_Block>>>(d_cpx2, d_electric_field, j, M);
-    }
+    //     d_setElectricField<<<M_Grid, M_Block>>>(d_cpx2, d_electric_field, j, M);
+    // }
+
+
+
+
+    d_prepareElectricField<<<M_Grid, M_Block>>>(d_cpxx,d_cpxy,d_cpxz, d_cpx1, charge_smearing_length, M, Dim, d_L, d_Nx);//new data for electric field in cpx2
+
+    check_cudaError("d_prepareElectrostaticField");
+
+    cufftExecC2C(fftplan, d_cpxx, d_cpxx, CUFFT_INVERSE); //d_cpx2 now holds the electric field, in place transform
+    cufftExecC2C(fftplan, d_cpxy, d_cpxy, CUFFT_INVERSE); //d_cpx2 now holds the electric field, in place transform
+    cufftExecC2C(fftplan, d_cpxz, d_cpxz, CUFFT_INVERSE); //d_cpx2 now holds the electric field, in place transform
+
+    check_cudaError("cufftExec2");
+
+ 
+    d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpxx,
+        d_charge_density_field, d_all_fx_charges, M);
+
+    d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpxy,
+        d_charge_density_field, d_all_fy_charges, M);
+
+    d_accumulateGridForceWithCharges<<<M_Grid, M_Block>>>(d_cpxz,
+        d_charge_density_field, d_all_fz_charges, M);
+
+    check_cudaError("d_accumulateGridForceWithCharges");
+
+    d_setElectricField<<<M_Grid, M_Block>>>(d_cpxx, d_electric_field, 0, M);
+    d_setElectricField<<<M_Grid, M_Block>>>(d_cpxy, d_electric_field, 1, M);
+    d_setElectricField<<<M_Grid, M_Block>>>(d_cpxz, d_electric_field, 2, M);
+
 
     //prepares d_electrostatic_potential to be copied onto host
     cufftExecC2C(fftplan, d_cpx1, d_cpx1, CUFFT_INVERSE);
