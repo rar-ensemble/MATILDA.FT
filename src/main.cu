@@ -102,8 +102,9 @@ int main(int argc, char** argv)
 	// auto rng = std::default_random_engine {};
 	std::default_random_engine rng;
 	std::uniform_int_distribution<int> pick_me_please(0,size);
-	int msg_tag = 1;
+	int msg_tag = 0;
 
+	int *bond_n_array =(int*)calloc(size, sizeof(int));
 
 	if ( argc < 2 ) {
 		std::cout << "ERROR: simulation style not specified!" << std::endl;
@@ -115,15 +116,27 @@ int main(int argc, char** argv)
 	printf("\n\n\t\t##### MPI INFO #####\nName: %s\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n\n",
 		processor_name,rank, size, node_local_rank, device_id, my_device_id, num_devices);
 
-		if (rank == 0){
-			msg_tag = 4;
-			MPI_Send(&msg_tag,1,MPI_INT,1, 0,communicator);
-		}
-		if (rank == 1){
-			MPI_Recv(&msg_tag, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
-			std::cout << msg_tag << std::endl;
-		}
+		// if (rank == 0){
+		// 	msg_tag = 4;
+		// 	MPI_Send(&msg_tag,1,MPI_INT,1, 0,communicator);
+		// }
+		// if (rank == 1){
+		// 	MPI_Recv(&msg_tag, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
+		// 	std::cout << msg_tag << std::endl;
+		// }
+
+	msg_tag = rank + 2;
+
+	MPI_Gather(&msg_tag,1,MPI_Datatype MPI_INT,bond_n_array,1,MPI_INT,0,communicator);
+
 	MPI_Barrier(communicator);
+
+	if (rank == 0){
+	std::cout << "Broadcast test: " << std::endl;
+	for (int i = 0; i < size; i++)
+		std::cout << ' ' << bond_n_array[i];
+	std::cout << endl;
+	}
 
 
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
@@ -212,6 +225,8 @@ int main(int argc, char** argv)
 
 
 
+
+
 		initialize();
 
 		set_write_status();
@@ -269,7 +284,7 @@ int main(int argc, char** argv)
 						std::cout << ' ' << i;
 					std::cout << endl;
 
-					for(int j = 0; j < size; j = j + 2){
+					for(int j = 0; j < size - 1; j = j + 2){
 
 						int rid = replica_id_vec[j];
 						int n_rid = replica_id_vec[j+1];
