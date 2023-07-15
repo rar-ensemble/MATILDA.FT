@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 	// auto rng = std::default_random_engine {};
 	std::default_random_engine rng;
 	std::uniform_int_distribution<int> pick_me_please(0,size);
-	int msg_tag;
+	int msg_tag = 1;
 
 
 	if ( argc < 2 ) {
@@ -114,6 +114,16 @@ int main(int argc, char** argv)
 
 	printf("\n\n\t\t##### MPI INFO #####\nName: %s\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n\n",
 		processor_name,rank, size, node_local_rank, device_id, my_device_id, num_devices);
+
+		if (rank == 0){
+			msg_tag = 4;
+			MPI_Send(&msg_tag,1,MPI_INT,1, 0,communicator);
+		}
+		if (rank == 1){
+			MPI_Recv(&msg_tag, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
+			std::cout << msg_tag << std::endl;
+		}
+	MPI_Barrier(communicator);
 
 
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
