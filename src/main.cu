@@ -12,6 +12,10 @@
 #include "git-version.h"
 #include "Box.h"
 #include <mpi.h>
+#include <algorithm>
+#include <random>
+
+
 
 using namespace std;
 
@@ -71,8 +75,6 @@ int main(int argc, char** argv)
     MPI_Comm_rank(communicator, &rank);
 	srank = std::to_string(rank);
 
-	T = rank;
-
     const char* nl_rank = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
     int node_local_rank = atoi(nl_rank);
 
@@ -85,6 +87,23 @@ int main(int argc, char** argv)
 	int my_device_id;
 	cudaGetDevice(&my_device_id);
 
+	char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+	int replica_exchange_flag = 0;
+	std::vector<int> replica_id_vec(size);
+	std::vector<float> replica_E_vec;
+	std::iota (std::begin(replica_id_vec), std::end(replica_id_vec), 0);
+
+	old_E_arr = (float*)calloc(size, sizeof(float));
+	current_E_arr = (float*)calloc(size, sizeof(float));
+
+	// auto rng = std::default_random_engine {};
+	std::default_random_engine rng;
+	std::uniform_int_distribution<int> pick_me_please(0,size);
+	int msg_tag;
+
 
 	if ( argc < 2 ) {
 		std::cout << "ERROR: simulation style not specified!" << std::endl;
@@ -93,8 +112,8 @@ int main(int argc, char** argv)
 		die("Insufficient arguments");
 	}
 
-	printf("\n\n##### MPI INFO #####\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n##########\n\n",
-		rank, size, node_local_rank, device_id, my_device_id, num_devices);
+	printf("\n\n\t\t##### MPI INFO #####\nName: %s\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n\n",
+		processor_name,rank, size, node_local_rank, device_id, my_device_id, num_devices);
 
 
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
@@ -147,7 +166,40 @@ int main(int argc, char** argv)
 			if (string_vec[i] == "-in") {
 				input_file = string_vec[++i];
 			}
+			if (string_vec[i] == "-replica"){
+				replica_exchange_flag = 1;
+				replica_freq = std::stoi(string_vec[i+1]);
+				replica_file = string_vec[i+2];
+			}
 		}
+
+		if (replica_exchange_flag == 1){
+			std::fstream file;
+			std::string dummy_wrd;
+			file.open(replica_file.c_str());
+
+			while(file >> dummy_wrd) {
+				replica_E_vec.push_back(std::stof(dummy_wrd));
+				}
+			file.close();
+
+			std::cout << "Replica IDs: " << std::endl;
+			for (auto& i : replica_id_vec)
+				std::cout << ' ' << i;
+			std::cout << endl;
+
+			std::cout << "Replica bond energies: " << std::endl;
+			for (auto& i : replica_E_vec)
+				std::cout << ' ' << i;
+			std::cout << endl;
+			current_E = replica_E_vec[rank];
+			std::cout <<"My energy: " << current_E << std::endl;
+			for (int j = 0; j < replica_E_vec.size(); ++j){
+				old_E_arr[j] = replica_E_vec[j];
+				current_E_arr[j] = replica_E_vec[j];
+			}			
+		}
+
 
 
 		initialize();
@@ -192,9 +244,6 @@ int main(int argc, char** argv)
 		// BEGINNING OF MAIN SIMULATION LOOP //
 		///////////////////////////////////////
 
-			printf("\n\n##### MPI INFO #####\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n##########\n\n",
-		rank, size, node_local_rank, device_id, my_device_id, num_devices);
-
 		for (step = 1, global_step = global_step + 1; step <= max_steps; step++, global_step++) {
 			if (equil  && step >= equil_steps) {
 				dout.close();
@@ -202,19 +251,54 @@ int main(int argc, char** argv)
 				set_write_status();
 			}
 
-			if (step%100 == 0 && step > 0){
+			if (replica_exchange_flag == 1 && step%replica_freq == 0){
 				if (rank == 0){
-					oldT = T;
-					MPI_Send(&oldT,1,MPI_INT,1, 0,communicator);
-					MPI_Recv(&T, 1, MPI_INT, 1, 0, communicator, MPI_STATUS_IGNORE);
+					std::shuffle(replica_id_vec.begin(), replica_id_vec.end(), rng);
+					std::cout << "Step " << step << " | Replica IDs: " << std::endl;
+					for (auto& i : replica_id_vec)
+						std::cout << ' ' << i;
+					std::cout << endl;
 
-				}
-				else if(rank == 1){
-					oldT = T;
-					MPI_Recv(&T, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
-					MPI_Send(&oldT,1,MPI_INT,0, 0,communicator);
-				}
-			}
+					for(int j = 0; j < size; j = j + 2){
+
+						int rid = replica_id_vec[j];
+						int n_rid = replica_id_vec[j+1];
+
+						current_E_arr[n_rid] = old_E_arr[rid];
+						current_E_arr[rid] = old_E_arr[n_rid];
+
+						}
+					std::cout << "Energies: " << std::endl;
+					for(int j = 0; j < size; j++){
+						old_E_arr[j] = current_E_arr[j];
+						std::cout << current_E_arr[j] << " ";
+						}
+					std::cout << std::endl;
+					
+				} // if rank == 0
+
+				MPI_Bcast(current_E_arr,size,MPI_FLOAT,0,communicator);
+				MPI_Barrier(communicator);
+
+				current_E = current_E_arr[rank];
+				std::cout << current_E << std::endl;
+			} // if replice_freq % step == 0
+
+
+
+				// if (step%100 == 0 && step > 0){
+				// 	if (rank == 0){
+				// 		oldT = T;
+				// 		MPI_Send(&oldT,1,MPI_INT,1, 0,communicator);
+				// 		MPI_Recv(&T, 1, MPI_INT, 1, 0, communicator, MPI_STATUS_IGNORE);
+
+				// 	}
+				// 	else if(rank == 1){
+				// 		oldT = T;
+				// 		MPI_Recv(&T, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
+				// 		MPI_Send(&oldT,1,MPI_INT,0, 0,communicator);
+				// 	}
+				// }
 
 
 			for (auto Iter: Groups){
@@ -364,8 +448,8 @@ int print_timestep() {
 	cout << " UDBond: " << Udynamicbond;
 	dout << " " << Udynamicbond;
 
-	cout << " T: " << T;
-	dout << " " << T;
+	// cout << " T: " << T;
+	// dout << " " << T;
 
     dout << endl;
 	cout<<endl;

@@ -1,0 +1,32 @@
+Dim 3
+
+max_steps 201
+log_freq 200
+binary_freq 20000
+traj_freq 500000
+pmeorder 1
+
+charges 0.43484 1.0
+
+delt 0.005000
+
+read_data input.data
+integrator all GJF
+
+
+group bonding_group1 id id_file1
+nlist bonding_group1 bonding bonding_list1 1.0 1.0 50 100 ad_file1
+extraforce bonding_group1 lewis bonding_list1 1.5 12.0 0.0 0.0 100 1000 bonds1
+
+
+group bonding_group2 id id_file2
+nlist bonding_group2 bonding bonding_list2 1.0 1.0 50 100 ad_file2
+extraforce bonding_group2 lewis bonding_list2 1.5 12.0 0.0 0.0 100 1000 bonds2
+
+Nx 38
+Ny 38
+Nz 240
+
+bond 1 harmonic 1.5 0.0
+
+potential gaussian 1 1 0.003688  1.0

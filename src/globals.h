@@ -101,8 +101,23 @@ particle_sim,       // Flag for whether we're doing a particle simulation
 field_sim,          // Flag for whether we're doing a field-based simulation
 do_charges,
 GFLAG,
-GRID_UPDATE_FREQ,
-T, oldT;
+GRID_UPDATE_FREQ;
+
+
+#ifndef MAIN
+extern
+#endif
+float current_E, old_E, *current_E_arr, *old_E_arr;
+
+#ifndef MAIN
+extern
+#endif
+int replica_freq;
+
+#ifndef MAIN
+extern
+#endif
+std::string replica_file;
 
 #ifndef MAIN
 extern
