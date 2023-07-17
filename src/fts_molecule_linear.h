@@ -41,6 +41,16 @@ class LinearMolec : public FTS_Molec {
         void calcPropagators();
         void calcDensity() override;
         void computeLinearTerms() override;
+
+        thrust::device_vector<thrust::complex<double>> W;
+
+        thrust::device_vector<thrust::complex<double>> qf;
+        thrust::device_vector<thrust::complex<double>> hf;
+        thrust::device_vector<thrust::complex<double>> a;
+        thrust::device_vector<thrust::complex<double>> expW;
+
+        // To normalize FTs
+        thrust::device_vector<thrust::complex<double>> norm;
 };
 
 #endif

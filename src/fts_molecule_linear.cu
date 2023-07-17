@@ -2,6 +2,7 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
+
 #include "fts_molecule_linear.h"
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
@@ -44,6 +45,15 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
 
         Ntot += N[j];
     }
+
+    W.resize(mybox->M);
+    qf.resize(mybox->M);
+    hf.resize(mybox->M);
+    a.resize(mybox->M);
+    expW.resize(mybox->M);
+
+    // To normalize FTs
+    norm.resize(mybox->M);
 
     if ( iss.tellg() != -1 ) {
         std::string s1;
@@ -128,15 +138,15 @@ struct NegExponential {
 
 void LinearMolec::calcPropagators() {
     
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> W(mybox->M);
 
-    thrust::device_vector<thrust::complex<double>> qf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> hf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> a(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> qf(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> hf(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> a(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> expW(mybox->M);
 
-    // To normalize FTs
-    thrust::device_vector<thrust::complex<double>> norm(mybox->M);
+    // // To normalize FTs
+    // thrust::device_vector<thrust::complex<double>> norm(mybox->M);
     thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
 
     //////////////////////////////////
