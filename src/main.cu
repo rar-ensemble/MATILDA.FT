@@ -224,9 +224,6 @@ int main(int argc, char** argv)
 		}
 
 
-
-
-
 		initialize();
 
 		set_write_status();
@@ -276,38 +273,38 @@ int main(int argc, char** argv)
 				set_write_status();
 			}
 
-			if (replica_exchange_flag == 1 && step%replica_freq == 0){
-				if (rank == 0){
-					std::shuffle(replica_id_vec.begin(), replica_id_vec.end(), rng);
-					std::cout << "Step " << step << " | Replica IDs: " << std::endl;
-					for (auto& i : replica_id_vec)
-						std::cout << ' ' << i;
-					std::cout << endl;
+			// if (replica_exchange_flag == 1 && step%replica_freq == 0){
+			// 	if (rank == 0){
+			// 		std::shuffle(replica_id_vec.begin(), replica_id_vec.end(), rng);
+			// 		std::cout << "Step " << step << " | Replica IDs: " << std::endl;
+			// 		for (auto& i : replica_id_vec)
+			// 			std::cout << ' ' << i;
+			// 		std::cout << endl;
 
-					for(int j = 0; j < size - 1; j = j + 2){
+			// 		for(int j = 0; j < size - 1; j = j + 2){
 
-						int rid = replica_id_vec[j];
-						int n_rid = replica_id_vec[j+1];
+			// 			int rid = replica_id_vec[j];
+			// 			int n_rid = replica_id_vec[j+1];
 
-						current_E_arr[n_rid] = old_E_arr[rid];
-						current_E_arr[rid] = old_E_arr[n_rid];
+			// 			current_E_arr[n_rid] = old_E_arr[rid];
+			// 			current_E_arr[rid] = old_E_arr[n_rid];
 
-						}
-					std::cout << "Energies: " << std::endl;
-					for(int j = 0; j < size; j++){
-						old_E_arr[j] = current_E_arr[j];
-						std::cout << current_E_arr[j] << " ";
-						}
-					std::cout << std::endl;
+			// 			}
+			// 		std::cout << "Energies: " << std::endl;
+			// 		for(int j = 0; j < size; j++){
+			// 			old_E_arr[j] = current_E_arr[j];
+			// 			std::cout << current_E_arr[j] << " ";
+			// 			}
+			// 		std::cout << std::endl;
 					
-				} // if rank == 0
+			// 	} // if rank == 0
 
-				MPI_Bcast(current_E_arr,size,MPI_FLOAT,0,communicator);
-				MPI_Barrier(communicator);
+			// 	MPI_Bcast(current_E_arr,size,MPI_FLOAT,0,communicator);
+			// 	MPI_Barrier(communicator);
 
-				current_E = current_E_arr[rank];
-				std::cout << current_E << std::endl;
-			} // if replice_freq % step == 0
+			// 	current_E = current_E_arr[rank];
+			// 	std::cout << current_E << std::endl;
+			// } // if replice_freq % step == 0
 
 
 

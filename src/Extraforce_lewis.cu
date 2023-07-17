@@ -40,6 +40,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, k_spring);
     cout << "k_spring: " << k_spring << endl;
     readRequiredParameter(iss, e_bond);
+    e_bond = current_E;
     cout << "e_bond: " << e_bond << endl;
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
@@ -105,6 +106,8 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 void Lewis::AddExtraForce()
 {   
 
+    e_bond = current_E;
+
     if (step % bond_freq == 0 && step >= bond_freq){
 
         int rnd = random()%2; //decide move sequence
@@ -154,7 +157,7 @@ void Lewis::AddExtraForce()
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges);
             } 
-        }
+        } //if rnd == 0
 
         else {
             if (n_bonded > 0){
@@ -204,25 +207,25 @@ void Lewis::AddExtraForce()
                     k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges);
 
                 }
-        }
+        } //else if rnd != 0
 
 
         // update the bonded array
 
-            n_bonded = 0;
-            n_free = 0;
+        n_bonded = 0;
+        n_free = 0;
 
-            BONDS = d_BONDS;
-            for (int i = 0; i < group->nsites; ++i){
-                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                    BONDED[n_bonded++] = i;
-                }
-                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                    FREE[n_free++] = i;
-                }
+        BONDS = d_BONDS;
+        for (int i = 0; i < group->nsites; ++i){
+            if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                BONDED[n_bonded++] = i;
             }
-            d_BONDED = BONDED;
-            d_FREE = FREE;
+            else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                FREE[n_free++] = i;
+            }
+        }
+        d_BONDED = BONDED;
+        d_FREE = FREE;
 
         BGRID = (int)ceil((float)(n_bonded) / threads);
         FGRID = (int)ceil((float)(n_free) / threads);
@@ -252,6 +255,8 @@ void Lewis::AddExtraForce()
     {
         Lewis::WriteBonds();
     }
+
+    current_n_bonds += n_bonded;
 }
 
 

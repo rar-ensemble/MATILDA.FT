@@ -107,7 +107,7 @@ void init_binary_output() {
     if (equil && equilData){
         otp = fopen("equil_positions.bin", "wb");}
     else{
-        otp = fopen("positions.bin", "wb");}
+        otp = fopen(("positions" + srank + ".bin").c_str(), "wb");}
     if (otp == NULL)
         die("Failed to open positions.bin");
 
@@ -141,7 +141,7 @@ void write_binary() {
     if (equil){
         otp = fopen("equil_positions.bin", "ab");}
     else{
-        otp = fopen("positions.bin", "ab");}
+        otp = fopen(("positions" + srank +  ".bin").c_str(), "ab");}
     if (otp == NULL)
         die("Failed to append to positions.bin");
 

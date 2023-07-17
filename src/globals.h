@@ -119,6 +119,13 @@ extern
 #endif
 std::string replica_file;
 
+
+#ifndef MAIN
+extern
+#endif
+int current_n_bonds;
+
+
 #ifndef MAIN
 extern
 #endif
