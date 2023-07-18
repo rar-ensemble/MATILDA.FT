@@ -52,6 +52,9 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
     a.resize(mybox->M);
     expW.resize(mybox->M);
 
+    q_qdag_M.resize(mybox->M);
+    temp_M.resize(mybox->M);
+
     // To normalize FTs
     norm.resize(mybox->M);
 
@@ -289,10 +292,10 @@ void LinearMolec::calcDensity() {
     int M = mybox->M;
     thrust::complex<double> factor = nmolecs / Q / mybox->V;
 
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
-    thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
-    thrust::device_vector<thrust::complex<double>> temp(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> W(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> temp(mybox->M);
+    // thrust::device_vector<thrust::complex<double>> expW(mybox->M);
 
     // Zero all block density fields
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
@@ -305,11 +308,11 @@ void LinearMolec::calcDensity() {
 
             // q_qdag[:] = q[ind][:] * qdag[Ntot-1-ind][:]
             thrust::transform(d_q.begin()+ind*M, d_q.begin()+(ind+1)*M, 
-                                d_qdag.begin()+(Ntot-1-ind)*M, q_qdag.begin(),
+                                d_qdag.begin()+(Ntot-1-ind)*M, q_qdag_M.begin(),
                                 thrust::multiplies<thrust::complex<double>>());                                 
 
             // cDensity[:] += q_qdag[:]
-            thrust::transform(q_qdag.begin(), q_qdag.end(), d_cDensity.begin()+b*M, d_cDensity.begin()+b*M,
+            thrust::transform(q_qdag_M.begin(), q_qdag_M.end(), d_cDensity.begin()+b*M, d_cDensity.begin()+b*M,
                                 thrust::plus<thrust::complex<double>>());
 
             ind += 1;
@@ -320,14 +323,14 @@ void LinearMolec::calcDensity() {
         thrust::transform(W.begin(), W.end(), expW.begin(), Exponential()); 
         
         // factor = n / Q / V
-        thrust::fill(temp.begin(), temp.end(), factor);
+        thrust::fill(temp_M.begin(), temp_M.end(), factor);
 
         // temp <- factor * expW
-        thrust::transform(temp.begin(), temp.end(), expW.begin(), temp.begin(), 
+        thrust::transform(temp_M.begin(), temp_M.end(), expW.begin(), temp_M.begin(), 
                             thrust::multiplies<thrust::complex<double>>()); 
 
         // Multiply this blocks density by expW*factor
-        thrust::transform(d_cDensity.begin()+b*M, d_cDensity.begin()+(b+1)*M, temp.begin(), 
+        thrust::transform(d_cDensity.begin()+b*M, d_cDensity.begin()+(b+1)*M, temp_M.begin(), 
                             d_cDensity.begin()+b*M, thrust::multiplies<thrust::complex<double>>()); 
 
     }
