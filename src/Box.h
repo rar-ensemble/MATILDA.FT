@@ -64,6 +64,8 @@ class Box {
         virtual void writeData(int) = 0;
 
         virtual void doTimeStep(int) = 0;
+
+        thrust::device_vector<thrust::complex<double>> norm_M;
 };
 
 #endif // BOX

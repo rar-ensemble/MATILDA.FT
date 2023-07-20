@@ -347,6 +347,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
+    norm_M.resize(M);
+    thrust::fill(norm_M.begin(), norm_M.end(), 1.0/double(M));
+        
 }
 
 void FTS_Box::writeTime() {

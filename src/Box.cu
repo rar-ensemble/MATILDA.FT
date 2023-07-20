@@ -56,6 +56,7 @@ void Box::convolveTComplexDouble(
 
 }
 
+
 void Box::cufftWrapperDouble(
     thrust::device_vector<thrust::complex<double>> in,
     thrust::device_vector<thrust::complex<double>> &out,
@@ -71,10 +72,7 @@ void Box::cufftWrapperDouble(
         cufftExecZ2Z(fftplan, _in, _out, CUFFT_FORWARD);
 
         // Normalize the FT
-        thrust::device_vector<thrust::complex<double>> norm(M);
-        thrust::fill(norm.begin(), norm.end(), 1.0/double(M));
-        
-        thrust::transform(out.begin(), out.end(), norm.begin(), out.begin(), 
+        thrust::transform(out.begin(), out.end(), norm_M.begin(), out.begin(), 
             thrust::multiplies<thrust::complex<double>>());
     }
 
@@ -85,6 +83,8 @@ void Box::cufftWrapperDouble(
 
     ftTimer += time(0) - startTime;
 }
+
+
 
 // Receives index id in [0 , M ) and makes array
 // nn[Dim] in [ 0 , Nx[Dim] )
