@@ -40,7 +40,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, k_spring);
     cout << "k_spring: " << k_spring << endl;
     readRequiredParameter(iss, e_bond);
-    e_bond = current_E;
+    e_bond = replica_E_bond[mpi_rank];
     cout << "e_bond: " << e_bond << endl;
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
@@ -51,12 +51,14 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, bond_log_freq);
     cout << "bond_log_freq: " << bond_freq << endl;
     readRequiredParameter(iss, file_name);
+    file_name = file_name + "_" + srank;
     cout << "output_file: " << file_name << endl;
 
     cout << "Group size: " << group->nsites << endl;
     cout << "Donors: " << nlist->n_donors << endl;
     cout << "Acceptors: " << nlist->n_acceptors << endl;
 
+    n_stickers += group->nsites;
 
 
     d_BONDS.resize(2 * group->nsites); 
@@ -91,7 +93,8 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     }
 
     n_bonded = 0;
-    n_free = group->nsites;
+    n_free = nlist->n_donors;
+    // n_free = group->nsites;
 
     d_FREE = FREE;
     d_BONDED = BONDED;
@@ -106,7 +109,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 void Lewis::AddExtraForce()
 {   
 
-    e_bond = current_E;
+    e_bond = replica_E_bond[mpi_rank];
 
     if (step % bond_freq == 0 && step >= bond_freq){
 
@@ -256,7 +259,7 @@ void Lewis::AddExtraForce()
         Lewis::WriteBonds();
     }
 
-    current_n_bonds += n_bonded;
+    this_n_bonds += n_bonded;
 }
 
 

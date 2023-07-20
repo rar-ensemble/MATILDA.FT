@@ -14,6 +14,9 @@
 #include <mpi.h>
 #include <algorithm>
 #include <random>
+#include <sched.h>
+#include <bits/stdc++.h>
+#include <cmath>
 
 
 
@@ -64,16 +67,26 @@ __global__ void d_multiplyComplex(cufftComplex*, cufftComplex*,
 int main(int argc, char** argv)
 {
 
+	std::srand(time(NULL));
+//////// Sanity Check //////////
+
+	if ( argc < 2 ) {
+		std::cout << "ERROR: simulation style not specified!" << std::endl;
+		std::cout << "Execute matilda.ft as either\nmatilda.ft -particle\nfor a particle-based simulation or"<< std::endl;
+		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
+		die("Insufficient arguments");
+	}
+
+/////////////////////////////////	
 
 /////// Initialize MPI ////////
 
     MPI_Init(&argc, &argv);
     MPI_Comm communicator = MPI_COMM_WORLD;
 
-    int size, rank;
-    MPI_Comm_size(communicator, &size);
-    MPI_Comm_rank(communicator, &rank);
-	srank = std::to_string(rank);
+    MPI_Comm_size(communicator, &mpi_size);
+    MPI_Comm_rank(communicator, &mpi_rank);
+	srank = std::to_string(mpi_rank);
 
     const char* nl_rank = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
     int node_local_rank = atoi(nl_rank);
@@ -90,31 +103,40 @@ int main(int argc, char** argv)
 	char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
+	int hwthread = sched_getcpu();
+
+	int msg_tag = 69;
+	int root = 0;
+	int exchange_count = 0;
+	int exchange_success_count = 0;
+	n_stickers = 0;
+	even_odd = 0;
+
+	printf("\n\n\t\t##### MPI INFO #####\nName: %s\nGlobal Rank: %2d of %2d, Local Rank: %2d, thread: %1d, GPU: %2d (%2d) of %2d\n\n",
+	processor_name,mpi_rank, mpi_size, node_local_rank, hwthread, device_id, my_device_id, num_devices);
+
+//////////////////////////////////////
+
+/////// Prepare Replica Data ////////
 
 	int replica_exchange_flag = 0;
-	std::vector<int> replica_id_vec(size);
-	std::vector<float> replica_E_vec;
+
+	std::vector<int> replica_id_vec(mpi_size);
+	std::vector<float> replica_E_bond_vec;
 	std::iota (std::begin(replica_id_vec), std::end(replica_id_vec), 0);
 
-	old_E_arr = (float*)calloc(size, sizeof(float));
-	current_E_arr = (float*)calloc(size, sizeof(float));
+	replica_E_bond = (float*)calloc(mpi_size, sizeof(float));
+	replica_n_dynamic_bonds = (int*)calloc(mpi_size, sizeof(int));
 
 	// auto rng = std::default_random_engine {};
 	std::default_random_engine rng;
-	std::uniform_int_distribution<int> pick_me_please(0,size);
-	int msg_tag = 0;
 
-	int *bond_n_array =(int*)calloc(size, sizeof(int));
+	float e1_old, e1_new, e2_old, e2_new;
+	std::vector<int> ng = {-1,1};
 
-	if ( argc < 2 ) {
-		std::cout << "ERROR: simulation style not specified!" << std::endl;
-		std::cout << "Execute matilda.ft as either\nmatilda.ft -particle\nfor a particle-based simulation or"<< std::endl;
-		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
-		die("Insufficient arguments");
-	}
+	// std::uniform_int_distribution<int> pick_me_please(0,size);
 
-	printf("\n\n\t\t##### MPI INFO #####\nName: %s\nGlobal Rank: %2d of %2d, Local Rank: %2d, GPU: %2d (%2d) of %2d\n\n",
-		processor_name,rank, size, node_local_rank, device_id, my_device_id, num_devices);
+
 
 		// if (rank == 0){
 		// 	msg_tag = 4;
@@ -125,23 +147,24 @@ int main(int argc, char** argv)
 		// 	std::cout << msg_tag << std::endl;
 		// }
 
-	msg_tag = rank + 2;
+	// msg_tag = rank + 2;
 
-	MPI_Gather(&msg_tag,1,MPI_Datatype MPI_INT,bond_n_array,1,MPI_INT,0,communicator);
+	// MPI_Gather(&msg_tag,1,MPI_Datatype MPI_INT,bond_n_array,1,MPI_INT,0,communicator);
 
-	MPI_Barrier(communicator);
+	// MPI_Barrier(communicator);
 
-	if (rank == 0){
-	std::cout << "Broadcast test: " << std::endl;
-	for (int i = 0; i < size; i++)
-		std::cout << ' ' << bond_n_array[i];
-	std::cout << endl;
-	}
+	// if (rank == 0){
+	// std::cout << "Broadcast test: " << std::endl;
+	// for (int i = 0; i < size; i++)
+	// 	std::cout << ' ' << bond_n_array[i];
+	// std::cout << endl;
+	// }
 
 
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
 	
 	// printf("Git Version hash: %s\n", MY_GIT_VERSION);
+
 	main_t_in = int(time(0));
 	init_t_in = main_t_in;
 	std::vector<std::string> string_vec;
@@ -153,36 +176,8 @@ int main(int argc, char** argv)
 		string_vec.push_back(arg);
 	}
 
-	if(string_vec[1] == "-ft"){
-		std::cout << "Set simulation style to: FT" << std::endl;
-		set_ft_config();
-		input_file = "input";
-	    ifstream in2(input_file);
 
-	    string word, line, rname;
-		while (!in2.eof()) {
-			getline(in2, line);
-
-			// Blank or commented line
-			if (line.length() == 0 || line.at(0) == '#')
-				continue;
-
-			istringstream iss(line);
-			// Loop over words in line
-			while (iss >> word) {
-				if( word == "box" ) {
-				box.push_back(BoxFactory(iss));
-				box.back()->readInput(in2);
-				field_sim = 1;
-				particle_sim = 0;
-				}
-			}
-		}
-		run_fts_sim();
-		return 0;
-	}
-
-	else if (string_vec[1] == "-particle"){
+	if (string_vec[1] == "-particle"){
 		std::cout << "Set simulation style to: TILD" << std::endl;
 
 		for (int i = 2; i < string_vec.size(); ++i) {
@@ -193,6 +188,7 @@ int main(int argc, char** argv)
 				replica_exchange_flag = 1;
 				replica_freq = std::stoi(string_vec[i+1]);
 				replica_file = string_vec[i+2];
+				wait = std::stoi(string_vec[i+3]);
 			}
 		}
 
@@ -202,7 +198,7 @@ int main(int argc, char** argv)
 			file.open(replica_file.c_str());
 
 			while(file >> dummy_wrd) {
-				replica_E_vec.push_back(std::stof(dummy_wrd));
+				replica_E_bond_vec.push_back(std::stof(dummy_wrd));
 				}
 			file.close();
 
@@ -212,17 +208,15 @@ int main(int argc, char** argv)
 			std::cout << endl;
 
 			std::cout << "Replica bond energies: " << std::endl;
-			for (auto& i : replica_E_vec)
+			for (auto& i : replica_E_bond_vec)
 				std::cout << ' ' << i;
 			std::cout << endl;
-			current_E = replica_E_vec[rank];
-			std::cout <<"My energy: " << current_E << std::endl;
-			for (int j = 0; j < replica_E_vec.size(); ++j){
-				old_E_arr[j] = replica_E_vec[j];
-				current_E_arr[j] = replica_E_vec[j];
+			std::cout <<"My bond energy energy: " << replica_E_bond_vec[mpi_rank] << std::endl;
+			for (int j = 0; j < mpi_size; ++j){
+				replica_E_bond[j] = replica_E_bond_vec[j];
+				replica_n_dynamic_bonds[j] = 0;
 			}			
 		}
-
 
 		initialize();
 
@@ -273,55 +267,7 @@ int main(int argc, char** argv)
 				set_write_status();
 			}
 
-			// if (replica_exchange_flag == 1 && step%replica_freq == 0){
-			// 	if (rank == 0){
-			// 		std::shuffle(replica_id_vec.begin(), replica_id_vec.end(), rng);
-			// 		std::cout << "Step " << step << " | Replica IDs: " << std::endl;
-			// 		for (auto& i : replica_id_vec)
-			// 			std::cout << ' ' << i;
-			// 		std::cout << endl;
-
-			// 		for(int j = 0; j < size - 1; j = j + 2){
-
-			// 			int rid = replica_id_vec[j];
-			// 			int n_rid = replica_id_vec[j+1];
-
-			// 			current_E_arr[n_rid] = old_E_arr[rid];
-			// 			current_E_arr[rid] = old_E_arr[n_rid];
-
-			// 			}
-			// 		std::cout << "Energies: " << std::endl;
-			// 		for(int j = 0; j < size; j++){
-			// 			old_E_arr[j] = current_E_arr[j];
-			// 			std::cout << current_E_arr[j] << " ";
-			// 			}
-			// 		std::cout << std::endl;
-					
-			// 	} // if rank == 0
-
-			// 	MPI_Bcast(current_E_arr,size,MPI_FLOAT,0,communicator);
-			// 	MPI_Barrier(communicator);
-
-			// 	current_E = current_E_arr[rank];
-			// 	std::cout << current_E << std::endl;
-			// } // if replice_freq % step == 0
-
-
-
-				// if (step%100 == 0 && step > 0){
-				// 	if (rank == 0){
-				// 		oldT = T;
-				// 		MPI_Send(&oldT,1,MPI_INT,1, 0,communicator);
-				// 		MPI_Recv(&T, 1, MPI_INT, 1, 0, communicator, MPI_STATUS_IGNORE);
-
-				// 	}
-				// 	else if(rank == 1){
-				// 		oldT = T;
-				// 		MPI_Recv(&T, 1, MPI_INT, 0, 0, communicator, MPI_STATUS_IGNORE);
-				// 		MPI_Send(&oldT,1,MPI_INT,0, 0,communicator);
-				// 	}
-				// }
-
+			if (replica_exchange_flag == 1 && step%replica_freq == 0){this_n_bonds = 0;}
 
 			for (auto Iter: Groups){
 				Iter->CheckGroupMembers();
@@ -356,6 +302,85 @@ int main(int argc, char** argv)
 			}
 
 			check_cudaError("Integrator step 2");
+
+
+			if (replica_exchange_flag == 1 && step%replica_freq == 0 && step > wait){
+
+				MPI_Gather(&this_n_bonds,1,MPI_Datatype MPI_INT,replica_n_dynamic_bonds,1,MPI_INT,0,communicator);
+				MPI_Barrier(communicator);
+
+				if (mpi_rank == 0){
+
+					// std::shuffle(replica_id_vec.begin(), replica_id_vec.end(), rng);
+					std::cout << "Step " << step << " | Replica IDs: " << std::endl;
+					for (auto& i : replica_id_vec)
+						std::cout << ' ' << i;
+					std::cout << endl;
+
+
+					for(int j = even_odd%2; j < mpi_size - 1; j = j + 2){
+
+						++exchange_count;
+
+						int id1 = replica_id_vec[j];
+						int id2 = replica_id_vec[j + 1];
+
+						double n1 = (double)replica_n_dynamic_bonds[id1];
+						double n2 = (double)replica_n_dynamic_bonds[id2];
+						
+						// double eb1 = replica_old_E_bond[id1];
+						// double eb2 = replica_old_E_bond[id2];
+
+						double eb1 = replica_E_bond_vec[j];
+						double eb2 = replica_E_bond_vec[j + 1];
+
+						//// SWAP ///
+
+						e1_old = -1.0 * n1 * eb1;
+						e2_old = -1.0 * n2 * eb2;
+
+						e1_new = e1_old + n1 * (eb1 - eb2);
+						e2_new = e2_old + n2 * (eb2 - eb1);
+
+						double rnd_num = ((double)std::rand())/double(RAND_MAX);
+						double exp_arg = -e2_new - e1_new + e1_old + e2_old;
+						double prob = exp(exp_arg);
+
+						std::cout << "1: bonds, e_new, e_old  " << n1 << " " << e1_new << " " << e1_old << std::endl;
+						std::cout << "2: bonds, e_new, e_old  " << n2 << " " << e2_new << " " << e2_old  << std::endl;
+						std::cout << "Random n, probability, exponent:" << rnd_num << " " << prob << " " << exp_arg << std::endl;
+
+						if (exp_arg >= 0){
+							replica_id_vec[j] = id2;
+							replica_id_vec[j+1] = id1;
+							exchange_success_count++;
+						}
+						else if (rnd_num < exp_arg){
+							replica_id_vec[j] = id2;
+							replica_id_vec[j+1] = id1;
+							exchange_success_count++;
+							}
+						}
+
+					++even_odd;
+
+					for(int j = 0; j < mpi_size; j++){
+						int rid = replica_id_vec[j];
+						replica_E_bond[rid] = replica_E_bond_vec[j];
+						}
+
+					for(int j = 0; j < mpi_size; j++){
+						std::cout << replica_E_bond[j] << " ";
+					}
+					std::cout << std::endl;
+					
+				} // if rank == 0
+
+				MPI_Bcast(replica_E_bond,mpi_size,MPI_FLOAT,root,communicator);
+				MPI_Barrier(communicator);
+				std::cout << replica_E_bond[mpi_rank] << std::endl;
+			} // if replice_freq % step == 0
+
 			
 			// Run computes
 			run_computes();	
@@ -400,10 +425,41 @@ int main(int argc, char** argv)
 		}
 	}// if -particle
 
+	else if(string_vec[1] == "-ft"){
+		std::cout << "Set simulation style to: FT" << std::endl;
+		set_ft_config();
+		input_file = "input";
+	    ifstream in2(input_file);
+
+	    string word, line, rname;
+		while (!in2.eof()) {
+			getline(in2, line);
+
+			// Blank or commented line
+			if (line.length() == 0 || line.at(0) == '#')
+				continue;
+
+			istringstream iss(line);
+			// Loop over words in line
+			while (iss >> word) {
+				if( word == "box" ) {
+				box.push_back(BoxFactory(iss));
+				box.back()->readInput(in2);
+				field_sim = 1;
+				particle_sim = 0;
+				}
+			}
+		}
+		run_fts_sim();
+		return 0;
+	}
+
     else {
         die("Invalid simulation style, argument must be '-ft' or '-particle'\n");
     }
-
+	if (mpi_rank == 0){
+		std::cout << "Replica exchange acceptance: "<< float(exchange_success_count)/float(exchange_count) << std::endl;
+	}
 	main_t_out = int(time(0));
 	int dt = main_t_out - main_t_in;
 	cout << "Total run time: " << dt / 60 << "m" << dt % 60 << "sec" << endl;
@@ -470,8 +526,8 @@ int print_timestep() {
 	cout << " UDBond: " << Udynamicbond;
 	dout << " " << Udynamicbond;
 
-	// cout << " T: " << T;
-	// dout << " " << T;
+	cout << " E_bond: " << replica_E_bond[mpi_rank];
+	dout << " " << replica_E_bond[mpi_rank];
 
     dout << endl;
 	cout<<endl;

@@ -93,7 +93,7 @@ void init_binary_output() {
     if (equil && equilData){
         otp = fopen("equil_grid_densities.bin", "wb");}
     else{
-        otp = fopen("grid_densities.bin", "wb");}
+        otp = fopen(("grid_densities" + srank +  ".bin").c_str(), "wb");}
     if (otp == NULL)
         die("failed to open grid_densities.bin");
 
@@ -129,7 +129,7 @@ void write_binary() {
             return;
         otp = fopen("equil_grid_densities.bin", "ab");}
     else{
-        otp = fopen("grid_densities.bin", "ab");}
+        otp = fopen(("grid_densities" + srank +  ".bin").c_str(), "ab");}
     if (otp == NULL)
         die("Failed to append to grid_densities.bin");
 

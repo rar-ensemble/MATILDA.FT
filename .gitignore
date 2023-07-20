@@ -30,23 +30,19 @@
 *.exe
 *.out
 *.app
-matilda.ft
+matilda*
 
 # Generated files
 *.png
 *.jph
 *.mp4
 *.dat
-examples/**/*.lammpstrj
-examples/**/*.input
-examples/**/*.sqlite
-examples/**/*.bin
-examples/**/*.nsys-rep
-examples/**/*.ncu-rep
-examples/**/*.qdstrm
 
+examples/**/*
+!examples/**/input*
+!examples/**/id*
+!examples/**/ad*
 
 # Extras
 git-version.h
 makefile
-
