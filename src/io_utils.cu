@@ -89,13 +89,26 @@ void write_kspace_data(const char* lbl, complex<float> * kdt) {
 }
 
 void init_binary_output() {
+
+    // soutput_id = std::to_string(output_id[mpi_rank]);
+
     FILE* otp;
-    if (equil && equilData){
-        otp = fopen("equil_grid_densities.bin", "wb");}
-    else{
-        otp = fopen(("grid_densities" + srank +  ".bin").c_str(), "wb");}
-    if (otp == NULL)
-        die("failed to open grid_densities.bin");
+
+    otp = fopen(("grid_densities_" + srank +  ".bin").c_str(), "wb");
+    if (otp == NULL){
+        die("failed to open grid_densities!");
+    }
+    
+    fwrite(&Dim, sizeof(int), 1, otp);
+    fwrite(Nx, sizeof(int), Dim, otp);
+    fwrite(L, sizeof(float), Dim, otp);
+    fwrite(&ntypes, sizeof(int), 1, otp);
+
+    otp = fopen(("grid_densities_eid_" + soutput_id +  ".bin").c_str(), "wb");
+    if (otp == NULL){
+        die("failed to open grid_densities!");
+    }
+
 
     fwrite(&Dim, sizeof(int), 1, otp);
     fwrite(Nx, sizeof(int), Dim, otp);
@@ -104,12 +117,24 @@ void init_binary_output() {
 
     fclose(otp);
 
-    if (equil && equilData){
-        otp = fopen("equil_positions.bin", "wb");}
-    else{
-        otp = fopen(("positions" + srank + ".bin").c_str(), "wb");}
-    if (otp == NULL)
-        die("Failed to open positions.bin");
+    otp = fopen(("positions_" + srank + ".bin").c_str(), "wb");
+    if (otp == NULL){
+        die("Failed to open positions file!");
+    }
+
+    fwrite(&ns, sizeof(int), 1, otp);
+    fwrite(&Dim, sizeof(int), 1, otp);
+    fwrite(L, sizeof(float), 3, otp);
+    fwrite(tp, sizeof(int), ns, otp);
+    fwrite(molecID, sizeof(int), ns, otp);
+    if ( Charges::do_charges == 1 )
+        fwrite(charges, sizeof(float), ns, otp);
+
+    fclose(otp);
+    otp = fopen(("positions_eid_" + soutput_id  + ".bin").c_str(), "wb");
+    if (otp == NULL){
+        die("Failed to open positions file!");
+    }
 
     fwrite(&ns, sizeof(int), 1, otp);
     fwrite(&Dim, sizeof(int), 1, otp);
@@ -124,31 +149,37 @@ void init_binary_output() {
 
 void write_binary() {
     FILE* otp;
-    if (equil){
-        if (!equilData)
-            return;
-        otp = fopen("equil_grid_densities.bin", "ab");}
-    else{
-        otp = fopen(("grid_densities" + srank +  ".bin").c_str(), "ab");}
-    if (otp == NULL)
-        die("Failed to append to grid_densities.bin");
 
+    otp = fopen(("grid_densities_" + srank +  ".bin").c_str(), "ab");
+    if (otp == NULL){
+        die("Failed to append to grid_densities.bin");
+    }
     fwrite(all_rho, sizeof(float), M * ntypes, otp);
     fclose(otp);
 
-
-
-    if (equil){
-        otp = fopen("equil_positions.bin", "ab");}
-    else{
-        otp = fopen(("positions" + srank +  ".bin").c_str(), "ab");}
-    if (otp == NULL)
-        die("Failed to append to positions.bin");
-
-    fwrite(h_ns_float, sizeof(float), ns*Dim, otp);
-
-
+    otp = fopen(("grid_densities_eid_" +  soutput_id +  ".bin").c_str(), "ab");
+    if (otp == NULL){
+        die("Failed to append to grid_densities _eid.bin");
+    }
+    fwrite(all_rho, sizeof(float), M * ntypes, otp);
     fclose(otp);
+
+    // Positions
+
+    otp = fopen(("positions_" + srank +  ".bin").c_str(), "ab");
+    if (otp == NULL){
+        die("Failed to append to positions!");
+    }
+    fwrite(h_ns_float, sizeof(float), ns*Dim, otp);
+    fclose(otp);
+
+    otp = fopen(("positions_eid_" + soutput_id +  ".bin").c_str(), "ab");
+    if (otp == NULL){
+        die("Failed to append to positions!");
+    }
+    fwrite(h_ns_float, sizeof(float), ns*Dim, otp);
+    fclose(otp);
+
 }
 
 void write_struc_fac() {

@@ -82,7 +82,7 @@ protected:
 
     float k_spring, e_bond, r0, qind;   
     
-    std::string file_name;
+    std::string file_name, file_name_replica;
 
     thrust::host_vector<int> AD, BONDS, BONDED, FREE;
     thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED;//, d_FLAG_LIST, d_AD;
@@ -91,6 +91,11 @@ protected:
     thrust::host_vector<float> VirArr;
 
     NListBonding* nlist;
+
+    //Ramp parameters
+    std::string ramp_string;
+    int RAMP_FLAG, ramp_interval, ramp_reps, ramp_counter;
+    float e_bond_final, delta_e_bond;
 
 public:
 	~Lewis();

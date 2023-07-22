@@ -20,12 +20,20 @@ int main( int argc, char** argv ) {
     cout << "Usage: dump-grid-dens [input.bin] [output.lammpstrj] [optional: n skipped frames]" << endl;
     exit(1);
   }
-  int Dim, *mID, *tp, ns, skip, rt, do_charges ;
+  int Dim, *mID, *tp, ns, skip, rt, do_charges, div ;
   float L[3], **x, *xstack, *q;
 
   skip = -1 ;
-  if ( argc == 4 )
+  div = 1;
+
+  if ( argc == 4 ){
     skip = atoi( argv[3] );
+  }
+
+  if ( argc == 5 ){
+    skip = atoi( argv[3] );
+    div = atoi( argv[4] );
+  }
 
   FILE *inp, *otp;
 
@@ -62,7 +70,8 @@ int main( int argc, char** argv ) {
 
 
   // Check whether to read charges //
-  rt = fread( &do_charges, sizeof(int), 1, inp);
+  // rt = fread( &do_charges, sizeof(int), 1, inp);
+  do_charges = 1;
   if ( do_charges ) {
     q = new float[ns];
     rt = fread(q, sizeof(float), ns, inp);
@@ -99,7 +108,7 @@ int main( int argc, char** argv ) {
     }
 
     // cout << "here! " << nframes << " " << skip << "\n";
-    if ( nframes >= skip ) {
+    if ( nframes >= skip && nframes%div == 0) {
       write_frame(otp, x, tp, mID, q, L, Dim, do_charges, ns, nframes);
     }
 

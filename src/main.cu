@@ -33,6 +33,7 @@ void cuda_collect_f(void);
 void cuda_collect_rho(void);
 void write_binary(void);
 void write_data_header(std::string);
+void write_data_header_eid(std::string);
 void set_write_status(void);
 void init_binary_output(void);
 void write_struc_fac(void);
@@ -41,7 +42,10 @@ void write_kspace_data(const char*, complex<float>*);
 void write_kspace_cudaComplex(const char*, cufftComplex*);
 __global__ void d_prepareDensity(int, float*, cufftComplex*, int);
 int print_timestep();
+
 ofstream dout;
+ofstream dout_eid;
+
 void unstack_like_device(int id, int* nn);
 void run_computes();
 void run_frame_printing();
@@ -119,7 +123,7 @@ int main(int argc, char** argv)
 
 /////// Prepare Replica Data ////////
 
-	int replica_exchange_flag = 0;
+	REPLICA_EXCHANGE_FLAG = 0;
 
 	std::vector<int> replica_id_vec(mpi_size);
 	std::vector<float> replica_E_bond_vec;
@@ -127,12 +131,13 @@ int main(int argc, char** argv)
 
 	replica_E_bond = (float*)calloc(mpi_size, sizeof(float));
 	replica_n_dynamic_bonds = (int*)calloc(mpi_size, sizeof(int));
+	output_id = (int*)calloc(mpi_size, sizeof(int));
 
 	// auto rng = std::default_random_engine {};
 	std::default_random_engine rng;
 
 	float e1_old, e1_new, e2_old, e2_new;
-	std::vector<int> ng = {-1,1};
+
 
 	// std::uniform_int_distribution<int> pick_me_please(0,size);
 
@@ -185,14 +190,14 @@ int main(int argc, char** argv)
 				input_file = string_vec[++i];
 			}
 			if (string_vec[i] == "-replica"){
-				replica_exchange_flag = 1;
+				REPLICA_EXCHANGE_FLAG = 1;
 				replica_freq = std::stoi(string_vec[i+1]);
 				replica_file = string_vec[i+2];
 				wait = std::stoi(string_vec[i+3]);
 			}
 		}
 
-		if (replica_exchange_flag == 1){
+		if (REPLICA_EXCHANGE_FLAG == 1){
 			std::fstream file;
 			std::string dummy_wrd;
 			file.open(replica_file.c_str());
@@ -215,7 +220,9 @@ int main(int argc, char** argv)
 			for (int j = 0; j < mpi_size; ++j){
 				replica_E_bond[j] = replica_E_bond_vec[j];
 				replica_n_dynamic_bonds[j] = 0;
+				output_id[j] = j;
 			}			
+			soutput_id = std::to_string(output_id[mpi_rank]);
 		}
 
 		initialize();
@@ -261,13 +268,8 @@ int main(int argc, char** argv)
 		///////////////////////////////////////
 
 		for (step = 1, global_step = global_step + 1; step <= max_steps; step++, global_step++) {
-			if (equil  && step >= equil_steps) {
-				dout.close();
-				equil = false;
-				set_write_status();
-			}
 
-			if (replica_exchange_flag == 1 && step%replica_freq == 0){this_n_bonds = 0;}
+			if (REPLICA_EXCHANGE_FLAG == 1 && step%replica_freq == 0){this_n_bonds = 0;}
 
 			for (auto Iter: Groups){
 				Iter->CheckGroupMembers();
@@ -304,7 +306,7 @@ int main(int argc, char** argv)
 			check_cudaError("Integrator step 2");
 
 
-			if (replica_exchange_flag == 1 && step%replica_freq == 0 && step > wait){
+			if (REPLICA_EXCHANGE_FLAG == 1 && step%replica_freq == 0 && step > wait){
 
 				MPI_Gather(&this_n_bonds,1,MPI_Datatype MPI_INT,replica_n_dynamic_bonds,1,MPI_INT,0,communicator);
 				MPI_Barrier(communicator);
@@ -346,8 +348,8 @@ int main(int argc, char** argv)
 						double exp_arg = -e2_new - e1_new + e1_old + e2_old;
 						double prob = exp(exp_arg);
 
-						std::cout << "1: bonds, e_new, e_old  " << n1 << " " << e1_new << " " << e1_old << std::endl;
-						std::cout << "2: bonds, e_new, e_old  " << n2 << " " << e2_new << " " << e2_old  << std::endl;
+						std::cout << j     << ": bonds, e_new, e_old  " << n1 << " " << e1_new << " " << e1_old << std::endl;
+						std::cout << j + 1 << ": bonds, e_new, e_old  " << n2 << " " << e2_new << " " << e2_old  << std::endl;
 						std::cout << "Random n, probability, exponent:" << rnd_num << " " << prob << " " << exp_arg << std::endl;
 
 						if (exp_arg >= 0){
@@ -367,6 +369,7 @@ int main(int argc, char** argv)
 					for(int j = 0; j < mpi_size; j++){
 						int rid = replica_id_vec[j];
 						replica_E_bond[rid] = replica_E_bond_vec[j];
+						output_id[rid] = j;
 						}
 
 					for(int j = 0; j < mpi_size; j++){
@@ -377,8 +380,13 @@ int main(int argc, char** argv)
 				} // if rank == 0
 
 				MPI_Bcast(replica_E_bond,mpi_size,MPI_FLOAT,root,communicator);
+				MPI_Bcast(output_id,mpi_size,MPI_INT,root,communicator);
+
 				MPI_Barrier(communicator);
-				std::cout << replica_E_bond[mpi_rank] << std::endl;
+
+				soutput_id = std::to_string(output_id[mpi_rank]);
+				std::cout << "Energy: " <<  replica_E_bond[mpi_rank] << std::endl;
+				std::cout << "Output ID: " << soutput_id << std::endl;
 			} // if replice_freq % step == 0
 
 			
@@ -498,6 +506,9 @@ int main(int argc, char** argv)
 int print_timestep() {
 	//if (!equilData)
 		//return
+
+	dout_eid.open("data_eid_" + soutput_id + ".dat",std::ios_base::app);
+
 	int die_flag = 0;
 	cout << "Step " << step << " of " << max_steps << " ";
 	cout << "Global step " << global_step;
@@ -525,12 +536,17 @@ int print_timestep() {
 	}
 	cout << " UDBond: " << Udynamicbond;
 	dout << " " << Udynamicbond;
+	if (REPLICA_EXCHANGE_FLAG == 1){
 
-	cout << " E_bond: " << replica_E_bond[mpi_rank];
-	dout << " " << replica_E_bond[mpi_rank];
+		cout << " E_bond: " << replica_E_bond[mpi_rank];
+		dout << " " << replica_E_bond[mpi_rank];
+	}
 
     dout << endl;
 	cout<<endl;
+	dout_eid << replica_E_bond[mpi_rank] << std::endl;
+	dout_eid.close();
+
 	return die_flag;
 
 }
@@ -617,10 +633,35 @@ void write_data_header(std::string lbl){
 			dout << " Lambda" + Iter->potential_type << Iter->type_specific_id;
 	}
 	dout << " UDBond";
-	dout << " T";
+	if (REPLICA_EXCHANGE_FLAG == 1)
+		dout << " e_bond";
 
 	dout << endl;
+}
 
+void write_data_header_eid(std::string lbl){
+    dout_eid.open(lbl);
+	dout_eid << "# step global_step Upe Ubond ";
+	if ( n_total_angles > 0 )
+	    dout_eid << "Angles " ;
+	if (Dim == 2)
+		dout_eid << "Pxx Pyy Pxy";
+	else if (Dim == 3)
+		dout_eid << " Pxx Pyy Pzz Pxy Pxz Pyz";
+	
+	for (auto Iter: Potentials){
+		dout_eid << " " + Iter->potential_type;
+		if (Iter->potential_type != "Charges")
+			dout_eid << Iter->type_specific_id ;
+		if (Iter->potential_type == "MaierSaupe")
+			dout_eid << " Lambda" + Iter->potential_type << Iter->type_specific_id;
+	}
+	dout_eid << " UDBond";
+	if (REPLICA_EXCHANGE_FLAG == 1)
+		dout_eid << " e_bond";
+
+	dout_eid << endl;
+	dout_eid.close();
 }
 
 void set_write_status(){
@@ -660,7 +701,8 @@ void set_write_status(){
 			struc_freq = equil_struc_freq;
 	}
 	else{
-		write_data_header("data" + srank + ".dat");
+		write_data_header("data_" + srank + ".dat");
+		write_data_header_eid("data_eid_" + soutput_id + ".dat");
 		if (prod_traj_freq > 0)
 			traj_freq = prod_traj_freq;
 		if (prod_grid_freq > 0)

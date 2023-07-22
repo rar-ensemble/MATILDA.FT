@@ -452,51 +452,68 @@ void write_lammps_traj() {
 	FILE* otp;
 	int i, j;
 	if (step == 0){
-		if (equil && equilData){
-			otp = fopen(dump_name.c_str(), "w");
+			otp = fopen((dump_name + "_" + srank + ".lammpstrj").c_str(), "w");
 			fclose(otp);
-			otp = fopen(equil_name.c_str(), "w");
-		}
-		else{
-			otp = fopen(dump_name.c_str(), "w");
-		}
+
+			otp = fopen((dump_name + "_eid_" + soutput_id + ".lammpstrj").c_str(), "w");
+			fclose(otp);
+		} //if step == 0
 		
-	}
 	else{
-		if (equil){
-			if (!equilData)
-				return;
-			otp = fopen(equil_name.c_str(), "a");
-		}
-		else
-			otp = fopen(dump_name.c_str(), "a");
-	}
-
-	fprintf(otp, "ITEM: TIMESTEP\n%d\nITEM: NUMBER OF ATOMS\n%d\n", global_step, ns);
-	fprintf(otp, "ITEM: BOX BOUNDS pp pp pp\n");
-	fprintf(otp, "%f %f\n%f %f\n%f %f\n", 0.f, L[0],
-		0.f, L[1],
-		(Dim == 3 ? 0.f : 1.f), (Dim == 3 ? L[2] : 1.f));
-
-	if ( Charges::do_charges )
-		fprintf(otp, "ITEM: ATOMS id type mol x y z q\n");
-	else
-		fprintf(otp, "ITEM: ATOMS id type mol x y z\n");
-
-	for (i = 0; i < ns; i++) {
-		fprintf(otp, "%d %d %d  ", i + 1, tp[i] + 1, molecID[i] + 1);
-		for (j = 0; j < Dim; j++)
-			fprintf(otp, "%f ", x[i][j]);
-
-		for (j = Dim; j < 3; j++)
-			fprintf(otp, "%f", 0.f);
+		otp = fopen((dump_name + "_" + srank + ".lammpstrj").c_str(), "a");
+		fprintf(otp, "ITEM: TIMESTEP\n%d\nITEM: NUMBER OF ATOMS\n%d\n", step - 1, ns);
+		fprintf(otp, "ITEM: BOX BOUNDS pp pp pp\n");
+		fprintf(otp, "%f %f\n%f %f\n%f %f\n", 0.f, L[0],
+			0.f, L[1],
+			(Dim == 3 ? 0.f : 1.f), (Dim == 3 ? L[2] : 1.f));
 
 		if ( Charges::do_charges )
-			fprintf(otp, " %f", charges[i]);
+			fprintf(otp, "ITEM: ATOMS id type mol x y z q\n");
+		else
+			fprintf(otp, "ITEM: ATOMS id type mol x y z\n");
 
-		fprintf(otp, "\n");
+		for (i = 0; i < ns; i++) {
+			fprintf(otp, "%d %d %d  ", i + 1, tp[i] + 1, molecID[i] + 1);
+			for (j = 0; j < Dim; j++)
+				fprintf(otp, "%f ", x[i][j]);
+
+			for (j = Dim; j < 3; j++)
+				fprintf(otp, "%f", 0.f);
+
+			if ( Charges::do_charges )
+				fprintf(otp, " %f", charges[i]);
+
+			fprintf(otp, "\n");
+		}
+		fclose(otp);
+
+		otp = fopen((dump_name + "_eid_" + soutput_id + ".lammpstrj").c_str(), "a");
+		fprintf(otp, "ITEM: TIMESTEP\n%d\nITEM: NUMBER OF ATOMS\n%d\n", step - 1, ns);
+		fprintf(otp, "ITEM: BOX BOUNDS pp pp pp\n");
+		fprintf(otp, "%f %f\n%f %f\n%f %f\n", 0.f, L[0],
+			0.f, L[1],
+			(Dim == 3 ? 0.f : 1.f), (Dim == 3 ? L[2] : 1.f));
+
+		if ( Charges::do_charges )
+			fprintf(otp, "ITEM: ATOMS id type mol x y z q\n");
+		else
+			fprintf(otp, "ITEM: ATOMS id type mol x y z\n");
+
+		for (i = 0; i < ns; i++) {
+			fprintf(otp, "%d %d %d  ", i + 1, tp[i] + 1, molecID[i] + 1);
+			for (j = 0; j < Dim; j++)
+				fprintf(otp, "%f ", x[i][j]);
+
+			for (j = Dim; j < 3; j++)
+				fprintf(otp, "%f", 0.f);
+
+			if ( Charges::do_charges )
+				fprintf(otp, " %f", charges[i]);
+
+			fprintf(otp, "\n");
+		}
+		fclose(otp);
 	}
-	fclose(otp);
 }
 
 

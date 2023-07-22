@@ -102,7 +102,7 @@ $(OBJFOLDER)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	${NVCC} -g ${INCS} ${CFLAGS} -c $< -o $@
 	 
-../matilda-mpi: $(OBJS_MAKE) $(OBJS_MAKE_CPP) $(OBJS_MAKE_C)
+../../matilda_executable/matilda-mpi: $(OBJS_MAKE) $(OBJS_MAKE_CPP) $(OBJS_MAKE_C)
 	LD_LIBRARY_PATH=$(LD_LIB)  $(NVCC) $(CFLAGS) -o $@ $(OBJS_MAKE) $(OBJS_MAKE_CPP) $(OBJS_MAKE_C) $(LIBS) -g
 
 
@@ -111,7 +111,7 @@ git-version.h:
 
 clean:
 	rm -fr *.o objects
-	rm -f matilda-mpi ../matilda-mpi
+	rm -f ../matilda_executable/matilda-mpi
 	rm -f git-version.h
 	rm -f *~
 

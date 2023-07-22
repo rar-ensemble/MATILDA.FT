@@ -40,7 +40,10 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, k_spring);
     cout << "k_spring: " << k_spring << endl;
     readRequiredParameter(iss, e_bond);
-    e_bond = replica_E_bond[mpi_rank];
+
+    if (REPLICA_EXCHANGE_FLAG == 1){
+        e_bond = replica_E_bond[mpi_rank];
+    }
     cout << "e_bond: " << e_bond << endl;
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
@@ -51,12 +54,26 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, bond_log_freq);
     cout << "bond_log_freq: " << bond_freq << endl;
     readRequiredParameter(iss, file_name);
-    file_name = file_name + "_" + srank;
     cout << "output_file: " << file_name << endl;
 
     cout << "Group size: " << group->nsites << endl;
     cout << "Donors: " << nlist->n_donors << endl;
     cout << "Acceptors: " << nlist->n_acceptors << endl;
+
+    iss >> ramp_string;
+    if (ramp_string == "ramp"){
+        std::cout << "RAMP activated!" << std::endl;
+        iss >> e_bond_final;
+        iss >> ramp_reps;
+        iss >> ramp_interval;
+        ramp_counter = 0;
+        RAMP_FLAG = 1;
+        delta_e_bond = (e_bond_final - e_bond)/float(ramp_reps);
+    }
+    else{
+        RAMP_FLAG = 0;
+    }
+
 
     n_stickers += group->nsites;
 
@@ -108,8 +125,16 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 
 void Lewis::AddExtraForce()
 {   
+    if (REPLICA_EXCHANGE_FLAG == 1){
+        e_bond = replica_E_bond[mpi_rank];
+    }
 
-    e_bond = replica_E_bond[mpi_rank];
+    if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
+        e_bond += delta_e_bond;
+        std::cout << "At step: " << step <<" increased e_bond to: " << e_bond << std::endl;
+        ++ramp_counter;
+    }
+
 
     if (step % bond_freq == 0 && step >= bond_freq){
 
@@ -536,9 +561,13 @@ void Lewis::WriteBonds(void)
 
     // int flag = 0;
 
+
     this->BONDS = d_BONDS;
     ofstream bond_file;
-    bond_file.open(file_name, ios::out | ios::app);
+
+    std::string fn = file_name + "_" + srank;
+
+    bond_file.open(fn, ios::out | ios::app);
 
     // for (int j = 0; j < group->nsites; ++j){
     //     if (BONDS[2 * j + 1] != -1)
@@ -557,6 +586,25 @@ void Lewis::WriteBonds(void)
         }
     }
     bond_file.close();
+
+    //////////////////////////
+
+    fn = file_name + "_eid_" + soutput_id;
+
+    bond_file.open(fn, ios::out | ios::app);
+
+    bond_file << "TIMESTEP: " << step << " " << n_bonded << " " << n_free << " " << n_free + n_bonded << endl;
+    for (int j = 0; j < group->nsites; ++j)
+    {
+        if (BONDS[2 * j + 1] != -1 && nlist->AD[j] == 1)
+        {
+            bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
+        }
+    }
+    bond_file.close();
+
+
+
 
 }
 

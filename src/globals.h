@@ -113,7 +113,7 @@ float *replica_E_bond;
 #ifndef MAIN
 extern
 #endif
-int wait, n_stickers, replica_freq, mpi_rank, mpi_size, even_odd;
+int wait, n_stickers, replica_freq, mpi_rank, mpi_size, even_odd, *output_id;
 
 #ifndef MAIN
 extern
@@ -124,12 +124,12 @@ std::string replica_file;
 #ifndef MAIN
 extern
 #endif
-int *replica_n_dynamic_bonds, this_n_bonds;
+int *replica_n_dynamic_bonds, this_n_bonds, REPLICA_EXCHANGE_FLAG;
 
 #ifndef MAIN
 extern
 #endif
-std::string srank;
+std::string srank, soutput_id;
 
 ////////////////////////
 
