@@ -26,7 +26,6 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 {
 
     DynamicBonds.push_back(this);
-
     std::srand(std::time(0));
 
     readRequiredParameter(iss, nlist_name);
@@ -48,9 +47,11 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
     readRequiredParameter(iss, bond_log_freq);
-    cout << "bond_log_freq: " << bond_freq << endl;
+    cout << "bond_log_freq: " << bond_log_freq << endl;
     readRequiredParameter(iss, file_name);
     cout << "output_file: " << file_name << endl;
+    readRequiredParameter(iss, offset);
+    cout << "offset: " << offset << endl;
 
     cout << "Group size: " << group->nsites << endl;
     cout << "Donors: " << nlist->n_donors << endl;
@@ -90,28 +91,28 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     }
 
     n_bonded = 0;
-    n_free = group->nsites;
+    n_free = nlist->n_donors;
 
     d_FREE = FREE;
     d_BONDED = BONDED;
 
-    BGRID = (int)ceil((float)(n_bonded) / threads);
-    FGRID = (int)ceil((float)(n_free) / threads);
-    if (BGRID == 0) BGRID = 1;
-    if (FGRID == 0) FGRID = 1;
+    GRID = ceil(((float)group->nsites)/float(threads));
 }
 
 
 void Lewis::AddExtraForce()
 {   
 
-    if (step % bond_freq == 0 && step >= bond_freq){
+
+    if (step % bond_freq == 0 && step >= bond_freq && step >= nlist->nlist_freq){
+        // thrust::default_random_engine g(time(NULL));
+
 
         int rnd = random()%2; //decide move sequence
 
         if (rnd == 0){
             if (n_free > 0){
-                d_make_bonds<<<FGRID, group->BLOCK>>>(d_x,d_f,
+                d_make_bonds<<<GRID, threads>>>(d_x,d_f,
                     d_BONDS.data(),
                     nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
                     d_FREE.data(), d_VirArr.data(), n_free,
@@ -132,21 +133,16 @@ void Lewis::AddExtraForce()
                     FREE[n_free++] = i;
                 }
             }
+
+            // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
+
             d_BONDED = BONDED;
             d_FREE = FREE;
 
-                BGRID = (int)ceil((float)(n_bonded) / threads);
-                FGRID = (int)ceil((float)(n_free) / threads);
-                if (BGRID == 0) BGRID = 1;
-                if (FGRID == 0) FGRID = 1;
-                //Update charges
-                if (qind != 0.0){
-                    cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-                }
             } 
             
             if (n_bonded > 0){
-                d_break_bonds<<<FGRID, group->BLOCK>>>(d_x,
+                d_break_bonds<<<GRID, threads>>>(d_x,
                     d_BONDS.data(),
                     nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
                     d_BONDED.data(),n_bonded,
@@ -158,15 +154,13 @@ void Lewis::AddExtraForce()
 
         else {
             if (n_bonded > 0){
-                d_break_bonds<<<FGRID, group->BLOCK>>>(d_x,
+                d_break_bonds<<<GRID, threads>>>(d_x,
                     d_BONDS.data(),
                     nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
                     d_BONDED.data(),n_bonded,
                     nlist->nncells, nlist->ad_hoc_density,
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges);
-
-
 
 
             n_bonded = 0;
@@ -181,21 +175,31 @@ void Lewis::AddExtraForce()
                     FREE[n_free++] = i;
                 }
             }
+
+            // for (int i = n_free; i < group->nsites; ++i){
+            //         FREE[i] = -1;
+            // }
+
+            // std::cout << "Before: last: " << *(FREE.begin() + n_free) << " second to last: " << *(FREE.begin() + n_free -1)<< std::endl;
+
+
+            // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
+
+            // std::cout << "After: last: " << *(FREE.begin() + n_free) << " second to last: " << *(FREE.begin() + n_free -1)<< std::endl;
+
             d_BONDED = BONDED;
             d_FREE = FREE;
 
-            BGRID = (int)ceil((float)(n_bonded) / threads);
-            FGRID = (int)ceil((float)(n_free) / threads);
-            if (BGRID == 0) BGRID = 1;
-            if (FGRID == 0) FGRID = 1;
+            //Update charges
+            // if (qind != 0.0){
+            //     cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+            // }
 
-                //Update charges
-                if (qind != 0.0){
-                    cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-                }
-            } 
+            } // if n_free > 0
+
+
             if (n_free > 0){
-                d_make_bonds<<<FGRID, group->BLOCK>>>(d_x,d_f,
+                d_make_bonds<<<GRID, threads>>>(d_x,d_f,
                     d_BONDS.data(),
                     nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
                     d_FREE.data(), d_VirArr.data(), n_free,
@@ -209,35 +213,33 @@ void Lewis::AddExtraForce()
 
         // update the bonded array
 
-            n_bonded = 0;
-            n_free = 0;
+        n_bonded = 0;
+        n_free = 0;
 
-            BONDS = d_BONDS;
-            for (int i = 0; i < group->nsites; ++i){
-                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                    BONDED[n_bonded++] = i;
-                }
-                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                    FREE[n_free++] = i;
-                }
+        BONDS = d_BONDS;
+        for (int i = 0; i < group->nsites; ++i){
+            if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                BONDED[n_bonded++] = i;
             }
-            d_BONDED = BONDED;
-            d_FREE = FREE;
+            else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                FREE[n_free++] = i;
+            }
+        }
 
-        BGRID = (int)ceil((float)(n_bonded) / threads);
-        FGRID = (int)ceil((float)(n_free) / threads);
-        if (BGRID == 0) BGRID = 1;
-        if (FGRID == 0) FGRID = 1;
+        // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
+
+        d_BONDED = BONDED;
+        d_FREE = FREE;
 
         //Update charges
-        if (qind != 0.0){
-            cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-        }
+        // if (qind != 0.0){
+        //     cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+        // }
 
     } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
 
     if(step >= bond_freq){
-        d_update_forces<<<BGRID, group->BLOCK>>>(d_x, d_f, d_L, d_Lh,
+        d_update_forces<<<GRID, threads>>>(d_x, d_f, d_L, d_Lh,
             k_spring, e_bond, r0,
             d_BONDS.data(), d_BONDED.data(), d_VirArr.data(), n_bonded,
             group->d_index.data(), group->nsites, Dim);
@@ -248,7 +250,7 @@ void Lewis::AddExtraForce()
         remove(fname);
     }
 
-    if (step % bond_log_freq == 0 && step >= bond_freq)
+    if (step % bond_log_freq == 0 && step >= offset)
     {
         Lewis::WriteBonds();
     }
@@ -477,7 +479,6 @@ __global__ void d_break_bonds(
     int list_ind = d_BONDED[tmp_ind];
     int ind = d_index[list_ind];
 
-    // printf("My name is %d I want to break free\n",ind);
 
     curandState l_state;
     l_state = d_states[ind];
@@ -532,13 +533,6 @@ void Lewis::WriteBonds(void)
     ofstream bond_file;
     bond_file.open(file_name, ios::out | ios::app);
 
-    // for (int j = 0; j < group->nsites; ++j){
-    //     if (BONDS[2 * j + 1] != -1)
-    //     {
-    //         flag = 1;
-    //         break;
-    //     }
-    // }
 
     bond_file << "TIMESTEP: " << step << " " << n_bonded << " " << n_free << " " << n_free + n_bonded << endl;
     for (int j = 0; j < group->nsites; ++j)

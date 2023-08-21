@@ -7,6 +7,16 @@
 #include "nlist_bonding.h"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include <thrust/shuffle.h>
+#include <thrust/random.h>
+#include <ctime>
+#include <thrust/copy.h>
+#include <thrust/shuffle.h>
+#include <thrust/random.h>
+#include <cmath>
+#include <random>
+#include <stdio.h>
+#include <ctime>
 
 __global__ void d_break_bonds(
     const float *x,
@@ -78,7 +88,7 @@ class Lewis : public ExtraForce {
 protected:
     
     int bond_freq, n_free, n_bonded;  
-    int BGRID, FGRID;
+    int GRID;
 
     float k_spring, e_bond, r0, qind;   
     
@@ -91,6 +101,7 @@ protected:
     thrust::host_vector<float> VirArr;
 
     NListBonding* nlist;
+    int offset;
 
 public:
 	~Lewis();

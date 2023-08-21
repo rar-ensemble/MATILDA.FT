@@ -97,7 +97,7 @@ NList::NList(istringstream& iss) {
     std::cout << "Distance parameters || xyz: " << xyz << ", ad_hoc_density: " << ad_hoc_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
     std::cout << "Size: " << d_RN_ARRAY.size() << endl;
 
-    NList::KillingMeSoftly();
+    // NList::KillingMeSoftly();
 }
 
 NList::~NList(){}
@@ -131,7 +131,7 @@ int NList::CheckTrigger(){
 		MAX_DISP = -1.0;
 		return 1;
 	}
-	else if(nlist_freq > 0 && step%nlist_freq == 0 && step > 0){
+	else if(nlist_freq > 0 && step%nlist_freq == 0 && step >= nlist_freq){
 		return 1;
 	}
 	else {
