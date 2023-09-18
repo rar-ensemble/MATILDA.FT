@@ -98,6 +98,10 @@ void initialize() {
 		if (a->potential_type!= b->potential_type) return a->potential_type < b->potential_type;
 		return a->type_specific_id < b->type_specific_id;
 	});
+	grid_per_partic = 1;
+	for (int j = 0; j < Dim; j++) {
+        grid_per_partic *= (pmeorder + 1);
+    }
 	
 }
 

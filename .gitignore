@@ -30,7 +30,8 @@
 *.exe
 *.out
 *.app
-matilda.ft
+matilda-old.ft
+matilda-update.ft
 
 # Generated files
 *.png

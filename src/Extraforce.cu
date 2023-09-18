@@ -5,7 +5,7 @@
 #include "globals.h"
 #include "Extraforce.h"
 #include "Extraforce_wall.h"
-// #include "Extraforce_dynamic.h"
+#include "Extraforce_lewis.h"
 #include "Extraforce_dpd.h"
 #include "Extraforce_dynamic.h"
 
@@ -49,7 +49,10 @@ ExtraForce* ExtraForceFactory(istringstream &iss){
 	if (s1 == "dynamic"){
 		return new Dynamic(iss);
 	}
-	
+	if (s1 == "lewis"){
+		return new Lewis(iss);
+	}
+		
 	die(s1 + " is not a valid ExtraForce, you have failed miserably!\n Supported ExtraForces are: midpush, langevin, wall");
 	return 0;
 }

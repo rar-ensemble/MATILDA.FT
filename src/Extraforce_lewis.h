@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <ctime>
 
-__global__ void d_break_bonds(
+__global__ void d_break_bonds_lewis(
     const float *x,
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_RN_ARRAY,
@@ -37,9 +37,14 @@ __global__ void d_break_bonds(
     float *L,
     float *Lh,
     int D,
-    float* d_charges);
+    float* d_charges,
+    int grid_per_partic,
+    float* d_electrostatic_potential,
+    int* d_grid_inds,
+    float* d_grid_W);
 
-__global__ void d_make_bonds(
+
+__global__ void d_make_bonds_lewis(
     const float *x,
     float* f,    
     thrust::device_ptr<int> d_BONDS,
@@ -61,30 +66,18 @@ __global__ void d_make_bonds(
     float *L,
     float *Lh,
     int D,
-    float* d_charges);
+    float* d_charges,
+    int grid_per_partic,
+    float* d_electrostatic_potential,
+    int* d_grid_inds,
+    float* d_grid_W);
 
 
-__global__ void d_update_forces(
-    const float* x,    
-    float* f,        // [ns*Dim], particle positions
-    const float* d_L,
-    const float* d_Lh,
-    float k_spring,
-    float e_bond,
-    float r0,
-    thrust::device_ptr<int> d_BONDS,
-    thrust::device_ptr<int> d_BONDED,
-    thrust::device_ptr<float> d_VirArr,
-    const int n_bonded,
-    thrust::device_ptr<int> d_index,   // List of sites in the group
-    const int ns,           // Number of sites in the list
-    const int D);   
-
-#ifndef _EXTRAFORCE_DYNAMIC
-#define _EXTRAFORCE_DYNAMIC
+#ifndef _EXTRAFORCE_LEWIS
+#define _EXTRAFORCE_LEWIS
 
 
-class Dynamic : public ExtraForce {
+class Lewis : public ExtraForce {
 protected:
     
     int bond_freq, n_free, n_bonded;  
@@ -109,8 +102,8 @@ protected:
     float e_bond_final, delta_e_bond;
 
 public:
-	~Dynamic();
-	Dynamic(std::istringstream&);
+	~Lewis();
+	Lewis(std::istringstream&);
     void AddExtraForce() override;
     void WriteBonds();
     // void UpdateHD(void);
