@@ -36,6 +36,8 @@ Charges::Charges(istringstream& iss) : Potential(iss){
         die("Charges have been doubly defined! This is improper.");
     }
 
+    MasterCharge = this;
+
 }
 
 void Charges::Allocate_Memory(){

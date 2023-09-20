@@ -107,6 +107,7 @@ GFLAG,
 GRID_UPDATE_FREQ,
 *GRID_STATE;
 
+
 #ifndef MAIN
 extern
 #endif
@@ -249,6 +250,10 @@ extern
 #endif
 std::vector<Potential*> Potentials;
 
+#ifndef MAIN
+extern
+#endif
+Charges* MasterCharge;
 
 #ifndef MAIN
 extern
@@ -269,6 +274,12 @@ float MAX_DISP;
 extern
 #endif
 curandState* d_states;
+
+#ifndef MAIN
+extern
+#endif
+float U_Electro_old;
+
 
 void die(const char*);
 void check_cudaError(const char*);

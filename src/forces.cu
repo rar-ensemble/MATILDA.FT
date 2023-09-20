@@ -40,9 +40,9 @@ void cuda_collect_x(void);
 __global__ void d_make_dens_step(float*, float*, float*, int*, int, int, int);
 void prepareDensityFields(void);
 
-void forces() {
 
-    prepareDensityFields();
+
+void zero_forces() {
 
 	d_zero_all_ntyp<<<M_Grid, M_Block>>>(d_all_fx, M, ntypes);
 	d_zero_all_ntyp<<<M_Grid, M_Block>>>(d_all_fy, M, ntypes);
@@ -61,13 +61,14 @@ void forces() {
 	// Zeros the forces on the particles
 	d_zero_particle_forces<<<ns_Grid, ns_Block>>>(d_f, ns, Dim);
 
+	check_cudaError("d_zero_particle_forces");
+}
+
+void forces(){
+
 	for (auto Iter: Potentials){
 		Iter->CalcForces();
 	}
-
-
-
-	check_cudaError("d_zero_particle_forces");
 
 	// Accumulates forces from grid onto particles
 	if (Dim == 2) {
@@ -118,7 +119,5 @@ void forces() {
         
         check_cudaError("angle forces");
     }
-
-
 
 }

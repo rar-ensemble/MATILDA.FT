@@ -36,7 +36,7 @@ void prepareDensityFields() {
 
     // Fills the ntypes*M density field
     // and Fills d_charge_density_field if charges is flagged
-    if (step % GRID_UPDATE_FREQ == 0){
+    // if (step % GRID_UPDATE_FREQ == 0){
         if (Charges::do_charges == 1) {
             d_charge_grid_charges<<<ns_Grid, ns_Block>>>(d_x, d_grid_W,
                 d_grid_inds, d_typ, d_all_rho, d_Nx, d_dx,
@@ -51,7 +51,7 @@ void prepareDensityFields() {
                 V, ns, pmeorder, M, Dim);
 
         }
-    }
+    // }
 
     check_cudaError("d_charge_grid");
 

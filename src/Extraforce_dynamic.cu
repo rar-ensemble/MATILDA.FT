@@ -26,7 +26,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 {
 
     DynamicBonds.push_back(this);
-    std::srand(std::time(0));
+
 
     readRequiredParameter(iss, nlist_name);
 	nlist_index = get_nlist_id(nlist_name);

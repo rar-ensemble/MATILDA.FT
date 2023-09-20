@@ -1,7 +1,6 @@
 // Copyright (c) 2023 University of Pennsylvania
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
-
 #define MAIN
 #include "globals.h"
 #include "timing.h"
@@ -14,6 +13,8 @@
 using namespace std;
 
 void forces(void);
+void zero_forces(void);
+
 void update_potentials(void);
 void calc_properties(int);
 void initialize(void);
@@ -64,7 +65,7 @@ int main(int argc, char** argv)
 		die("Insufficient arguments");
 	}
 
-
+    std::srand(time(0));
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
 	
 	// printf("Git Version hash: %s\n", MY_GIT_VERSION);
@@ -125,7 +126,8 @@ int main(int argc, char** argv)
 
 		// Write initial positions to lammpstrj file
 		cuda_collect_x();
-		
+		prepareDensityFields();
+		zero_forces();
 		forces();
 		//cudaDeviceSynchronize();
 
@@ -189,8 +191,9 @@ int main(int argc, char** argv)
 			for (int i = 0; i < ntypes; ++i){
 				GRID_STATE[i] = 0;
 			}
-			
-			forces();
+
+			prepareDensityFields();
+			zero_forces();
 			
 			if ( ExtraForces.size() > 0 ) {
 				extraForce_t_in = time(0);
@@ -199,6 +202,8 @@ int main(int argc, char** argv)
 				check_cudaError("extraForces");
 				extraForce_tot_time += time(0) - extraForce_t_in;
 			}
+
+			forces();
 
 			for (auto Iter: Integrators){
 				Iter->Integrate_2();
