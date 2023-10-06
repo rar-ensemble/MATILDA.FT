@@ -102,9 +102,8 @@ __global__ void d_break_bonds_lewis_full_1(
     float *Lh,
     int D,
     float* d_charges,
-    int ind1,
-    int ind2,
-    float dU_lewis);   
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
 
 
 __global__ void d_break_bonds_lewis_full_2(
@@ -130,9 +129,8 @@ __global__ void d_break_bonds_lewis_full_2(
     float *Lh,
     int D,
     float* d_charges,
-    int ind1,
-    int ind2,
-    float dU_lewis);   
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
 
 
 

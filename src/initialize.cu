@@ -98,10 +98,7 @@ void initialize() {
 		if (a->potential_type!= b->potential_type) return a->potential_type < b->potential_type;
 		return a->type_specific_id < b->type_specific_id;
 	});
-	grid_per_partic = 1;
-	for (int j = 0; j < Dim; j++) {
-        grid_per_partic *= (pmeorder + 1);
-    }
+
 	
 }
 
@@ -217,10 +214,9 @@ void allocate_device_memory() {
 		GRID_STATE[i] = 0;
 	}
 
-	d_calculated_rho_all = (cufftComplex**)calloc(ntypes, sizeof(cufftComplex*));
-	for (int i = 0; i < ntypes; i++) {
-		 cudaMalloc(&d_calculated_rho_all[i], M * sizeof(cufftComplex));
-	}
+
+	cudaMalloc(&d_calculated_rho_all, M * ntypes * sizeof(cufftComplex));
+
 
 	device_mem_use += sizeof(cufftComplex) * (ntypes * M);
 

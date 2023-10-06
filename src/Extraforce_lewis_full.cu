@@ -122,6 +122,13 @@ LewisFull::LewisFull(istringstream &iss) : ExtraForce(iss)
     d_BONDED = BONDED;
 
     GRID = ceil(((float)nlist->n_donors)/float(threads));
+
+    d_lewis_vect.resize(3);
+    lewis_vect.resize(3);
+
+    d_dU_lewis.resize(1);
+    dU_lewis.resize(1);
+
 }
 
 
@@ -140,27 +147,36 @@ void LewisFull::AddExtraForce()
 
         int rnd = random()%2; //decide move sequence
 
-        rnd = 0;
+        // First variant
 
         if (rnd == 0){
+
+            /* Make Bonds */
+
             if (n_free > 0){
 
-                U_Electro_old = MasterCharge->CalcEnergy();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                U_Electro_old = MasterCharge->energy;
 
-                dU_lewis[0] = 0.0;
+                // zero energy difference
 
-                d_dU_lewis[0] = dU_lewis[0];
+                dU_lewis[0] = 0.0f;
+                //
+                d_dU_lewis = dU_lewis;
 
-                lewis_vect[0] = 0;
-                lewis_vect[1] = 0;  
-                lewis_vect[2] = 0;
+                // id1 id2 proceed_flag
 
+                lewis_vect[0] = -1;
+                lewis_vect[1] = -1;  
+                lewis_vect[2] = -1;
+                //
                 d_lewis_vect = lewis_vect;               
 
                 // Pick random particle to bond
 
                 random_ind = std::rand() % (n_free);
-                std::cout << "Picked random id: " << random_ind << std::endl;
+
 
                 d_make_bonds_lewis_full_1<<<1, 1>>>(d_x,d_f,
                     d_BONDS.data(),
@@ -171,10 +187,12 @@ void LewisFull::AddExtraForce()
                     k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
                     d_lewis_vect.data(), d_dU_lewis.data());
 
+
+                // Copy device vectors to host vectors
                 lewis_vect = d_lewis_vect;
                 dU_lewis = d_dU_lewis;
 
-                std::cout << "in1: "<< lewis_vect[0] << ", id2: " << lewis_vect[0] << ", proceed: " << lewis_vect[0] << ", energy: " << dU_lewis[0] <<  std::endl;
+                // std::cout << "B! Donor: "<< lewis_vect[0] << ", acceptor: " << lewis_vect[1] << ", P: " << lewis_vect[2] << ", dU_spring: " << dU_lewis[0] << ", old El: " << U_Electro_old <<  std::endl;
 
 
                 if (lewis_vect[2] == 1){
@@ -182,9 +200,16 @@ void LewisFull::AddExtraForce()
                     // Recalculate electrostatic field
 
                     prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
 
-                    dU_lewis = d_dU_lewis;
-                    dU_lewis[0] += (U_Electro_old - MasterCharge->CalcEnergy());
+                    // Update energy
+
+                    float dUEl = U_Electro_old - MasterCharge->energy;
+
+                    // std::cout << "Int: " << MasterCharge->energy << ", dUE: " << dUEl<< std::endl;
+
+                    dU_lewis[0] += dUEl;
                     d_dU_lewis = dU_lewis;
             
                     d_make_bonds_lewis_full_2<<<1, 1>>>(d_x,d_f,
@@ -195,12 +220,26 @@ void LewisFull::AddExtraForce()
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
                         d_lewis_vect.data(), d_dU_lewis.data());
+                    
+                    lewis_vect = d_lewis_vect;
 
-                    std::cout << "Old electrostatic energy: " << U_Electro_old << " New electrostatic energy: " << MasterCharge->CalcEnergy() << std::endl;
+                    
+                    if (lewis_vect[2] == 1 ){
+                        // std::cout << "Acepted! Udating host charges" << std::endl;
+                        cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
 
-                    prepareDensityFields();
-                    cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+                    }
+                    else{
+                        prepareDensityFields();
+                        MasterCharge->CalcCharges();
+                        MasterCharge->CalcEnergy();
+                        // std::cout << "Rejected! Recalculating fields!" << std::endl;
+                    }
+                    // std::cout << "dU_new: " << d_dU_lewis[0] <<  ", E_old: " << U_Electro_old << ", E_new: " << MasterCharge->energy << std::endl;
+
+                    
                 }
+
                 n_bonded = 0;
                 n_free = 0;
 
@@ -222,13 +261,29 @@ void LewisFull::AddExtraForce()
             
             if (n_bonded > 0){ 
 
-                dU_lewis = 0.0;
-                U_Electro_old = MasterCharge->CalcEnergy();
-                lewis_proceed = 0;
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                U_Electro_old = MasterCharge->energy;
+
+                // zero energy difference
+
+                dU_lewis[0] = 0.0f;
+                //
+                d_dU_lewis = dU_lewis;
+
+                // id1 id2 proceed_flag
+
+                lewis_vect[0] = -1;
+                lewis_vect[1] = -1;  
+                lewis_vect[2] = -1;
+                //
+                d_lewis_vect = lewis_vect;               
 
                 // Pick random particle to bond
 
                 random_ind = std::rand() % (n_bonded);
+
+                // Pick random particle to bond
 
                 d_break_bonds_lewis_full_1<<<1, 1>>>(d_x,d_f,
                     d_BONDS.data(),
@@ -237,12 +292,31 @@ void LewisFull::AddExtraForce()
                     nlist->nncells, nlist->ad_hoc_density,
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
-                    ind1, ind2, dU_lewis);
+                    d_lewis_vect.data(), d_dU_lewis.data());
 
+
+                // Copy device vectors to host vectors
+                lewis_vect = d_lewis_vect;
+                dU_lewis = d_dU_lewis;
+                
+
+                // std::cout << "A! Acceptor: "<< lewis_vect[0] << ", donor: " << lewis_vect[1] << ", P: " << lewis_vect[2] << ", dU_spring: " << dU_lewis[0] << ", old El: " << U_Electro_old <<  std::endl;
 
                 prepareDensityFields();
-                dU_lewis += (U_Electro_old - MasterCharge->CalcEnergy());
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
 
+
+                // Update energy
+
+                float dUEl = U_Electro_old - MasterCharge->energy;
+
+                // std::cout << "Int: " << MasterCharge->energy << ", dUE: " << dUEl<< std::endl;
+
+                dU_lewis[0] += dUEl;
+                d_dU_lewis = dU_lewis;
+
+                
 
                 d_break_bonds_lewis_full_2<<<1, 1>>>(d_x,d_f,
                     d_BONDS.data(),
@@ -251,10 +325,25 @@ void LewisFull::AddExtraForce()
                     nlist->nncells, nlist->ad_hoc_density,
                     group->d_index.data(), group->nsites, d_states,
                     k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
-                    ind1, ind2, dU_lewis);
+                    d_lewis_vect.data(), d_dU_lewis.data());
 
                 prepareDensityFields();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+
+                d_lewis_vect = lewis_vect;
+
+                // std::cout << "dU_new: " << d_dU_lewis[0] <<  ", E_old: " << U_Electro_old << ", E_new: " << MasterCharge->energy << std::endl;
+
+                // Update host charges
                 cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+                // if (d_lewis_vect[2] == 1){
+                //     std::cout << "Accepted bond break!" << std::endl;
+                // }
+                // else{
+                //     std::cout << "Rejected bond break!" << std::endl;
+                // }
 
                 n_bonded = 0;
                 n_free = 0;
@@ -275,85 +364,219 @@ void LewisFull::AddExtraForce()
             } 
         }
 
-        // else {
-        //     if (n_bonded > 0){
+         // Second variant
+        else {
 
-        //         random_ind = std::rand() % (n_bonded);
-        //         d_break_bonds_lewis_full<<<1, 1>>>(d_x,
-        //             d_BONDS.data(),
-        //             nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-        //             d_BONDED.data(), random_ind,
-        //             nlist->nncells, nlist->ad_hoc_density,
-        //             group->d_index.data(), group->nsites, d_states,
-        //             k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges,
-        //             grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
+            /*  Break bonds */ 
+            
+            if (n_bonded > 0){ 
 
-        //       cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                U_Electro_old = MasterCharge->energy;
 
+                // zero energy difference
 
-        //         n_bonded = 0;
-        //         n_free = 0;
+                dU_lewis[0] = 0.0f;
+                //
+                d_dU_lewis = dU_lewis;
 
-        //         BONDS = d_BONDS;
-        //         for (int i = 0; i < group->nsites; ++i){
-        //             if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-        //                 BONDED[n_bonded++] = i;
-        //             }
-        //             else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-        //                 FREE[n_free++] = i;
-        //             }
-        //         }
+                // id1 id2 proceed_flag
 
-        //         d_BONDED = BONDED;
-        //         d_FREE = FREE;
+                lewis_vect[0] = -1;
+                lewis_vect[1] = -1;  
+                lewis_vect[2] = -1;
+                //
+                d_lewis_vect = lewis_vect;               
 
-        //         //Update charges
-        //         check_cudaError("Break bonds lewis");
+                // Pick random particle to bond
 
-        //     } // if n_free > 0
+                random_ind = std::rand() % (n_bonded);
 
+                // Pick random particle to bond
 
-        //     if (n_free > 0){
+                d_break_bonds_lewis_full_1<<<1, 1>>>(d_x,d_f,
+                    d_BONDS.data(),
+                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                    d_BONDED.data(), d_VirArr.data(), random_ind,
+                    nlist->nncells, nlist->ad_hoc_density,
+                    group->d_index.data(), group->nsites, d_states,
+                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
+                    d_lewis_vect.data(), d_dU_lewis.data());
 
-        //         random_ind = std::rand() % (n_free);
+                // Copy device vectors to host vectors
+                lewis_vect = d_lewis_vect;
+                dU_lewis = d_dU_lewis;
+                
+                // std::cout << "A! Acceptor: "<< lewis_vect[0] << ", donor: " << lewis_vect[1] << ", P: " << lewis_vect[2] << ", dU_spring: " << dU_lewis[0] << ", old El: " << U_Electro_old <<  std::endl;
 
-        //         d_make_bonds_lewis_full<<<1, 1>>>(d_x,d_f,
-        //             d_BONDS.data(),
-        //             nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-        //             d_FREE.data(), d_VirArr.data(), random_ind,
-        //             nlist->nncells, nlist->ad_hoc_density,
-        //             group->d_index.data(), group->nsites, d_states,
-        //             k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges,
-        //             grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
-
-        //       cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-
-        //         // update the bonded array
-
-        //         n_bonded = 0;
-        //         n_free = 0;
-
-        //         BONDS = d_BONDS;
-        //         for (int i = 0; i < group->nsites; ++i){
-        //             if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-        //                 BONDED[n_bonded++] = i;
-        //             }
-        //             else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-        //                 FREE[n_free++] = i;
-        //             }
-        //         }
-
-        //         d_BONDED = BONDED;
-        //         d_FREE = FREE;
-
-        //         //Update charges
-
-        //         check_cudaError("Make bonds lewis");
-
-        //     }
-        // }
+                prepareDensityFields();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
 
 
+                // Update energy
+
+                float dUEl = U_Electro_old - MasterCharge->energy;
+
+                // std::cout << "Int: " << MasterCharge->energy << ", dUE: " << dUEl<< std::endl;
+
+                dU_lewis[0] += dUEl;
+                d_dU_lewis = dU_lewis;
+
+                
+
+                d_break_bonds_lewis_full_2<<<1, 1>>>(d_x,d_f,
+                    d_BONDS.data(),
+                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                    d_BONDED.data(), d_VirArr.data(), random_ind,
+                    nlist->nncells, nlist->ad_hoc_density,
+                    group->d_index.data(), group->nsites, d_states,
+                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
+                    d_lewis_vect.data(), d_dU_lewis.data());
+
+                prepareDensityFields();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+
+                d_lewis_vect = lewis_vect;
+
+
+                // std::cout << "dU_new: " << d_dU_lewis[0] <<  ", E_old: " << U_Electro_old << ", E_new: " << MasterCharge->energy << std::endl;
+
+                // Update host charges
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+                // if (d_lewis_vect[2] == 1){
+                //     std::cout << "Accepted bond break!" << std::endl;
+                // }
+                // else{
+                //     std::cout << "Rejected bond break!" << std::endl;
+                // }
+
+                n_bonded = 0;
+                n_free = 0;
+
+                BONDS = d_BONDS;
+                for (int i = 0; i < group->nsites; ++i){
+                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                        BONDED[n_bonded++] = i;
+                    }
+                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                        FREE[n_free++] = i;
+                    }
+                }
+
+                d_BONDED = BONDED;
+                d_FREE = FREE;
+
+            } 
+
+            /* Make Bonds */
+
+            if (n_free > 0){
+
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                U_Electro_old = MasterCharge->energy;
+
+                // zero energy difference
+
+                dU_lewis[0] = 0.0f;
+                //
+                d_dU_lewis = dU_lewis;
+
+                // id1 id2 proceed_flag
+
+                lewis_vect[0] = -1;
+                lewis_vect[1] = -1;  
+                lewis_vect[2] = -1;
+                //
+                d_lewis_vect = lewis_vect;               
+
+                // Pick random particle to bond
+
+                random_ind = std::rand() % (n_free);
+
+
+                d_make_bonds_lewis_full_1<<<1, 1>>>(d_x,d_f,
+                    d_BONDS.data(),
+                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                    d_FREE.data(), d_VirArr.data(), random_ind,
+                    nlist->nncells, nlist->ad_hoc_density,
+                    group->d_index.data(), group->nsites, d_states,
+                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
+                    d_lewis_vect.data(), d_dU_lewis.data());
+
+
+                // Copy device vectors to host vectors
+                lewis_vect = d_lewis_vect;
+                dU_lewis = d_dU_lewis;
+
+                // std::cout << "B! Donor: "<< lewis_vect[0] << ", acceptor: " << lewis_vect[1] << ", P: " << lewis_vect[2] << ", dU_spring: " << dU_lewis[0] << ", old El: " << U_Electro_old <<  std::endl;
+
+
+                if (lewis_vect[2] == 1){
+
+                    // Recalculate electrostatic field
+
+                    prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
+
+                    // Update energy
+
+                    float dUEl = U_Electro_old - MasterCharge->energy;
+
+                    // std::cout << "Int: " << MasterCharge->energy << ", dUE: " << dUEl<< std::endl;
+
+                    dU_lewis[0] += dUEl;
+                    d_dU_lewis = dU_lewis;
+            
+                    d_make_bonds_lewis_full_2<<<1, 1>>>(d_x,d_f,
+                        d_BONDS.data(),
+                        nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                        d_FREE.data(), d_VirArr.data(), random_ind,
+                        nlist->nncells, nlist->ad_hoc_density,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
+                        d_lewis_vect.data(), d_dU_lewis.data());
+                    
+                    lewis_vect = d_lewis_vect;
+
+                    
+                    if (lewis_vect[2] == 1 ){
+                        // std::cout << "Acepted! Udating host charges" << std::endl;
+                        cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+                    }
+                    else{
+                        prepareDensityFields();
+                        MasterCharge->CalcCharges();
+                        MasterCharge->CalcEnergy();
+                        // std::cout << "Rejected! Recalculating fields!" << std::endl;
+                    }
+                    // std::cout << "dU_new: " << d_dU_lewis[0] <<  ", E_old: " << U_Electro_old << ", E_new: " << MasterCharge->energy << std::endl;
+
+                    
+                }
+
+                n_bonded = 0;
+                n_free = 0;
+
+                BONDS = d_BONDS;
+                for (int i = 0; i < group->nsites; ++i){
+                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                        BONDED[n_bonded++] = i;
+                    }
+                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                        FREE[n_free++] = i;
+                    }
+                }
+                d_BONDED = BONDED;
+                d_FREE = FREE;
+            } 
+        }
     } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
 
     if(step >= bond_freq){
@@ -409,16 +632,17 @@ __global__ void d_make_bonds_lewis_full_1(
 {
 
     int tmp_ind = random_id;
-
     int list_ind = d_FREE[tmp_ind];
     int ind = d_index[list_ind];
 
-    curandState l_state;
-    l_state = d_states[ind];
-    d_states[ind] = l_state;
+    d_lewis_vect[0] = list_ind;
+
+
 
     int lnid;
     int c = d_RN_ARRAY_COUNTER[list_ind];
+
+    curandState l_state;
 
     if (c != 0){
         l_state = d_states[ind];
@@ -429,9 +653,9 @@ __global__ void d_make_bonds_lewis_full_1(
     }
     else{
         return;
+        printf("Return!");
         }
 
-    d_lewis_vect[0] = list_ind;
     d_lewis_vect[1] = lnid;
 
     if (atomicCAS(&d_BONDS.get()[lnid * 2], 0, -1) == 0){ //lock the particle to bond with
@@ -470,12 +694,11 @@ __global__ void d_make_bonds_lewis_full_1(
 
         if (mdr <= r_n){
 
-            d_lewis_vect[1] = 1;
-
-            printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);    
+            d_lewis_vect[2] = 1;
+            // printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);    
             d_charges[ind] += qind; 
             d_charges[nid] -= qind;
-            printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);   
+            // printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);   
 
         }
 
@@ -489,6 +712,7 @@ __global__ void d_make_bonds_lewis_full_1(
 
             atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
             atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
+            d_lewis_vect[2] = -1;
 
         }
 
@@ -540,9 +764,11 @@ __global__ void d_make_bonds_lewis_full_2(
     d_states[ind] = l_state;
 
 
+    d_lewis_vect[2] = -1;
 
     if (rnd < exp(-d_dU_lewis[0] + e_bond))
     {
+        d_lewis_vect[2] = 1;
         atomicExch(&d_BONDS.get()[list_ind * 2], 1);
         atomicExch(&d_BONDS.get()[lnid * 2], 1);
 
@@ -553,18 +779,16 @@ __global__ void d_make_bonds_lewis_full_2(
     else
     {
 
+
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);
         atomicExch(&d_BONDS.get()[lnid * 2], 0);
 
         atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
         atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
 
-        // Fix charges
-
-        printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);    
+        // Fix charges  
         d_charges[ind] -= qind; 
         d_charges[nid] += qind;
-        printf("Ind Nid ch1 ch2: %d %d %f %f\n", ind,nid, d_charges[ind],d_charges[nid]);   
 
     }
 
@@ -598,10 +822,8 @@ __global__ void d_break_bonds_lewis_full_1(
     float *Lh,
     int D,
     float* d_charges,
-    int ind1,
-    int ind2,
-    float dU_lewis)
-
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis)
 
 {
     int tmp_ind = random_id;
@@ -611,8 +833,8 @@ __global__ void d_break_bonds_lewis_full_1(
     int lnid = d_BONDS[list_ind * 2 + 1];
     int nid = d_index[lnid];
 
-    ind1 = list_ind;
-    ind2 = lnid;
+    d_lewis_vect[0] = list_ind;
+    d_lewis_vect[1] = lnid;
 
     double dr_sq = 0.0;
     double dr0;
@@ -640,7 +862,8 @@ __global__ void d_break_bonds_lewis_full_1(
         dU = 0.0;
     }
 
-    dU_lewis = dU;
+    d_dU_lewis[0] = dU;
+
     // Temporary charge change
     d_charges[ind] -= qind; 
     d_charges[nid] += qind;
@@ -671,16 +894,15 @@ __global__ void d_break_bonds_lewis_full_2(
     float *Lh,
     int D,
     float* d_charges,
-    int ind1,
-    int ind2,
-    float dU_lewis)
-
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis)
 
 {
 
 
-    int list_ind = ind1;
-    int lnid = ind2;
+    int list_ind = d_lewis_vect[0];
+    int lnid = d_lewis_vect[1];
+
     int ind = d_index[list_ind];
     int nid = d_index[lnid];
 
@@ -691,19 +913,24 @@ __global__ void d_break_bonds_lewis_full_2(
     d_states[ind] = l_state;
 
 
-    if (rnd <= exp(dU_lewis - e_bond))
+    if (rnd <= exp(d_dU_lewis[0] - e_bond))
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);
         atomicExch(&d_BONDS.get()[lnid * 2], 0);
 
         atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
         atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
+        d_lewis_vect[2] = 1;
+        // printf("Accepted bond break!");
 
     }
     else{
+
         // Restore bound charges
         d_charges[ind] += qind; 
         d_charges[nid] -= qind;
+        // printf("Rejected bond break!");
+
     }
 }
 
@@ -712,17 +939,22 @@ void LewisFull::WriteBonds(void)
 
     this->BONDS = d_BONDS;
     ofstream bond_file;
-    bond_file.open(file_name, ios::out | ios::app);
+    // bond_file.open(file_name, ios::out | ios::app);
 
 
-    bond_file << "TIMESTEP: " << global_step << " " << n_bonded << " " << n_free << " " << n_free + n_bonded << endl;
-    for (int j = 0; j < group->nsites; ++j)
-    {
-        if (BONDS[2 * j + 1] != -1 && nlist->AD[j] == 1)
-        {
-            bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
-        }
-    }
+    // bond_file << "TIMESTEP: " << global_step << " " << n_bonded << " " << n_free << " " << n_free + n_bonded << endl;
+    // for (int j = 0; j < group->nsites; ++j)
+    // {
+    //     if (BONDS[2 * j + 1] != -1 && nlist->AD[j] == 1)
+    //     {
+    //         bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
+    //     }
+    // }
+    // bond_file.close();
+
+    bond_file.open("bond_data", ios::out | ios::app);
+
+    bond_file << global_step << " " << float(n_bonded)/float(n_free + n_bonded) << " " << MasterCharge->energy << endl;
     bond_file.close();
 
 }

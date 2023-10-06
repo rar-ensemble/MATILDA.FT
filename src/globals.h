@@ -111,7 +111,7 @@ GRID_UPDATE_FREQ,
 #ifndef MAIN
 extern
 #endif
-cufftComplex **d_calculated_rho_all;
+cufftComplex *d_calculated_rho_all;
 
 #ifndef MAIN
 extern
@@ -191,7 +191,7 @@ extern
 int d_ns, * d_typ, * d_Nx, ns_Block, ns_Grid, M_Block, M_Grid, 
 * d_grid_inds, * d_molecID,
 * d_n_bonds, * d_n_angles, * d_bonded_to, * d_bond_type, *d_bond_style,
-* d_angle_first, * d_angle_mid, * d_angle_end, *d_angle_type, *d_angleIntStyle ;
+* d_angle_first, * d_angle_mid, * d_angle_end, *d_angle_type, *d_angleIntStyle, die_flag ;
 
 #ifndef MAIN
 extern

@@ -2,7 +2,7 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
-#include "Extraforce_lewis.h"
+#include "Extraforce_lewis_serial.h"
 #include "Extraforce_dynamic.h"
 #include <curand_kernel.h>
 #include <curand.h>
@@ -21,9 +21,9 @@
 using namespace std;
 
 
-Lewis::~Lewis() { return; }
+LewisSerial::~LewisSerial() { return; }
 
-Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
+LewisSerial::LewisSerial(istringstream &iss) : ExtraForce(iss)
 {
 
     DynamicBonds.push_back(this);
@@ -33,7 +33,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 	nlist_index = get_nlist_id(nlist_name);
     nlist = dynamic_cast<NListBonding*>(NLists.at(nlist_index));
 
-    cout << "Lewis bonds active!" << endl;
+    cout << "LewisSerial bonds active!" << endl;
     cout <<"N-list index: " << nlist_index << ", n-list name: " << nlist_name << endl;
 
 
@@ -119,7 +119,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 }
 
 
-void Lewis::AddExtraForce()
+void LewisSerial::AddExtraForce()
 {   
 
     if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
@@ -130,167 +130,182 @@ void Lewis::AddExtraForce()
 
 
 
-    if (step % bond_freq == 0 && step >= bond_freq && step >= nlist->nlist_freq){
+    if (step % bond_freq == 0 && step >= bond_freq){
+        for (int loops = 0; loops < int(bond_freq/10); ++loops){
+            int rnd = random()%2; //decide move sequence
 
+            if (rnd == 0){
+                if (n_free > 0){
 
-        int rnd = random()%2; //decide move sequence
+                    prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
 
-        if (rnd == 0){
-            if (n_free > 0){
-                d_make_bonds_lewis<<<GRID, threads>>>(d_x,d_f,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_FREE.data(), d_VirArr.data(), n_free,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
-                    grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
+                    int rndid = random()%(n_free);
+                    d_make_bonds_lewis_serial<<<1, 1>>>(d_x,d_f,
+                        d_BONDS.data(),
+                        nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                        d_FREE.data(), d_VirArr.data(), n_free,
+                        nlist->nncells, nlist->ad_hoc_density,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim,d_charges,
+                        grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W, rndid);
 
-              cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-                check_cudaError("Make bonds lewis");
+                    cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+                    check_cudaError("Make bonds lewis");
 
-                n_bonded = 0;
-                n_free = 0;
+                    n_bonded = 0;
+                    n_free = 0;
 
-                BONDS = d_BONDS;
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                        BONDED[n_bonded++] = i;
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                            FREE[n_free++] = i;
+                        }
                     }
-                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                        FREE[n_free++] = i;
+
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+
+                    check_cudaError("Update charges lewis bonds");
+
+                } 
+
+
+                
+                if (n_bonded > 0){
+
+                    int rndid = random()%(n_bonded);
+
+                    prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
+                    d_break_bonds_lewis_serial<<<1,1>>>(d_x,
+                        d_BONDS.data(),
+                        nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                        d_BONDED.data(),n_bonded,
+                        nlist->nncells, nlist->ad_hoc_density,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges,
+                        grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W, rndid);
+
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+                    n_bonded = 0;
+                    n_free = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                            FREE[n_free++] = i;
+                        }
                     }
-                }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
 
 
-                d_BONDED = BONDED;
-                d_FREE = FREE;
+                    //Update charges
 
-                check_cudaError("Update charges lewis bonds");
-
-            } 
-
-
-            
-            if (n_bonded > 0){
-
-                prepareDensityFields();
-                MasterCharge->CalcCharges();
-                MasterCharge->CalcEnergy();
-                d_break_bonds_lewis<<<GRID, threads>>>(d_x,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_BONDED.data(),n_bonded,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges,
-                    grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
-
-              cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-
-                n_bonded = 0;
-                n_free = 0;
-
-                BONDS = d_BONDS;
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                        BONDED[n_bonded++] = i;
-                    }
-                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                        FREE[n_free++] = i;
-                    }
-                }
-
-                d_BONDED = BONDED;
-                d_FREE = FREE;
-
-
-                //Update charges
-
-                check_cudaError("Break bonds lewis");
-            } 
-        }
-
-        else {
-            if (n_bonded > 0){
-                d_break_bonds_lewis<<<GRID, threads>>>(d_x,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_BONDED.data(),n_bonded,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges,
-                    grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
-
-              cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-
-
-                n_bonded = 0;
-                n_free = 0;
-
-                BONDS = d_BONDS;
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                        BONDED[n_bonded++] = i;
-                    }
-                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                        FREE[n_free++] = i;
-                    }
-                }
-
-                d_BONDED = BONDED;
-                d_FREE = FREE;
-
-                //Update charges
-                check_cudaError("Break bonds lewis");
-
-            } // if n_free > 0
-
-
-            if (n_free > 0){
-
-                prepareDensityFields();
-                MasterCharge->CalcCharges();
-                MasterCharge->CalcEnergy();
-                d_make_bonds_lewis<<<GRID, threads>>>(d_x,d_f,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_FREE.data(), d_VirArr.data(), n_free,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges,
-                    grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W);
-
-              cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-
-                // update the bonded array
-
-                n_bonded = 0;
-                n_free = 0;
-
-                BONDS = d_BONDS;
-                for (int i = 0; i < group->nsites; ++i){
-                    if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                        BONDED[n_bonded++] = i;
-                    }
-                    else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                        FREE[n_free++] = i;
-                    }
-                }
-
-                d_BONDED = BONDED;
-                d_FREE = FREE;
-
-                //Update charges
-
-                check_cudaError("Make bonds lewis");
-
+                    check_cudaError("Break bonds lewis");
+                } 
             }
-        }
-        prepareDensityFields();
-        MasterCharge->CalcCharges();
-        MasterCharge->CalcEnergy();
 
+            else {
+                if (n_bonded > 0){
+
+                    prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
+
+                    int rndid = random()%(n_bonded);
+                    d_break_bonds_lewis_serial<<<1,1>>>(d_x,
+                        d_BONDS.data(),
+                        nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                        d_BONDED.data(),n_bonded,
+                        nlist->nncells, nlist->ad_hoc_density,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges,
+                        grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W, rndid);
+
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+
+                    n_bonded = 0;
+                    n_free = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                            FREE[n_free++] = i;
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+
+                    //Update charges
+                    check_cudaError("Break bonds lewis");
+
+                } // if n_free > 0
+
+
+                if (n_free > 0){
+
+                    int rndid = random()%(n_free);
+
+                    prepareDensityFields();
+                    MasterCharge->CalcCharges();
+                    MasterCharge->CalcEnergy();
+                    d_make_bonds_lewis_serial<<<1, 1>>>(d_x,d_f,
+                        d_BONDS.data(),
+                        nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
+                        d_FREE.data(), d_VirArr.data(), n_free,
+                        nlist->nncells, nlist->ad_hoc_density,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges,
+                        grid_per_partic,d_electrostatic_potential,d_grid_inds,d_grid_W,rndid);
+
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+                    // update the bonded array
+
+                    n_bonded = 0;
+                    n_free = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
+                            FREE[n_free++] = i;
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+
+                    //Update charges
+
+                    check_cudaError("Make bonds lewis");
+
+                }
+            }
+            prepareDensityFields();
+            MasterCharge->CalcCharges();
+            MasterCharge->CalcEnergy();
+        }
     } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
 
     if(step >= bond_freq){
@@ -307,18 +322,18 @@ void Lewis::AddExtraForce()
 
     if (step % bond_log_freq == 0 && step >= offset)
     {
-        Lewis::WriteBonds();
+        LewisSerial::WriteBonds();
     }
 }
 
 
 /*
-Updates forces acting on particles due to Lewis bonds
+Updates forces acting on particles due to LewisSerial bonds
 */
 
 
 
-__global__ void d_make_bonds_lewis(
+__global__ void d_make_bonds_lewis_serial(
     const float *x,
     float* f,
     thrust::device_ptr<int> d_BONDS,
@@ -344,14 +359,12 @@ __global__ void d_make_bonds_lewis(
     int grid_per_partic,
     float* d_electrostatic_potential,
     int* d_grid_inds,
-    float* d_grid_W)
+    float* d_grid_W,
+    int rndid)
 
 {
 
-    int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_free)
-        return;
-
+    int tmp_ind = rndid;
 
 
 
@@ -460,7 +473,7 @@ __global__ void d_make_bonds_lewis(
 
 
 
-__global__ void d_break_bonds_lewis(
+__global__ void d_break_bonds_lewis_serial(
     const float *x,
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_RN_ARRAY,
@@ -483,13 +496,13 @@ __global__ void d_break_bonds_lewis(
     int grid_per_partic,
     float* d_electrostatic_potential,
     int* d_grid_inds,
-    float* d_grid_W)
+    float* d_grid_W,
+    int rndid)
 
 
 {
-    int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded)
-        return;
+    int tmp_ind = rndid;
+
 
     int list_ind = d_BONDED[tmp_ind];
     int ind = d_index[list_ind];
@@ -558,7 +571,7 @@ __global__ void d_break_bonds_lewis(
     }
 }
 
-void Lewis::WriteBonds(void)
+void LewisSerial::WriteBonds(void)
 {
 
     this->BONDS = d_BONDS;
@@ -582,7 +595,7 @@ void Lewis::WriteBonds(void)
 }
 
 
-void Lewis::UpdateVirial(void){
+void LewisSerial::UpdateVirial(void){
 
     VirArr = d_VirArr;
 

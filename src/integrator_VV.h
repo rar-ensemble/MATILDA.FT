@@ -8,8 +8,7 @@
 #include <curand.h>
 
 __global__ void d_VV_integrator_1(float* x, float* f, float*v, int *typ, float *mass, float delt, 
-	float *L, float *Lh, thrust::device_ptr<int> d_index, int ns, int D, float v_max, int step, curandState *d_states, int dist,
-    thrust::device_ptr<float> d_TDISP);
+	float *L, float *Lh, thrust::device_ptr<int> d_index, int ns, int D, float v_max, int step, curandState *d_states, int dist);
 
 __global__ void d_VV_integrator_2(float* x, float* f, float*v, int *typ, float *mass, float delt, 
 	float *L, float *Lh, thrust::device_ptr<int> d_index, int ns, int D );
@@ -28,7 +27,7 @@ public:
     ~VV();
     void Integrate_1() override;
     void Integrate_2() override;
-    thrust::device_vector<float> d_TDISP;
+    // thrust::device_vector<float> d_TDISP;
 };
 
 #endif

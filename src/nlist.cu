@@ -127,11 +127,12 @@ NList* NListFactory(istringstream &iss){
 
 int NList::CheckTrigger(){
 
-	if (nlist_freq < 0 && MAX_DISP>= d_trigger){
-		MAX_DISP = -1.0;
-		return 1;
-	}
-	else if(nlist_freq > 0 && step%nlist_freq == 0 && step >= nlist_freq){
+	// if (nlist_freq < 0 && MAX_DISP>= d_trigger){
+	// 	MAX_DISP = -1.0;
+	// 	return 1;
+	// }
+	// else
+    if(step%nlist_freq == 0 && step >= nlist_freq){
 		return 1;
 	}
 	else {

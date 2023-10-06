@@ -70,9 +70,11 @@ public:
     thrust::device_vector<int> d_RN_ARRAY;
     thrust::device_vector<int> d_RN_ARRAY_COUNTER;
 
+    thrust::host_vector<int> RN_ARRAY;
+    thrust::host_vector<int> RN_ARRAY_COUNTER;
+
 
     
-
     // Additional functions
 
     void KillingMeSoftly(); // Checks if the grid division is correct

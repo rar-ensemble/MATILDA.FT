@@ -108,6 +108,8 @@ void Potential::AddForces(){
 // Calculates forces on rho1, rho2 for this pairstyle
 void Potential::CalcForces() {
 
+
+
     /////////////////////////
     // rho2 acting on rho1 //
     /////////////////////////
@@ -117,18 +119,18 @@ void Potential::CalcForces() {
     // fft rho2
     if (SAME_TYPE != 1){
         if (GRID_STATE[type2] == 0){
-
             GRID_STATE[type2] = 1;
             d_prepareDensity<<<M_Grid, M_Block>>>(type2, d_all_rho, d_cpx1, M);
             check_cudaError("d_prepareDensity");
 
-            cufftExecC2C(fftplan, d_cpx1, d_calculated_rho_all[type2], CUFFT_FORWARD);
-            check_cudaError("cufftExec1");
+            cufftExecC2C(fftplan, d_cpx1, d_calculated_rho_all + M * type2, CUFFT_FORWARD);
+            check_cudaError("cufftExec type2 loop 1");
+
         }
 
 
         // d_cpx1 = d_cpx2 * d_f_k
-        d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_calculated_rho_all[type2], d_cpxx, d_cpxy,d_cpxz,Dim, M);
+        d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_calculated_rho_all + M * type2, d_cpxx, d_cpxy, d_cpxz,Dim, M);
 
             check_cudaError("d_prepareForceKSpace");
             //cudaDeviceSynchronize();
@@ -137,7 +139,7 @@ void Potential::CalcForces() {
             cufftExecC2C(fftplan, d_cpxy, d_cpxy, CUFFT_INVERSE);
             cufftExecC2C(fftplan, d_cpxz, d_cpxz, CUFFT_INVERSE);
 
-            check_cudaError("cufftExec1");
+            check_cudaError("cufftExec cpx/y/z");
 
             // cudaDeviceSynchronize();           
             
@@ -164,18 +166,22 @@ void Potential::CalcForces() {
     if (GRID_STATE[type1] == 0){
         GRID_STATE[type1] = 1;
         d_prepareDensity<<<M_Grid, M_Block>>> (type1, d_all_rho, d_cpx1, M);
-        cufftExecC2C(fftplan, d_cpx1, d_calculated_rho_all[type1], CUFFT_FORWARD);
-        check_cudaError("cufftExec");
+        check_cudaError("d_prepareDensity");
+        cufftExecC2C(fftplan, d_cpx1, d_calculated_rho_all + M * type1, CUFFT_FORWARD);
+        check_cudaError("cufftExec type1 loop 2");
     }
 
 
     // d_cpx1 = d_cpx2 * d_f_k
-    d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_calculated_rho_all[type1], d_cpxx, d_cpxy,d_cpxz,Dim, M);
+    d_prepareForceKSpace<<<M_Grid, M_Block>>>(this->d_f_k, d_calculated_rho_all + M * type1, d_cpxx, d_cpxy,d_cpxz,Dim, M);
 
+    check_cudaError("Prepare for K-space");
     // back to real space, in-place transform
     cufftExecC2C(fftplan, d_cpxx, d_cpxx, CUFFT_INVERSE);
     cufftExecC2C(fftplan, d_cpxy, d_cpxy, CUFFT_INVERSE);
     cufftExecC2C(fftplan, d_cpxz, d_cpxz, CUFFT_INVERSE);
+
+    check_cudaError("cufftExec cpxx,y,z");
 
 
     if(SAME_TYPE == 1){
@@ -189,26 +195,27 @@ void Potential::CalcForces() {
 
         
 
-        if(SAME_TYPE == 1){
-            d_accumulateGridForcex2<<<M_Grid, M_Block, 0, 0>>>(d_cpxy,
-                d_all_rho, d_all_fy, type2, M);
+    if(SAME_TYPE == 1){
+        d_accumulateGridForcex2<<<M_Grid, M_Block, 0, 0>>>(d_cpxy,
+            d_all_rho, d_all_fy, type2, M);
+    }
+    else{
+        d_accumulateGridForce<<<M_Grid, M_Block, 0, 0>>>(d_cpxy,
+            d_all_rho, d_all_fy, type2, M);
         }
-        else{
-            d_accumulateGridForce<<<M_Grid, M_Block, 0, 0>>>(d_cpxy,
-                d_all_rho, d_all_fy, type2, M);
-            }
 
 
-        if(SAME_TYPE == 1){
-            d_accumulateGridForcex2<<<M_Grid, M_Block, 0, 0>>>(d_cpxz,
-                d_all_rho, d_all_fz, type2, M);
+    if(SAME_TYPE == 1){
+        d_accumulateGridForcex2<<<M_Grid, M_Block, 0, 0>>>(d_cpxz,
+            d_all_rho, d_all_fz, type2, M);
+    }
+    else{
+        d_accumulateGridForce<<<M_Grid, M_Block, 0, 0>>>(d_cpxz,
+            d_all_rho, d_all_fz, type2, M);
         }
-        else{
-            d_accumulateGridForce<<<M_Grid, M_Block, 0, 0>>>(d_cpxz,
-                d_all_rho, d_all_fz, type2, M);
-            }
 
 
+    check_cudaError("Accumulate grid forces");
 
     // cudaDeviceSynchronize();
 //   if (SAME_TYPE != 1){

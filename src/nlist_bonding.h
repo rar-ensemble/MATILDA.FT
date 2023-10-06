@@ -59,7 +59,7 @@ public:
 
     std::string ad_file;
 
-    thrust::host_vector<int> AD;
+    thrust::host_vector<int> AD, DONORS, ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS;
 
     // Override functions

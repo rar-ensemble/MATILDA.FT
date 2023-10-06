@@ -13,30 +13,30 @@ VV::~VV(){return;}
 VV::VV(std::istringstream& iss) : Integrator(iss) {
     readRequiredParameter(iss,v_max);
     readRequiredParameter(iss,dist);
-    d_TDISP.resize(ns);
-    thrust::fill(d_TDISP.begin(),d_TDISP.end(),0.0);
+    // d_TDISP.resize(ns);
+    // thrust::fill(d_TDISP.begin(),d_TDISP.end(),0.0);
 }
 
 void VV::Integrate_1(){
 
 
-    if (MAX_DISP == -1.0){
-        MAX_DISP = 0.0;
-        thrust::fill(d_TDISP.begin(),d_TDISP.end(),0.0);
-    }
+    // if (MAX_DISP == -1.0){
+    //     MAX_DISP = 0.0;
+    //     thrust::fill(d_TDISP.begin(),d_TDISP.end(),0.0);
+    // }
 
-    else{
-        // float max_val = thrust::reduce(d_TDISP.begin(), d_TDISP.end(), 0, thrust::plus<float>());
-        thrust::device_vector<float>::iterator iter = thrust::max_element(d_TDISP.begin(), d_TDISP.end());
-        unsigned int position = iter - d_TDISP.begin();
-        float max_val = *iter;
-        // std::cout << "The maximum value is " << max_val <<  std::endl;
-        MAX_DISP += max_val;
-    }
+    // else{
+    //     // float max_val = thrust::reduce(d_TDISP.begin(), d_TDISP.end(), 0, thrust::plus<float>());
+    //     thrust::device_vector<float>::iterator iter = thrust::max_element(d_TDISP.begin(), d_TDISP.end());
+    //     unsigned int position = iter - d_TDISP.begin();
+    //     float max_val = *iter;
+    //     // std::cout << "The maximum value is " << max_val <<  std::endl;
+    //     MAX_DISP += max_val;
+    // }
 
     d_VV_integrator_1<<<group->GRID, group->BLOCK>>>(d_x, d_f, d_v,
         d_typ, d_mass, delt, d_L, d_Lh, group->d_index.data(),
-        group->nsites, Dim, v_max, step, d_states, dist, d_TDISP.data());
+        group->nsites, Dim, v_max, step, d_states, dist);
 }
 
 void VV::Integrate_2(){
@@ -52,8 +52,7 @@ d_VV_integrator_2<<<group->GRID, group->BLOCK>>>(d_x, d_f, d_v,
 // integrator 2 is after the force call
 
 __global__ void d_VV_integrator_1(float* x, float* f, float*v, int *typ, float *mass, float delt, 
-	float *L, float *Lh, thrust::device_ptr<int> d_index, int ns, int D, float v_max, int step, curandState *d_states, int dist,
-    thrust::device_ptr<float> d_TDISP){
+	float *L, float *Lh, thrust::device_ptr<int> d_index, int ns, int D, float v_max, int step, curandState *d_states, int dist){
 
 	const int list_ind = blockIdx.x * blockDim.x + threadIdx.x;
 	if (list_ind >= ns)
@@ -96,7 +95,7 @@ __global__ void d_VV_integrator_1(float* x, float* f, float*v, int *typ, float *
 		else if (x[ind * D + j] < 0.0)
 			x[ind * D + j] += L[j];
 	}
-    d_TDISP[list_ind] = d_TDISP[list_ind] + sqrt(disp_sq);
+    // d_TDISP[list_ind] = d_TDISP[list_ind] + sqrt(disp_sq);
 }
 
 __global__ void d_VV_integrator_2(float* x, float* f, float*v, int *typ, float *mass, float delt, 

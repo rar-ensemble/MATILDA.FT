@@ -89,36 +89,44 @@ void NListBonding::MakeNList()
         if (LOW_DENS_FLAG > 0){
             
             cout << "Input density was: " << ad_hoc_density <<" but at least "<< ad_hoc_density + LOW_DENS_FLAG <<" is required"<<endl;
-            ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
-            cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
-
-            d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
-            d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-            // MASTER_GRID.resize(xyz * ad_hoc_density);                 
-            // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
-
-            LOW_DENS_FLAG = 0;
-
-            d_nlist_bonding_update_grid<<<AGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-                d_Nxx.data(), d_Lg.data(),
-                d_LOW_DENS_FLAG.data(),
-                d_ACCEPTORS.data(),
-                nncells, n_acceptors, ad_hoc_density,
-                group->d_index.data(), group->nsites, Dim);
-
-            // Updates n-list for the donors
-
-            d_nlist_bonding_update_nlist<<<DGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
-                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-                d_Nxx.data(), d_Lg.data(),
-                d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
-                d_DONORS.data(),
-                nncells, n_donors, r_skin, ad_hoc_density,
-                group->d_index.data(), group->nsites, Dim);
-
+            die("Low ad_hoc_density!");
         }
+        //     ad_hoc_density += ceil(LOW_DENS_FLAG*1.5);
+        //     cout << "Increasing the density to " <<  ad_hoc_density <<  " at step " << step << endl;
+
+        //     d_MASTER_GRID.resize(xyz * ad_hoc_density);                 
+        //     d_RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+        //     // MASTER_GRID.resize(xyz * ad_hoc_density);                 
+        //     // RN_ARRAY.resize(group->nsites * ad_hoc_density * nncells);
+
+        //     LOW_DENS_FLAG = 0;
+
+        //     d_nlist_bonding_update_grid<<<AGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+        //         d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+        //         d_Nxx.data(), d_Lg.data(),
+        //         d_LOW_DENS_FLAG.data(),
+        //         d_ACCEPTORS.data(),
+        //         nncells, n_acceptors, ad_hoc_density,
+        //         group->d_index.data(), group->nsites, Dim);
+
+        //     // Updates n-list for the donors
+
+        //     d_nlist_bonding_update_nlist<<<DGRID, group->BLOCK>>>(d_x, d_Lh, d_L,
+        //         d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+        //         d_Nxx.data(), d_Lg.data(),
+        //         d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+        //         d_DONORS.data(),
+        //         nncells, n_donors, r_skin, ad_hoc_density,
+        //         group->d_index.data(), group->nsites, Dim);
+
+        // }
+
+        // Update host counters
+        
+        RN_ARRAY = d_RN_ARRAY;
+        RN_ARRAY_COUNTER = d_RN_ARRAY_COUNTER;
+
     } // if (CheckTrigger() == 1)
 }
 

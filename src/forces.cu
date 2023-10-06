@@ -66,6 +66,10 @@ void zero_forces() {
 
 void forces(){
 
+	for (int i = 0; i < ntypes; ++i){
+		GRID_STATE[i] = 0;
+	}
+
 	for (auto Iter: Potentials){
 		Iter->CalcForces();
 	}

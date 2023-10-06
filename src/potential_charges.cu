@@ -234,7 +234,7 @@ void Charges::CalcCharges() {
 void Charges::ReportEnergies(int &die_flag){
     
     if (std::isnan(energy)) { die_flag = 1; }
-    cout<< "Electrostatic Energy: " + to_string(energy) + " ";
+    cout<< "EE: " + to_string(energy) + " ";
 }
 
 void calc_electrostatic_energy() {

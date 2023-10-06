@@ -7,6 +7,7 @@
 #include "Extraforce_wall.h"
 #include "Extraforce_lewis.h"
 #include "Extraforce_lewis_full.h"
+#include "Extraforce_lewis_serial.h"
 #include "Extraforce_dpd.h"
 #include "Extraforce_dynamic.h"
 
@@ -55,7 +56,11 @@ ExtraForce* ExtraForceFactory(istringstream &iss){
 	}
 	if (s1 == "lewis_full"){
 		return new LewisFull(iss);
-	}		
+	}
+
+	if (s1 == "lewis_serial"){
+		return new LewisSerial(iss);
+	}				
 	die(s1 + " is not a valid ExtraForce, you have failed miserably!\n Supported ExtraForces are: midpush, langevin, wall");
 	return 0;
 }

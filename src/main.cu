@@ -121,6 +121,10 @@ int main(int argc, char** argv)
 
 		initialize();
 
+		for (int i = 0; i < ntypes; ++i){
+			GRID_STATE[i] = 0;
+		}
+
 		set_write_status();
 
 
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
 			print_tot_time += print_t_out - print_t_in;
 		}
 
-		int die_flag = 0;
+		die_flag = 0;
 
 		init_t_out = int(time(0));
 
@@ -187,10 +191,6 @@ int main(int argc, char** argv)
 				check_cudaError("Error in N-lists");
 				nList_tot_time += time(0) - nList_t_in;
 			}	
-
-			for (int i = 0; i < ntypes; ++i){
-				GRID_STATE[i] = 0;
-			}
 
 			prepareDensityFields();
 			zero_forces();
@@ -512,7 +512,7 @@ void set_ft_config(){
 	equilData = 1;
 	equil_steps = 0;
 	prod_steps = 0;
-	MAX_DISP = 0.0f;
+	// MAX_DISP = 0.0f;
 	prod_bin_freq = 0;
 	prod_log_freq = 0;
 	prod_traj_freq = 0;

@@ -492,7 +492,7 @@ void set_defaults() {
 	equilData = 1;
 	equil_steps = 0;
 	prod_steps = 0;
-	MAX_DISP = 0.0f;
+	// MAX_DISP = 0.0f;
 	prod_bin_freq = 0;
 	prod_log_freq = 0;
 	prod_traj_freq = 0;
