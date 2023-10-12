@@ -342,8 +342,17 @@ float MaierSaupe::CalculateOrderParameterGridPoints(){
 
     cudaMemcpy(h_grid_W.data(), d_grid_W, M*sizeof(float), cudaMemcpyDeviceToHost);
 
+    static std::vector<float> per_grid_eigen_value(M,0);
+
     for (int i=0; i<M; i++){
-        CalculateMaxEigenValue(&h_S_field[i * Dim*Dim]) / float(h_grid_W[i]);
+        per_grid_eigen_value(i) = CalculateMaxEigenValue(&h_S_field[i * Dim*Dim]) / float(h_grid_W[i]);
+    }
+
+    int nn[Dim];
+    fileout << "time x y z lambda\n"
+    for (int i = 0; i < M; i++){
+        unstack(i, nn);
+        fileout << step << "\t" << nn[0] << "\t" << nn[1] << "\t" << nn[2] << "\t" << per_grid_eigen_value.at(i) << "\n";
     }
 }
 
