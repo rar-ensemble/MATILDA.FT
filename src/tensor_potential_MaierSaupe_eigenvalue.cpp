@@ -16,17 +16,15 @@
 using namespace std;
 using namespace Eigen;
 
-float MaierSaupe::CalculateMaxEigenValue()
+float MaierSaupe::CalculateMaxEigenValue(float* dim_dim_tensor)
 {
     MatrixXf q_tensor(Dim, Dim);
 
     for ( int i=0 ; i<Dim ; i++ ) {
         for ( int j=0 ; j<Dim ; j++ ) {
-            q_tensor(i,j) = h_Dim_Dim_tensor[i*Dim + j];
+            q_tensor(i,j) = dim_dim_tensor[i*Dim + j];
         }
     }
-
-    q_tensor /= float(nms);
 
     // Calculate the eigenvalue
     EigenSolver<MatrixXf> es;
