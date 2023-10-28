@@ -25,15 +25,99 @@ Dynamic::~Dynamic() { return; }
 Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 {
 
-    DynamicBonds.push_back(this);
-    std::srand(std::time(0));
 
-    readRequiredParameter(iss, nlist_name);
-	nlist_index = get_nlist_id(nlist_name);
-    nlist = dynamic_cast<NListBonding*>(NLists.at(nlist_index));
+    DynamicBonds.push_back(this);
+    thrust::default_random_engine g(time(0));
+
 
     cout << "Dynamic bonds active!" << endl;
-    cout <<"N-list index: " << nlist_index << ", n-list name: " << nlist_name << endl;
+
+    readRequiredParameter(iss, ad_file); //file that maps acceptors and donors to group indices
+    cout << "AD mapping file: " << ad_file << endl; 
+
+
+    // Read the AD mapping file and assign correct indices
+    //ACCEPTORS array stores group indices of acceptors, and vice versa for donors
+
+    std::string line2;
+    ifstream in2(ad_file);
+    getline(in2, line2);
+    istringstream str2(line2);
+    
+
+    std::vector<int> d_vect, a_vect;
+    int adc = 0;
+    while (str2 >> adc){
+        if (adc == 1){
+            d_vect.push_back(1); // stores indices within the group
+        }
+
+        else if(adc == 0){
+            a_vect.push_back(1);
+        }
+    }
+    if (d_vect.size() >= a_vect.size()){
+        donor_tag = 1;
+        acceptor_tag = 0;
+        std::cout << "Donors > Acceptors" << std::endl;
+    }
+    else{
+        donor_tag = 0;
+        acceptor_tag = 1;
+        std::cout << "Acceptors > Donors" << std::endl;
+    }
+
+    in2.close();
+
+    mbbond.resize(2);
+    mbbond[0] = mbbond[1] = 0;
+    d_mbbond = mbbond;
+    
+
+    std::string line;
+    ifstream in(ad_file);
+    getline(in, line);
+    istringstream str(line);
+
+    int ad = 0;
+    int count = 0;
+    while (str >> ad){
+        AD.push_back(ad);
+        if (ad == donor_tag){
+            d_DONORS.push_back(count); // stores indices within the group
+        }
+
+        else if(ad == acceptor_tag){
+            d_ACCEPTORS.push_back(count);
+        }
+        ++count;
+    }
+
+    in.close();
+    
+
+    n_donors = d_DONORS.size();
+    n_acceptors = d_ACCEPTORS.size();
+
+
+    ACCEPTORS = d_ACCEPTORS;
+    DONORS = d_DONORS;
+
+    S_ACCEPTORS.resize(n_donors * n_acceptors);
+
+
+    for (int i = 0; i < n_donors; ++i){
+        // RN_ARRAY_COUNTER.push_back(n_acceptors);
+        thrust::shuffle(ACCEPTORS.begin(),ACCEPTORS.end(),g);
+        for (int j = 0; j < ACCEPTORS.size(); ++j){
+            S_ACCEPTORS[i * n_acceptors + j] = ACCEPTORS[j];
+        }
+    }
+
+    d_S_ACCEPTORS = S_ACCEPTORS;
+
+    // d_RN_ARRAY = RN_ARRAY;
+    // d_RN_ARRAY_COUNTER = RN_ARRAY_COUNTER;
 
 
     readRequiredParameter(iss, k_spring);
@@ -42,8 +126,8 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     cout << "e_bond: " << e_bond << endl;
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
-    readRequiredParameter(iss, qind);
-     cout << "qind: " << qind << endl;
+    readRequiredParameter(iss, r_n);
+     cout << "r_n: " << r_n << endl;
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
     readRequiredParameter(iss, bond_log_freq);
@@ -72,8 +156,8 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     }
 
     cout << "Group size: " << group->nsites << endl;
-    cout << "Donors: " << nlist->n_donors << endl;
-    cout << "Acceptors: " << nlist->n_acceptors << endl;
+    cout << "Donors: " << n_donors << endl;
+    cout << "Acceptors: " << n_acceptors << endl;
 
 
 
@@ -96,25 +180,35 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
         d_VirArr[i] = 0.0f;
     }
 
-    d_BONDED.resize( group->nsites);
-    d_FREE.resize( group->nsites);
+    d_BONDED.resize( n_donors);
+    d_FREE.resize( n_donors);
+    d_FREE_ACCEPTORS.resize(n_acceptors);
 
-    BONDED.resize( group->nsites);
-    FREE.resize( group->nsites);
+    BONDED.resize( n_donors);
+    FREE.resize( n_donors);
+    FREE_ACCEPTORS.resize(n_acceptors);
 
 
-    for (int i = 0; i < nlist->n_donors; ++i){
-        FREE[i] = nlist->d_DONORS[i];
+    for (int i = 0; i < n_donors; ++i){
+        FREE[i] = d_DONORS[i];
         BONDED[i] = -1;
     }
 
+    for (int i = 0; i < n_acceptors; ++i){
+        FREE_ACCEPTORS[i] = d_ACCEPTORS[i];
+    }
+
     n_bonded = 0;
-    n_free = nlist->n_donors;
+    n_free_donors = n_donors;
+    n_free_acceptors = n_acceptors;
 
     d_FREE = FREE;
     d_BONDED = BONDED;
+    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
 
-    GRID = ceil(((float)nlist->n_donors)/float(threads));
+    GRID = ceil(((float)n_donors)/float(threads));
+
+
 }
 
 
@@ -129,137 +223,159 @@ void Dynamic::AddExtraForce()
 
 
 
-    if (step % bond_freq == 0 && step >= bond_freq && step >= nlist->nlist_freq){
-        // thrust::default_random_engine g(time(NULL));
+    if (step % bond_freq == 0 && step > 0){
+
+        thrust::shuffle(d_ACCEPTORS.begin(),d_ACCEPTORS.end(),g);
 
 
-        int rnd = random()%2; //decide move sequence
 
-        if (rnd == 0){
-            if (n_free > 0){
-                d_make_bonds<<<GRID, threads>>>(d_x,d_f,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_FREE.data(), d_VirArr.data(), n_free,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges);
+        for (int i = 0; i < 2; ++i){
+
+            int rnd = random()%2; //decide move sequence
+
+            if (rnd == 0){
+
+                if (n_free_donors > 0 && ((double) rand() / (RAND_MAX)) <=  2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
+                    d_make_bonds<<<GRID, threads>>>(d_x,d_f,
+                        d_BONDS.data(),
+                        d_ACCEPTORS.data(),
+                        d_FREE.data(), d_VirArr.data(), n_free_donors,
+                        n_donors,n_acceptors,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
 
 
-            n_bonded = 0;
-            n_free = 0;
+                    n_bonded = 0;
+                    n_free_donors = 0;
+                    n_free_acceptors = 0;
 
-            BONDS = d_BONDS;
-            for (int i = 0; i < group->nsites; ++i){
-                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                    BONDED[n_bonded++] = i;
-                }
-                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                    FREE[n_free++] = i;
-                }
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
+                            FREE[n_free_donors++] = i;
+                        }
+                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
+                         FREE_ACCEPTORS[n_free_acceptors++];
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+
+
+                } 
+                if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
+ 
+                    
+                    d_break_bonds<<<GRID, threads>>>(d_x,
+                        d_BONDS.data(),
+                        d_BONDED.data(),n_bonded,
+                        n_donors,n_acceptors,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
+
+
+                    n_bonded = 0;
+                    n_free_donors = 0;
+                    n_free_acceptors = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
+                            FREE[n_free_donors++] = i;
+                        }
+                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
+                         FREE_ACCEPTORS[n_free_acceptors++];
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+
+                } 
             }
+            else{
 
-            // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
+                if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
+                    d_break_bonds<<<GRID, threads>>>(d_x,
+                        d_BONDS.data(),
+                        d_BONDED.data(),n_bonded,
+                        n_donors,n_acceptors,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
 
-            d_BONDED = BONDED;
-            d_FREE = FREE;
 
-            } 
-            
-            if (n_bonded > 0){
-                d_break_bonds<<<GRID, threads>>>(d_x,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_BONDED.data(),n_bonded,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges);
-            } 
+                    n_bonded = 0;
+                    n_free_donors = 0;
+                    n_free_acceptors = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
+                            FREE[n_free_donors++] = i;
+                        }
+                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
+                         FREE_ACCEPTORS[n_free_acceptors++];
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+
+
+                } // if n_free_donors > 0
+
+                if (n_free_donors > 0 && ((double) rand() / (RAND_MAX)) <=  2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
+                        d_make_bonds<<<GRID, threads>>>(d_x,d_f,
+                            d_BONDS.data(),
+                            d_ACCEPTORS.data(),
+                            d_FREE.data(), d_VirArr.data(), n_free_donors,
+                            n_donors,n_acceptors,
+                            group->d_index.data(), group->nsites, d_states,
+                            k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
+
+                                // update the bonded array
+
+                    n_bonded = 0;
+                    n_free_donors = 0;
+                    n_free_acceptors = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
+                            FREE[n_free_donors++] = i;
+                        }
+                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
+                         FREE_ACCEPTORS[n_free_acceptors++];
+                        }
+                    }
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+
+
+                    }
+            } // option 2
         }
 
-        else {
-            if (n_bonded > 0){
-                d_break_bonds<<<GRID, threads>>>(d_x,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_BONDED.data(),n_bonded,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, qind, d_L, d_Lh, Dim, d_charges);
 
 
-            n_bonded = 0;
-            n_free = 0;
-
-            BONDS = d_BONDS;
-            for (int i = 0; i < group->nsites; ++i){
-                if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                    BONDED[n_bonded++] = i;
-                }
-                else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                    FREE[n_free++] = i;
-                }
-            }
-
-            // for (int i = n_free; i < group->nsites; ++i){
-            //         FREE[i] = -1;
-            // }
-
-            // std::cout << "Before: last: " << *(FREE.begin() + n_free) << " second to last: " << *(FREE.begin() + n_free -1)<< std::endl;
-
-
-            // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
-
-            // std::cout << "After: last: " << *(FREE.begin() + n_free) << " second to last: " << *(FREE.begin() + n_free -1)<< std::endl;
-
-            d_BONDED = BONDED;
-            d_FREE = FREE;
-
-            //Update charges
-            // if (qind != 0.0){
-            //     cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-            // }
-
-            } // if n_free > 0
-
-
-            if (n_free > 0){
-                d_make_bonds<<<GRID, threads>>>(d_x,d_f,
-                    d_BONDS.data(),
-                    nlist->d_RN_ARRAY.data(), nlist->d_RN_ARRAY_COUNTER.data(),
-                    d_FREE.data(), d_VirArr.data(), n_free,
-                    nlist->nncells, nlist->ad_hoc_density,
-                    group->d_index.data(), group->nsites, d_states,
-                    k_spring, e_bond, r0, nlist->r_n, qind, d_L, d_Lh, Dim, d_charges);
-
-                }
-        }
-
-
-        // update the bonded array
-
-        n_bonded = 0;
-        n_free = 0;
-
-        BONDS = d_BONDS;
-        for (int i = 0; i < group->nsites; ++i){
-            if (nlist->AD[i] == 1 && BONDS[2*i] == 1){
-                BONDED[n_bonded++] = i;
-            }
-            else if (nlist->AD[i] == 1 && BONDS[2*i] == 0){
-                FREE[n_free++] = i;
-            }
-        }
-
-        // thrust::shuffle(FREE.begin(), FREE.begin() + n_free, g);
-
-        d_BONDED = BONDED;
-        d_FREE = FREE;
-
-        //Update charges
-        // if (qind != 0.0){
-        //     cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-        // }
 
     } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
 
@@ -364,13 +480,12 @@ __global__ void d_make_bonds(
     const float *x,
     float* f,
     thrust::device_ptr<int> d_BONDS,
-    thrust::device_ptr<int> d_RN_ARRAY,
-    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<int> d_ACCEPTORS,
     thrust::device_ptr<int> d_FREE,
     thrust::device_ptr<float> d_VirArr,
-    int n_free,
-    int nncells,
-    int ad_hoc_density,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -378,53 +493,69 @@ __global__ void d_make_bonds(
     float e_bond,
     float r0,
     float r_n,
-    float qind,
+   thrust::device_ptr<int> d_mbbond,
     float *L,
     float *Lh,
-    int D,
-    float* d_charges)
+    int D)
 {
 
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_free)
+    if (tmp_ind >= n_free_donors)
         return;
 
+    int n_bonded = n_donors - n_free_donors;
+    int n_free_acceptors = n_acceptors - n_bonded;
 
     int list_ind = d_FREE[tmp_ind];
     int ind = d_index[list_ind];
 
+    // int max_counter = (float)n_acceptors/(L[0]*L[1]*L[2]) * (4.0/3.0 * 3.1415926 * r_n*r_n*r_n);
+
+
     curandState l_state;
     l_state = d_states[ind];
+    float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+  
+    if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+
+    l_state = d_states[ind];
+    rnd = curand_uniform(&l_state);
     d_states[ind] = l_state;
 
+
     int lnid;
-    int c = d_RN_ARRAY_COUNTER[list_ind];
+    int c = n_acceptors-1;
 
-    if (c != 0){
+
+
+    double dr_sq = 0.0;
+    double dr0 = 0.0;
+    double dr_arr[3];
+    double delr = r_n + 1.0;
+    double dU = 0.0;
+    int nid;
+    int r;
+
+
+    while (delr > r_n){
+
+
+        dr_sq = 0.0;
+        dr0 = 0.0;
+        dU = 0.0;
+
         l_state = d_states[ind];
-        int r = (int)((curand_uniform(&l_state) * (INT_MAX + .999999)));
+        r = (int)round((curand_uniform(&l_state) * c));
         d_states[ind] = l_state;
-        lnid = d_RN_ARRAY[list_ind * ad_hoc_density * nncells + r%c];
-    }
-    else{
-        return;
-        }
-
-    if (atomicCAS(&d_BONDS.get()[lnid * 2], 0, -1) == 0){ //lock the particle to bond with
-
-        double dr_sq = 0.0;
-        double dr0 = 0.0;
-        double dr_arr[3];
-        double delr = 0.0;
-        double dU = 0.0;
+        lnid = d_ACCEPTORS[r%n_acceptors];
 
 
-        int nid = d_index[lnid];
+        // atomicAdd(&d_mbbond.get()[0],1);
 
-        curandState l_state;
-        l_state = d_states[ind];
-        float rnd = curand_uniform(&l_state);
-        d_states[ind] = l_state;
+        nid = d_index[lnid];
+
+
 
         for (int j = 0; j < D; j++){
 
@@ -443,10 +574,19 @@ __global__ void d_make_bonds(
         else
         {
             dU = 0.0;
-            mdr = 0.0;
+            delr = 0.0;
         }
+    }
 
-        if (mdr <= r_n && rnd < exp(-dU + e_bond))
+
+    if (atomicCAS(&d_BONDS.get()[lnid * 2], 0, -1) == 0){ //lock the particle to bond with
+
+        curandState l_state;
+        l_state = d_states[ind];
+        float rnd = curand_uniform(&l_state);
+        d_states[ind] = l_state;
+
+        if (rnd < exp(-dU + e_bond))
         {
             atomicExch(&d_BONDS.get()[list_ind * 2], 1);
             atomicExch(&d_BONDS.get()[lnid * 2], 1);
@@ -454,10 +594,6 @@ __global__ void d_make_bonds(
             atomicExch(&d_BONDS.get()[list_ind * 2 + 1], lnid);
             atomicExch(&d_BONDS.get()[lnid * 2 + 1], list_ind);
 
-            if (qind != 0){
-                d_charges[ind] -= qind;
-                d_charges[nid] += qind;
-            }
         }
         else
         {
@@ -477,23 +613,20 @@ __global__ void d_make_bonds(
 __global__ void d_break_bonds(
     const float *x,
     thrust::device_ptr<int> d_BONDS,
-    thrust::device_ptr<int> d_RN_ARRAY,
-    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
     thrust::device_ptr<int> d_BONDED,
     int n_bonded,
-    int nncells,
-    int ad_hoc_density,
+    int n_donors,
+    int n_acceptors,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
     float k_spring,
     float e_bond,
     float r0,
-    float qind,
+    thrust::device_ptr<int> d_mbbond,
     float *L,
     float *Lh,
-    int D,
-    float* d_charges)
+    int D)
 
 
 {
@@ -519,6 +652,21 @@ __global__ void d_break_bonds(
     double delr;
     double dU;
 
+    int n_free_acceptors = n_acceptors - n_bonded;
+    int n_free_donors = n_donors-n_bonded;
+
+
+
+    if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+
+
+    l_state = d_states[ind];
+    rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+
+    // atomicAdd(&d_mbbond.get()[1],1);
+
 
     for (int j = 0; j < D; j++){
 
@@ -537,7 +685,9 @@ __global__ void d_break_bonds(
     else
     {
         dU = 0.0;
+        delr = 0.0;
     }
+
 
     if (rnd <= exp(dU - e_bond))
     {
@@ -555,18 +705,19 @@ void Dynamic::WriteBonds(void)
     // int flag = 0;
 
     this->BONDS = d_BONDS;
+    mbbond = d_mbbond;
     ofstream bond_file;
     bond_file.open(file_name, ios::out | ios::app);
 
-
-    bond_file << "TIMESTEP: " << global_step << " " << n_bonded << " " << n_free << " " << n_free + n_bonded << endl;
-    for (int j = 0; j < group->nsites; ++j)
-    {
-        if (BONDS[2 * j + 1] != -1 && nlist->AD[j] == 1)
-        {
-            bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
-        }
-    }
+    bond_file << global_step << " " << float(n_bonded)/min(n_donors,n_acceptors) << std::endl;//" " <<mbbond[0] <<" " << mbbond[1] << endl;
+    // bond_file << "TIMESTEP: " << global_step << " " << n_bonded << " " << n_free_donors << " " << n_free_donors + n_bonded << endl;
+    // for (int j = 0; j < group->nsites; ++j)
+    // {
+    //     if (BONDS[2 * j + 1] != -1 && AD[j] == acceptor_tag)
+    //     {
+    //         bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
+    //     }
+    // }
     bond_file.close();
 
 }

@@ -132,7 +132,7 @@ int NList::CheckTrigger(){
 	// 	return 1;
 	// }
 	// else
-    if(step%nlist_freq == 0 && step >= nlist_freq){
+    if(step == 1 || step%nlist_freq == 0){
 		return 1;
 	}
 	else {

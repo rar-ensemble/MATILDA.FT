@@ -281,11 +281,11 @@ __global__ void d_nlist_bonding_update_nlist(
             else{
                 dist = 0.0f;
             }
-            if (dist <= r_skin){
+            // if (dist <= r_skin){
                 int insrt_pos = atomicAdd(&d_RN_ARRAY_COUNTER.get()[list_ind], 1);
                 if (insrt_pos < ad_hoc_density * nncells){
                     d_RN_ARRAY[list_ind * ad_hoc_density*nncells + insrt_pos] = lnid;
-                }
+                // }
             }
         }
     } 

@@ -1,0 +1,23 @@
+Dim 3
+Nx 30
+Ny 30
+Nz 30
+delt 0.005
+Default initialization of the 'All' group
+rand_seed 1698436805
+max_steps 100000001
+MAX_BONDS 3
+MAX_ANGLES 3
+log_freq 100000
+threads 512
+grid_freq 0
+traj_freq 100000
+gsd_freq 0
+binary_freq 500000
+struc_freq 0
+skip_steps 20000
+pmeorder 1
+diffusivity 1 1
+extraforce all dynamic ad_input 0.0 2.0 0.0 0.0 100 1000 bonds 5000
+extraforce all dynamic ad_input 0.0 2.0 0.0 0.0 100 1000 bonds 5000
+bond 1 harmonic 0 0
