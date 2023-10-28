@@ -88,7 +88,7 @@ protected:
     thrust::device_vector<int> d_mbbond;
     thrust::host_vector<int> mbbond;
 
-    float k_spring, e_bond, r0, qind;   
+    float k_spring, e_bond, r0, sticker_density, nncells;
     
     std::string file_name;
 
@@ -113,11 +113,25 @@ protected:
     thrust::host_vector<int> DONORS, ACCEPTORS, FREE_ACCEPTORS, S_ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS, d_S_ACCEPTORS, d_FREE_ACCEPTORS;
 
+
+    int xyz;
+
+    thrust::device_vector<int> d_Nxx; // grid spacing for the n-list [Dim]
+    thrust::device_vector<float> d_Lg; // grid cell length [Dim]
+
+    thrust::host_vector<int> Nxx; // grid spacing for the n-list [Dim]
+    thrust::host_vector<float> Lg; // grid cell length [Dim]
+
+    thrust::device_vector<int> d_LOW_DENS_FLAG;
+
+    thrust::device_vector<int> d_MASTER_GRID;
+    thrust::device_vector<int> d_MASTER_GRID_counter;
     thrust::device_vector<int> d_RN_ARRAY;
     thrust::device_vector<int> d_RN_ARRAY_COUNTER;
-
     thrust::host_vector<int> RN_ARRAY;
     thrust::host_vector<int> RN_ARRAY_COUNTER;
+
+
     thrust::default_random_engine g;
 
 public:

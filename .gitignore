@@ -43,3 +43,6 @@ git-version.h
 
 examples/*
 makefile
+
+/matilda.ft
+/src/objects/*
