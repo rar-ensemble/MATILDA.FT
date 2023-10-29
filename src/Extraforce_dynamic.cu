@@ -106,6 +106,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     S_ACCEPTORS.resize(n_donors * n_acceptors);
 
 
+
     // for (int i = 0; i < n_donors; ++i){
     //     // RN_ARRAY_COUNTER.push_back(n_acceptors);
     //     thrust::shuffle(ACCEPTORS.begin(),ACCEPTORS.end(),g);
@@ -118,59 +119,6 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
 
 
-    int tmp;
-    xyz = 1;
-    // sanity check
-
-    for (int i = 0; i < Dim; i++)
-    {
-        tmp = floor(L[i]/r_n);
-        Nxx.push_back(tmp);
-        xyz *= int(tmp);
-    }
-
-    for (int i = 0; i < Dim; i++)
-    {
-        Lg.push_back(L[i] / float(Nxx[i]));
-    }
-    for (int i = 0; i < Dim; i++)
-    {
-        std::cout << "Nxx[" << i << "]: " << Nxx[i] << " |L:" << L[i] << " |dL: " << Lg[i] << endl;
-    }
-
-
-    if (Dim == 2){Nxx.push_back(1); Lg[2] = 1.0;}
-
-    d_Nxx.resize(3);
-    d_Nxx = Nxx;
-    d_Lg.resize(3);
-    d_Lg = Lg;
-
-    if (Dim == 3){nncells = 27;}
-    if (Dim == 2){nncells = 9;}         
-    
-    sticker_density = 100;
-
-    d_MASTER_GRID.resize(xyz * sticker_density);                 
-    d_MASTER_GRID_counter.resize(xyz);
-
-    d_RN_ARRAY.resize(group->nsites * sticker_density * nncells);
-    d_RN_ARRAY_COUNTER.resize(group->nsites);
-
-    d_LOW_DENS_FLAG.resize(group->nsites);
-
-    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
-    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
-
-    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
-    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
-
-    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
-
-    std::cout << "Distance parameters || xyz: " << xyz << ", sticker_density: " << sticker_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
-    std::cout << "Size: " << d_RN_ARRAY.size() << endl;
-
-
 
     readRequiredParameter(iss, k_spring);
     cout << "k_spring: " << k_spring << endl;
@@ -179,7 +127,9 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
     readRequiredParameter(iss, r_n);
-     cout << "r_n: " << r_n << endl;
+    cout << "r_n: " << r_n << endl;
+    readRequiredParameter(iss, sticker_density);
+    cout << "sticker_density: " << sticker_density << endl;
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
     readRequiredParameter(iss, bond_log_freq);
@@ -260,6 +210,85 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
     GRID = ceil(((float)n_donors)/float(threads));
 
+    // Prepare neighbour-list
+
+    int tmp;
+    xyz = 1;
+    int resize_flag = 0;
+
+    for (int i = 0; i < Dim; i++)
+    {
+        tmp = floor(L[i]/r_n);
+        Nxx.push_back(tmp);
+        xyz *= int(tmp);
+    }
+
+    for (auto i: Nxx){
+        if (i < 3){
+            resize_flag = 1;
+        }
+    }
+
+    if (resize_flag == 1){
+        std::cout << "New r_n! N-list spans entire box!" << std::endl;
+        if (Dim==3){
+            xyz = 27;
+            Nxx[0] = Nxx[1] = Nxx[2] = 3;
+            r_n = max(L[0],L[1]);
+            r_n = max(r_n, L[3]);
+        }
+        else{
+            xyz = 9;
+            Nxx[0] = Nxx[1] = 3;
+            r_n = max(L[0],L[1]);
+        }
+
+    }
+
+    for (int i = 0; i < Dim; i++)
+    {
+        Lg.push_back(L[i] / float(Nxx[i]));
+    }
+    for (int i = 0; i < Dim; i++)
+    {
+        std::cout << "Nx[" << i << "]: " << Nxx[i] << " |L:" << L[i] << " |dL: " << Lg[i] << endl;
+    }
+
+
+    if (Dim == 2){Nxx.push_back(1); Lg[2] = 1.0;}
+
+    d_Nxx.resize(3);
+    d_Nxx = Nxx;
+    d_Lg.resize(3);
+    d_Lg = Lg;
+
+    if (Dim == 3){nncells = 27;}
+    if (Dim == 2){nncells = 9;}         
+    
+
+    // Grid counters
+
+    d_MASTER_GRID.resize(xyz * sticker_density);                 
+    d_MASTER_GRID_counter.resize(xyz);
+
+    // (R-cutoff, n-list) counters
+
+    d_RN_ARRAY.resize(group->nsites * sticker_density * nncells);
+    d_RN_ARRAY_COUNTER.resize(group->nsites);
+
+
+    d_LOW_DENS_FLAG.resize(group->nsites);
+
+    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+
+    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+    std::cout << "Total cells: " << xyz << ", sticker_density: " << sticker_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
+
 
 }
 
@@ -267,23 +296,65 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 void Dynamic::AddExtraForce()
 {   
 
-    if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
-        e_bond += delta_e_bond;
-        std::cout << "At step: " << step <<" increased e_bond to: " << e_bond << std::endl;
-        ++ramp_counter;
-    }
+    // if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
+    //     e_bond += delta_e_bond;
+    //     std::cout << "At step: " << step <<" increased e_bond to: " << e_bond << std::endl;
+    //     ++ramp_counter;
+    // }
 
 
 
     if (step % bond_freq == 0 && step > 0){
 
-        // thrust::shuffle(d_ACCEPTORS.begin(),d_ACCEPTORS.end(),g);
 
+        thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+        thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+        thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+        thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+
+        thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+
+        d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+            d_Nxx.data(), d_Lg.data(),
+            d_LOW_DENS_FLAG.data(),
+            d_ACCEPTORS.data(),
+            nncells, n_acceptors, sticker_density,
+            group->d_index.data(), group->nsites, Dim);
+
+
+        // Updates n-list for the donors
+
+        d_update_neighbours<<<GRID, threads>>>(d_x, d_Lh, d_L,
+            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+            d_Nxx.data(), d_Lg.data(),
+            d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+            d_DONORS.data(),
+            nncells, n_donors, r_n, sticker_density,
+            group->d_index.data(), group->nsites, Dim);
+
+
+        // Updates the distribution of acceptors on the grid
+
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+        if (LOW_DENS_FLAG > 0){
+            
+            cout << "Input density was: " << sticker_density <<" but at least "<< sticker_density + LOW_DENS_FLAG <<" is required"<<endl;
+            die("Low sticker_density!");
+        }
+        
+        RN_ARRAY = d_RN_ARRAY;
+        RN_ARRAY_COUNTER = d_RN_ARRAY_COUNTER;
 
 
         for (int i = 0; i < 2; ++i){
 
             int rnd = random()%2; //decide move sequence
+
+            rnd = 0;
 
             if (rnd == 0){
 
@@ -291,8 +362,11 @@ void Dynamic::AddExtraForce()
                     d_make_bonds<<<GRID, threads>>>(d_x,d_f,
                         d_BONDS.data(),
                         d_ACCEPTORS.data(),
-                        d_FREE.data(), d_VirArr.data(), n_free_donors,
+                        d_FREE.data(),
+                        d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                        d_VirArr.data(), n_free_donors,
                         n_donors,n_acceptors,
+                        sticker_density,nncells,
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
 
@@ -320,13 +394,14 @@ void Dynamic::AddExtraForce()
 
 
                 } 
+
                 if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
  
                     
                     d_break_bonds<<<GRID, threads>>>(d_x,
                         d_BONDS.data(),
                         d_BONDED.data(),n_bonded,
-                        n_donors,n_acceptors,
+                        n_donors,n_acceptors, r_n,
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
 
@@ -354,6 +429,7 @@ void Dynamic::AddExtraForce()
 
                 } 
             }
+
             else{
 
                 if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
@@ -361,6 +437,7 @@ void Dynamic::AddExtraForce()
                         d_BONDS.data(),
                         d_BONDED.data(),n_bonded,
                         n_donors,n_acceptors,
+                        r_n,
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
 
@@ -393,8 +470,11 @@ void Dynamic::AddExtraForce()
                         d_make_bonds<<<GRID, threads>>>(d_x,d_f,
                             d_BONDS.data(),
                             d_ACCEPTORS.data(),
-                            d_FREE.data(), d_VirArr.data(), n_free_donors,
+                            d_FREE.data(),
+                            d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                            d_VirArr.data(), n_free_donors,
                             n_donors,n_acceptors,
+                            sticker_density,nncells,
                             group->d_index.data(), group->nsites, d_states,
                             k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
 
@@ -540,6 +620,8 @@ __global__ void d_make_bonds(
     int n_free_donors,
     int n_donors,
     int n_acceptors,
+    int sticker_density,
+    int nncells,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -571,7 +653,7 @@ __global__ void d_make_bonds(
     float rnd = curand_uniform(&l_state);
     d_states[ind] = l_state;
   
-    if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+    if (rnd > 0.10){return;} // only run on 1% of particles to avoid excessive fluctuations
 
     l_state = d_states[ind];
     rnd = curand_uniform(&l_state);
@@ -579,7 +661,13 @@ __global__ void d_make_bonds(
 
 
     int lnid;
-    int c = d_RN_ARRAY_COUNTER[ind] - 1;
+    int c = d_RN_ARRAY_COUNTER[list_ind];
+    if (c == 0){
+        return;
+    }
+    else{
+        --c;
+    }
 
 
 
@@ -596,10 +684,11 @@ __global__ void d_make_bonds(
     dr0 = 0.0;
     dU = 0.0;
 
+
     l_state = d_states[ind];
     r = (int)round((curand_uniform(&l_state) * c));
     d_states[ind] = l_state;
-    lnid = d_RN_ARRAY[r];
+    lnid = d_RN_ARRAY[list_ind * sticker_density * nncells +r];
 
 
     // atomicAdd(&d_mbbond.get()[0],1);
@@ -668,6 +757,7 @@ __global__ void d_break_bonds(
     int n_bonded,
     int n_donors,
     int n_acceptors,
+    int r_n,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -708,7 +798,7 @@ __global__ void d_break_bonds(
 
 
 
-    if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+    if (rnd > 0.10){return;} // only run on 1% of particles to avoid excessive fluctuations
 
 
     l_state = d_states[ind];
@@ -740,7 +830,7 @@ __global__ void d_break_bonds(
     }
 
 
-    if (rnd <= exp(dU - e_bond))
+    if (rnd <= exp(dU - e_bond) && mdr < r_n)
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);
         atomicExch(&d_BONDS.get()[lnid * 2], 0);

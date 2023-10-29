@@ -56,16 +56,9 @@ __global__ void d_make_step(cufftComplex* , float*, float*, int*, int, int);
 __global__ void d_multiplyComplex(cufftComplex*, cufftComplex*,
 	cufftComplex*, int);
 
-int main(int argc, char** argv)
-{
-	if ( argc < 2 ) {
-		std::cout << "ERROR: simulation style not specified!" << std::endl;
-		std::cout << "Execute matilda.ft as either\nmatilda.ft -particle\nfor a particle-based simulation or"<< std::endl;
-		std::cout << "matilda.ft -ft\nfor a field-theoretic simulation." << std::endl;
-		die("Insufficient arguments");
-	}
+int main(int argc, char** argv){
 
-    std::srand(time(0));
+	std::srand(time(0));
 	// cudaStreamCreateWithFlags(&stream1,cudaStreamNonBlocking);
 	
 	// printf("Git Version hash: %s\n", MY_GIT_VERSION);
@@ -74,11 +67,25 @@ int main(int argc, char** argv)
 	std::vector<std::string> string_vec;
 	std::cout << std::flush;
 
-	for (int i = 0; i < argc; i++)
-	{
-		std::string arg = argv[i];
+	if ( argc < 2 ) {
+
+		std::cout << "Simulation style not specified!" << std::endl;
+		std::cout << "Defaulting to the particle simulation!"<< std::endl;
+		std::string arg = argv[0];
 		string_vec.push_back(arg);
+
+		string_vec.push_back("-particle");
 	}
+	else{
+		for (int i = 0; i < argc; i++)
+		{
+			std::string arg = argv[i];
+			string_vec.push_back(arg);
+		}
+
+	}
+
+
 
 	if(string_vec[1] == "-ft"){
 		std::cout << "Set simulation style to: FT" << std::endl;

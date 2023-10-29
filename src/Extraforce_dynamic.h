@@ -22,14 +22,18 @@
 
 __global__ void d_make_bonds(
     const float *x,
-    float* f,    
+    float* f,
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_ACCEPTORS,
     thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
     thrust::device_ptr<float> d_VirArr,
-    int n_free,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
+    int sticker_density,
     int nncells,
-    int ad_hoc_density,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -47,15 +51,16 @@ __global__ void d_break_bonds(
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_BONDED,
     int n_bonded,
-    int nncells,
-    int ad_hoc_density,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
     float k_spring,
     float e_bond,
     float r0,
-   thrust::device_ptr<int> d_mbbond,
+    thrust::device_ptr<int> d_mbbond,
     float *L,
     float *Lh,
     int D);
@@ -75,6 +80,44 @@ __global__ void d_update_forces(
     thrust::device_ptr<int> d_index,   // List of sites in the group
     const int ns,           // Number of sites in the list
     const int D);   
+
+
+__global__ void d_update_grid(
+    const float *x,
+    const float *Lh,
+    const float *L,
+    thrust::device_ptr<int> d_MASTER_GRID_counter,
+    thrust::device_ptr<int> d_MASTER_GRID,
+    thrust::device_ptr<int> d_Nxx,
+    thrust::device_ptr<float> d_Lg,
+    thrust::device_ptr<int> d_LOW_DENS_FLAG,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    const int nncells,
+    const int n_acceptors,
+    const int sticker_density,
+    thrust::device_ptr<int> d_index, 
+    const int ns,      
+    const int D);
+
+
+__global__ void d_update_neighbours(
+    const float *x,
+    const float *Lh,
+    const float *L,
+    thrust::device_ptr<int> d_MASTER_GRID_counter,
+    thrust::device_ptr<int> d_MASTER_GRID,
+    thrust::device_ptr<int> d_Nxx,
+    thrust::device_ptr<float> d_Lg,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<int> d_DONORS,
+    const int nncells,
+    const int n_donors,
+    const float r_n,
+    const int sticker_density,
+    thrust::device_ptr<int> d_index, 
+    const int ns,      
+    const int D);
 
 #ifndef _EXTRAFORCE_DYNAMIC
 #define _EXTRAFORCE_DYNAMIC
