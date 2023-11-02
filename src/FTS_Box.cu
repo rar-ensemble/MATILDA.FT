@@ -327,7 +327,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
     double Rg = pow( (Nr-1.0)/6.0, 0.5);
     if ( rho0 > 0 ) {
-        C = rho0/Nr * Rg * Rg * Rg;
+        C = rho0/Nr;
+        for ( int j=0; j<Dim ; j++ ) C *= Rg;
         std::cout << "Using Nr = " << Nr << ", computed C = " << C << std::endl;
     }
     else if ( C > 0 ) {
