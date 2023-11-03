@@ -104,12 +104,14 @@ __global__ void d_update_neighbours(
     const float *x,
     const float *Lh,
     const float *L,
+     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_MASTER_GRID_counter,
     thrust::device_ptr<int> d_MASTER_GRID,
     thrust::device_ptr<int> d_Nxx,
     thrust::device_ptr<float> d_Lg,
     thrust::device_ptr<int> d_RN_ARRAY,
     thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<float> d_RN_DISTANCE,
     thrust::device_ptr<int> d_DONORS,
     const int nncells,
     const int n_donors,
@@ -177,6 +179,13 @@ protected:
 
     thrust::default_random_engine g;
 
+
+    thrust::host_vector<float> RN_DISTANCE;
+    thrust::device_vector<float> d_RN_DISTANCE;
+
+    thrust::host_vector<int> ACCEPTOR_LOCKS;
+
+
 public:
 	~Dynamic();
 	Dynamic(std::istringstream&);
@@ -184,7 +193,8 @@ public:
     void WriteBonds();
     // void UpdateHD(void);
     void UpdateVirial(void) override;
-
+    void UpdateBonders();
+    void UpdateNList();
 };
 
 #endif
