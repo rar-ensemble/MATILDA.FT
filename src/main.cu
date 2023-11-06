@@ -8,7 +8,7 @@
 #include "random.h"
 #include <vector>
 #include <fstream>
-#include "git-version.h"
+//#include "git-version.h"
 #include "Box.h"
 
 using namespace std;

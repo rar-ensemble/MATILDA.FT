@@ -3,7 +3,7 @@
 
 
 #include "globals.h"
-#include "potential_fieldphases.h"
+#include "potential_bias_field.h"
 #include "device_utils.cuh"
 
 using namespace std;
@@ -19,7 +19,7 @@ using namespace std;
     a target phase. */
 
 
-__global__ void init_device_fieldphase(float*, float*,
+__global__ void init_device_biasfield(float*, float*,
     const int, const float, const int,
     const int, const float*, const float*,
     const int, const int*, const int);
@@ -34,7 +34,7 @@ __global__ void d_multiply_cufftCpx_scalar(cufftComplex*, float, int);
 __global__ void d_multiply_float_scalar(float*, float, int);
 __global__ void d_multiply_float_scalar(float*, float, float*, int);
 
-void FieldPhase::Initialize() {
+void BiasField::Initialize() {
 
     Initialize_Potential();
 
@@ -46,21 +46,21 @@ void FieldPhase::Initialize() {
     printf("Setting up FieldPhase pair style..."); fflush(stdout);
 
 
-    init_device_fieldphase<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
+    init_device_biasfield<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
         phase, initial_prefactor, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
 
-    init_device_fieldphase<<<M_Grid, M_Block>>>(this->d_master_u, this->d_master_f,
+    init_device_biasfield<<<M_Grid, M_Block>>>(this->d_master_u, this->d_master_f,
         phase, 1.0f, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
 
     cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost); 
 
-    write_grid_data("fieldphase_map.dat", this->u);
+    write_grid_data("biasfield_map.dat", this->u);
 
     printf("done!\n"); fflush(stdout);
 }
 
-void FieldPhase::CalcForces() {
+void BiasField::CalcForces() {
 
 
     // X-component of the force
@@ -96,7 +96,7 @@ void FieldPhase::CalcForces() {
 
 }
 
-FieldPhase::FieldPhase(istringstream& iss) : Potential(iss){
+BiasField::BiasField(istringstream& iss) : Potential(iss){
 	potential_type = "FieldPhase";
 	type_specific_id = num++;
 
@@ -119,11 +119,11 @@ FieldPhase::FieldPhase(istringstream& iss) : Potential(iss){
 	ramp_check_input(iss);
 }
 
-FieldPhase::FieldPhase() {
+BiasField::BiasField() {
 
 }
 
-FieldPhase::~FieldPhase() {
+BiasField::~BiasField() {
 
 }
 
@@ -133,7 +133,7 @@ FieldPhase::~FieldPhase() {
 // phase = 1: BCC
 // phase = 2: CYL
 // phase = 3: GYR
-__global__ void init_device_fieldphase(float* ur, float* fr,
+__global__ void init_device_biasfield(float* ur, float* fr,
 	const int phase, const float Ao, const int dir,
 	const int n_periods, const float* dL, const float* dx,
 	const int M, const int* Nx, const int Dim) {
@@ -220,7 +220,7 @@ __global__ void init_device_fieldphase(float* ur, float* fr,
 }
 
 // Create the update function
-void FieldPhase::Update() {
+void BiasField::Update() {
 
     if (!ramp) return;
 	if (equil) return;
@@ -239,7 +239,7 @@ void FieldPhase::Update() {
 }
 
 
-void FieldPhase::ReportEnergies(int& die_flag){
+void BiasField::ReportEnergies(int& die_flag){
 	static int counter = 0;
 	static string reported_energy = "";
 	reported_energy += " " + to_string(energy) ;
@@ -253,4 +253,4 @@ void FieldPhase::ReportEnergies(int& die_flag){
     }
 }
 
-int    FieldPhase::num = 0;
+int    BiasField::num = 0;

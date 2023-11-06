@@ -26,7 +26,7 @@ SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_po
 	device_array_utils.cu device_bonds.cu device_comm_utils.cu \
 	device_grid_utils.cu device_utils.cu  field_component.cu forces.cu \
 	initialize.cu integ_utils.cu io_utils.cu main.cu potential.cu \
-	potential_fieldphases.cu potential_gaussian.cu pbc_utils.cu read_input.cu \
+	potential_bias_field.cu potential_gaussian.cu pbc_utils.cu read_input.cu \
 	potential_erf.cu reduce_utils.cu update_potentials.cu device_GJF_integrator.cu \
 	potential_charges.cu potential_gaussian_erf.cu \
 	Compute.cu angles.cu device_angles.cu random.cu grid_utils.cu \

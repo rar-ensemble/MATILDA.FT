@@ -384,8 +384,8 @@ Potential* PotentialFactory(istringstream &iss){
 	if (s1 == "gaussian_erf"){
 		return new GaussianErf(iss);
 	}
-	if (s1 == "fieldphase"){
-		return new FieldPhase(iss);
+	if (s1 == "fieldphase" || s1 == "biasfield"){
+		return new BiasField(iss);
 	}
 	if (s1 == "maiersaupe"){
 		return new MaierSaupe(iss);
