@@ -160,6 +160,37 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 		}
 	}
 
+	// BCC phase
+	// Assumes same number of periods in each direction
+    else if ( phase == 1 ) {
+        if ( Dim != 3 ) {
+            die("BCC bias only compatible with 3D simulations!");
+        }
+
+        // Unit cell size
+        float a0 = dL[0] / float(n_periods);
+        
+        float sr[3];
+
+        for ( int ix=0 ; ix<n_periods ; ix++ ) {
+            for ( int iy=0 ; iy<n_periods ; iy++ ) {
+                for ( int iz=0 ; iz<n_periods ; iz++ ) {
+
+                    // Position of ``corner'' particle
+                    sr[0] = ix * a0;
+                    sr[1] = iy * a0;
+                    sr[2] = iz * a0;
+
+                    // Position of ``body-centered'' particle
+                    sr[0] = ix * a0 + 0.5 * a0;
+                    sr[1] = iy * a0 + 0.5 * a0;
+                    sr[2] = iz * a0 + 0.5 * a0;
+
+                }            
+            }            
+        }
+    }
+
 	// CYL phase
 	// Assumes the same number of periods in both directions of the 
 	// hexagonal plane of the cylinders. 
