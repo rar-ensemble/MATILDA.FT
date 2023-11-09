@@ -147,6 +147,8 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 
 	d_get_r(ind, r, Nx, dx, Dim);
 
+	ur[ind] = 0.0f;
+
 	// Initial lamellar fields, forces
 	if (phase == 0) {
 		float sin_arg = 2.0f * PI * float(n_periods) / dL[dir];
@@ -170,7 +172,10 @@ __global__ void init_device_biasfield(float* ur, float* fr,
         // Unit cell size
         float a0 = dL[0] / float(n_periods);
         
-        float sr[3];
+        float sr[3], dr[3], mdr2, mdr, dLh[3];
+		for ( int j=0 ; j<Dim ; j++ ) {
+			dLh[j] = 0.5 * dL[j];
+		}
 
         for ( int ix=0 ; ix<n_periods ; ix++ ) {
             for ( int iy=0 ; iy<n_periods ; iy++ ) {
@@ -181,10 +186,24 @@ __global__ void init_device_biasfield(float* ur, float* fr,
                     sr[1] = iy * a0;
                     sr[2] = iz * a0;
 
+					// Distance from particle to current position
+					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
+
+					// Gaussian potential with std dev of 2 hard-coded for now
+					ur[ind] += -Ao * exp( -mdr2 / 2.0 / 4.0 ); 
+
+
+
                     // Position of ``body-centered'' particle
                     sr[0] = ix * a0 + 0.5 * a0;
                     sr[1] = iy * a0 + 0.5 * a0;
                     sr[2] = iz * a0 + 0.5 * a0;
+
+					// Distance from particle to current position		
+					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
+
+					// Gaussian potential with std dev of 2 hard-coded for now
+					ur[ind] += -Ao * exp( -mdr2 / 2.0 / 4.0 ); 
 
                 }            
             }            
