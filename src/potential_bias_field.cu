@@ -97,7 +97,7 @@ void BiasField::CalcForces() {
 }
 
 BiasField::BiasField(istringstream& iss) : Potential(iss){
-	potential_type = "FieldPhase";
+	potential_type = "BiasField";
 	type_specific_id = num++;
 
 	readRequiredParameter(iss, type1);
