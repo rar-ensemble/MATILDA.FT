@@ -371,10 +371,10 @@ void Dynamic::IncreaseCapacity(){
         // increase the capacity of the density array if it is not enough to hold all the particles
 
         int sum = thrust::count(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 1);
-        float ldc = float(sum)/float(d_MASTER_GRID_counter.size());
+        float ldc = float(sum);
 
         cout << "Input sticker density was: " << sticker_density <<" but at least "<< sticker_density + ldc <<" is required"<<endl;
-        sticker_density += ceil(ldc * 1.2);
+        sticker_density += int(ceil(ldc * 5));
         cout << "Increasing sticker density to " <<  sticker_density <<  " at step " << step << endl;
 
         d_MASTER_GRID.resize(xyz * sticker_density);                 

@@ -1,12 +1,12 @@
 import numpy as np
 from random import random
-N = 10000
+N = 1000
 L = 20
-print(N/L**3,10664/(25*25*180))
+# print(N/L**3,10664/(25*25*180))
 with open("ad_input", "w") as f:
-    for n in range(5000):
+    for n in range(500):
         f.writelines(f"1 ")
-    for n in range(5000):
+    for n in range(500):
         f.writelines(f"0 ")
 
 
@@ -35,4 +35,4 @@ Atoms
 with open("input.data",'w') as f:
     f.writelines(str)
     for i in range(N):
-        f.writelines(f"{i+1} {i+1} 1  {random()*L}  {random()*L}  {random()*L}\n")
+        f.writelines(f"{i+1} {i+1} 1  {0.0} {random()*L}  {random()*L}  {random()*L}\n")

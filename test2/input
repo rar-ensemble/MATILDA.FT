@@ -1,11 +1,12 @@
 Dim 3
 
 max_steps 100000001
-log_freq 100000
+log_freq 10000
 binary_freq 500000
-traj_freq 100000
+traj_freq 5000
 pmeorder 1
 
+charges 0.43484 1.0
 
 delt 0.005000
 
@@ -13,14 +14,15 @@ read_data input.data
 integrator all GJF
 
 
-# file k_spring e_bond r_cutoff r_n  bond_freq bond_log_freq output_file offset
-extraforce all dynamic ad_input 1.5 5.0 0.0 3.5 100 1000 bonds 5000
+# file k_spring e_bond r_n sticker_density bond_freq bond_log_freq output_file offset
+# extraforce all dynamic ad_input 0.0 2.0 0.0 5.0 100 0.05 100 1000 bonds 0
+extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.05 100 1000 bonds 0
 
 
-Nx 45
-Ny 45
-Nz 45
+Nx 30
+Ny 30
+Nz 30
 
 # bond 1 harmonic 1.5 0.0
 
-#potential gaussian 1 1 0.003688  1.0
+potential gaussian 1 1 0.003688  1.0
