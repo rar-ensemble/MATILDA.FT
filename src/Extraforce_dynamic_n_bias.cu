@@ -99,22 +99,14 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     n_donors = d_DONORS.size();
     n_acceptors = d_ACCEPTORS.size();
 
+
     ACCEPTORS = d_ACCEPTORS;
     DONORS = d_DONORS;
 
-    RN_ARRAY.resize(n_donors * n_acceptors);
+    S_ACCEPTORS.resize(n_donors * n_acceptors);
 
 
-    for (int i = 0; i < n_donors; ++i){
-        RN_ARRAY_COUNTER.push_back(n_acceptors);
-        thrust::shuffle(ACCEPTORS.begin(),ACCEPTORS.end(),g);
-        for (int j = 0; j < ACCEPTORS.size(); ++j){
-            RN_ARRAY[i * n_acceptors + j] = ACCEPTORS[j];
-        }
-    }
 
-    d_RN_ARRAY = RN_ARRAY;
-    d_RN_ARRAY_COUNTER = RN_ARRAY_COUNTER;
 
 
     readRequiredParameter(iss, k_spring);
@@ -124,7 +116,9 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     readRequiredParameter(iss, r0);
     cout << "r0: " << r0 << endl;
     readRequiredParameter(iss, r_n);
-     cout << "r_n: " << r_n << endl;
+    cout << "r_n: " << r_n << endl;
+    readRequiredParameter(iss, sticker_density);
+    cout << "sticker_density: " << sticker_density << endl;
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
     readRequiredParameter(iss, bond_log_freq);
@@ -177,11 +171,13 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
         d_VirArr[i] = 0.0f;
     }
 
-    d_BONDED.resize( group->nsites);
-    d_FREE.resize( group->nsites);
+    d_BONDED.resize( n_donors);
+    d_FREE.resize( n_donors);
+    d_FREE_ACCEPTORS.resize(n_acceptors);
 
-    BONDED.resize( group->nsites);
-    FREE.resize( group->nsites);
+    BONDED.resize( n_donors);
+    FREE.resize( n_donors);
+    FREE_ACCEPTORS.resize(n_acceptors);
 
 
     for (int i = 0; i < n_donors; ++i){
@@ -189,14 +185,99 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
         BONDED[i] = -1;
     }
 
+    for (int i = 0; i < n_acceptors; ++i){
+        FREE_ACCEPTORS[i] = d_ACCEPTORS[i];
+    }
+
+
     n_bonded = 0;
     n_free_donors = n_donors;
     n_free_acceptors = n_acceptors;
-
+    thrust::shuffle(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.begin() + n_free_acceptors,g);
     d_FREE = FREE;
     d_BONDED = BONDED;
+    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
 
     GRID = ceil(((float)n_donors)/float(threads));
+
+    // Prepare neighbour-list
+
+    int tmp;
+    xyz = 1;
+    int resize_flag = 0;
+
+    for (int i = 0; i < Dim; i++)
+    {
+        tmp = floor(L[i]/r_n);
+        Nxx.push_back(tmp);
+        xyz *= int(tmp);
+    }
+
+    for (auto i: Nxx){
+        if (i < 3){
+            resize_flag = 1;
+        }
+    }
+
+    if (resize_flag == 1){
+        std::cout << "New r_n! N-list spans entire box!" << std::endl;
+        if (Dim==3){
+            xyz = 27;
+            Nxx[0] = Nxx[1] = Nxx[2] = 3;
+            r_n = max(L[0],L[1]);
+            r_n = max(r_n, L[3]);
+        }
+        else{
+            xyz = 9;
+            Nxx[0] = Nxx[1] = 3;
+            r_n = max(L[0],L[1]);
+        }
+
+    }
+
+    for (int i = 0; i < Dim; i++)
+    {
+        Lg.push_back(L[i] / float(Nxx[i]));
+    }
+    for (int i = 0; i < Dim; i++)
+    {
+        std::cout << "Nx[" << i << "]: " << Nxx[i] << " |L:" << L[i] << " |dL: " << Lg[i] << endl;
+    }
+
+
+    if (Dim == 2){Nxx.push_back(1); Lg[2] = 1.0;}
+
+    d_Nxx.resize(3);
+    d_Nxx = Nxx;
+    d_Lg.resize(3);
+    d_Lg = Lg;
+
+    if (Dim == 3){nncells = 27;}
+    if (Dim == 2){nncells = 9;}         
+    
+
+    // Grid counters
+
+    d_MASTER_GRID.resize(xyz * sticker_density);                 
+    d_MASTER_GRID_counter.resize(xyz);
+
+    // (R-cutoff, n-list) counters
+
+    d_RN_ARRAY.resize(group->nsites * sticker_density * nncells);
+    d_RN_ARRAY_COUNTER.resize(group->nsites);
+
+
+    d_LOW_DENS_FLAG.resize(group->nsites);
+
+    thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+    thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+    thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+    thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+
+    thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+    std::cout << "Total cells: " << xyz << ", sticker_density: " << sticker_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
 
 
 }
@@ -205,18 +286,59 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 void Dynamic::AddExtraForce()
 {   
 
-    if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
-        e_bond += delta_e_bond;
-        std::cout << "At step: " << step <<" increased e_bond to: " << e_bond << std::endl;
-        ++ramp_counter;
-    }
+    // if (RAMP_FLAG == 1 && ramp_counter < ramp_reps && step % ramp_interval == 0 && step > 0){
+    //     e_bond += delta_e_bond;
+    //     std::cout << "At step: " << step <<" increased e_bond to: " << e_bond << std::endl;
+    //     ++ramp_counter;
+    // }
 
 
 
     if (step % bond_freq == 0 && step > 0){
 
-        // thrust::shuffle(d_ACCEPTORS.begin(),d_ACCEPTORS.end(),g);
 
+        thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+        thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
+        thrust::fill(d_RN_ARRAY.begin(),d_RN_ARRAY.end(),-1);
+        thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
+
+        thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+
+        d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+            d_Nxx.data(), d_Lg.data(),
+            d_LOW_DENS_FLAG.data(),
+            d_ACCEPTORS.data(),
+            nncells, n_acceptors, sticker_density,
+            group->d_index.data(), group->nsites, Dim);
+
+
+        // Updates n-list for the donors
+
+        d_update_neighbours<<<GRID, threads>>>(d_x, d_Lh, d_L,
+            d_BONDS.data(),
+            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+            d_Nxx.data(), d_Lg.data(),
+            d_RN_ARRAY.data(), d_RN_ARRAY_COUNTER.data(),
+            d_DONORS.data(),
+            nncells, n_donors, r_n, sticker_density,
+            group->d_index.data(), group->nsites, Dim);
+
+
+        // Updates the distribution of acceptors on the grid
+
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+        if (LOW_DENS_FLAG > 0){
+            
+            cout << "Input density was: " << sticker_density <<" but at least "<< sticker_density + LOW_DENS_FLAG <<" is required"<<endl;
+            die("Low sticker_density!");
+        }
+        
+        RN_ARRAY = d_RN_ARRAY;
+        RN_ARRAY_COUNTER = d_RN_ARRAY_COUNTER;
 
 
         for (int i = 0; i < 2; ++i){
@@ -225,18 +347,24 @@ void Dynamic::AddExtraForce()
 
             if (rnd == 0){
 
-                if (n_free_donors > 0 && ((double) rand() / (RAND_MAX)) <=  2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
+                if (n_free_donors > 0){
                     d_make_bonds<<<GRID, threads>>>(d_x,d_f,
                         d_BONDS.data(),
-                        d_ACCEPTORS.data(),
-                        d_FREE.data(), d_VirArr.data(), n_free_donors,
+                        d_FREE_ACCEPTORS.data(),
+                        d_FREE.data(),
+                        d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                        d_VirArr.data(), n_free_donors,
                         n_donors,n_acceptors,
+                        sticker_density,nncells,
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
+
 
                     n_bonded = 0;
                     n_free_donors = 0;
                     n_free_acceptors = 0;
+                    
+                    thrust::fill(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.end(),-1);
 
                     BONDS = d_BONDS;
                     for (int i = 0; i < group->nsites; ++i){
@@ -247,56 +375,34 @@ void Dynamic::AddExtraForce()
                             FREE[n_free_donors++] = i;
                         }
                         else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
-                         n_free_acceptors++;
+                         FREE_ACCEPTORS[n_free_acceptors++] = i;
                         }
                     }
+                    thrust::shuffle(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.begin() + n_free_acceptors,g);
+
+                    // for (auto element : FREE_ACCEPTORS){
+                    //     std::cout << element << " ";
+                    // }
+                    // std::cout << std::endl << std::endl;
 
                     d_BONDED = BONDED;
                     d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+ 
 
                 } 
-                if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
+
+                if (n_bonded > 0){
  
                     
                     d_break_bonds<<<GRID, threads>>>(d_x,
                         d_BONDS.data(),
                         d_BONDED.data(),n_bonded,
-                        n_donors,n_acceptors,
+                        n_donors,n_acceptors, r_n,
                         group->d_index.data(), group->nsites, d_states,
                         k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
 
-                   n_bonded = 0;
-                    n_free_donors = 0;
-                    n_free_acceptors = 0;
-
-                    BONDS = d_BONDS;
-                    for (int i = 0; i < group->nsites; ++i){
-                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
-                            BONDED[n_bonded++] = i;
-                        }
-                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
-                            FREE[n_free_donors++] = i;
-                        }
-                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
-                         n_free_acceptors++;
-                        }
-                    }
-
-                    d_BONDED = BONDED;
-                    d_FREE = FREE;
-                } 
-            }
-            else{
-
-                if (n_bonded > 0 && ((double) rand() / (RAND_MAX)) < float(n_bonded)/(n_donors + n_acceptors)*2.0){
-                    d_break_bonds<<<GRID, threads>>>(d_x,
-                        d_BONDS.data(),
-                        d_BONDED.data(),n_bonded,
-                        n_donors,n_acceptors,
-                        group->d_index.data(), group->nsites, d_states,
-                        k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
-
-
+                        thrust::fill(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.end(),-1);
                     n_bonded = 0;
                     n_free_donors = 0;
                     n_free_acceptors = 0;
@@ -310,27 +416,32 @@ void Dynamic::AddExtraForce()
                             FREE[n_free_donors++] = i;
                         }
                         else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
-                         n_free_acceptors++;
+                         FREE_ACCEPTORS[n_free_acceptors++] = i;
                         }
                     }
+                    thrust::shuffle(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.begin() + n_free_acceptors,g);
 
                     d_BONDED = BONDED;
                     d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
 
 
-                } // if n_free_donors > 0
+                } 
+            }
 
-                if (n_free_donors > 0 && ((double) rand() / (RAND_MAX)) <=  2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
-                        d_make_bonds<<<GRID, threads>>>(d_x,d_f,
-                            d_BONDS.data(),
-                            d_ACCEPTORS.data(),
-                            d_FREE.data(), d_VirArr.data(), n_free_donors,
-                            n_donors,n_acceptors,
-                            group->d_index.data(), group->nsites, d_states,
-                            k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
+            else{
 
-                                // update the bonded array
-                   n_bonded = 0;
+                if (n_bonded > 0){
+                    d_break_bonds<<<GRID, threads>>>(d_x,
+                        d_BONDS.data(),
+                        d_BONDED.data(),n_bonded,
+                        n_donors,n_acceptors,
+                        r_n,
+                        group->d_index.data(), group->nsites, d_states,
+                        k_spring, e_bond, r0, d_mbbond.data(), d_L, d_Lh, Dim);
+
+                        thrust::fill(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.end(),-1);
+                    n_bonded = 0;
                     n_free_donors = 0;
                     n_free_acceptors = 0;
 
@@ -343,12 +454,55 @@ void Dynamic::AddExtraForce()
                             FREE[n_free_donors++] = i;
                         }
                         else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
-                         n_free_acceptors++;
+                         FREE_ACCEPTORS[n_free_acceptors++] = i;
                         }
                     }
+                    thrust::shuffle(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.begin() + n_free_acceptors,g);
 
                     d_BONDED = BONDED;
                     d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+                    
+
+
+                } // if n_free_donors > 0
+
+                if (n_free_donors > 0){
+                        d_make_bonds<<<GRID, threads>>>(d_x,d_f,
+                            d_BONDS.data(),
+                            d_FREE_ACCEPTORS.data(),
+                            d_FREE.data(),
+                            d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                            d_VirArr.data(), n_free_donors,
+                            n_donors,n_acceptors,
+                            sticker_density,nncells,
+                            group->d_index.data(), group->nsites, d_states,
+                            k_spring, e_bond, r0, r_n, d_mbbond.data(), d_L, d_Lh, Dim);
+
+                                // update the bonded array
+                                thrust::fill(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.end(),-1);
+                    n_bonded = 0;
+                    n_free_donors = 0;
+                    n_free_acceptors = 0;
+
+                    BONDS = d_BONDS;
+                    for (int i = 0; i < group->nsites; ++i){
+                        if (AD[i] == donor_tag && BONDS[2*i] == 1){
+                            BONDED[n_bonded++] = i;
+                        }
+                        else if (AD[i] == donor_tag && BONDS[2*i] == 0){
+                            FREE[n_free_donors++] = i;
+                        }
+                        else if (AD[i] == acceptor_tag && BONDS[2*i] == 0){
+                         FREE_ACCEPTORS[n_free_acceptors++] = i;
+                        }
+                    }
+                    thrust::shuffle(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.begin() + n_free_acceptors,g);
+
+                    d_BONDED = BONDED;
+                    d_FREE = FREE;
+                    d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+
 
                     }
             } // option 2
@@ -462,10 +616,14 @@ __global__ void d_make_bonds(
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_ACCEPTORS,
     thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
     thrust::device_ptr<float> d_VirArr,
     int n_free_donors,
     int n_donors,
     int n_acceptors,
+    int sticker_density,
+    int nncells,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -489,12 +647,15 @@ __global__ void d_make_bonds(
     int list_ind = d_FREE[tmp_ind];
     int ind = d_index[list_ind];
 
+    // int max_counter = (float)n_acceptors/(L[0]*L[1]*L[2]) * (4.0/3.0 * 3.1415926 * r_n*r_n*r_n);
+
+
     curandState l_state;
     l_state = d_states[ind];
     float rnd = curand_uniform(&l_state);
     d_states[ind] = l_state;
   
-    // if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+    if (rnd > 0.05){return;} // only run on 1% of particles to avoid excessive fluctuations
 
     l_state = d_states[ind];
     rnd = curand_uniform(&l_state);
@@ -502,53 +663,74 @@ __global__ void d_make_bonds(
 
 
     int lnid;
-    int c = n_acceptors;
+    int c = d_RN_ARRAY_COUNTER[list_ind];
+    if (c == 0){
+        return;
+    }
+    else{
+        --c;
+    }
+
+    // lnid=d_ACCEPTORS[tmp_ind];
+
+
+
+    double dr_sq = 0.0;
+    double dr0 = 0.0;
+    double dr_arr[3];
+    double delr = r_n + 1.0;
+    double dU = 0.0;
+    int nid;
+    int r;
+
+
+    dr_sq = 0.0;
+    dr0 = 0.0;
+    dU = 0.0;
+
 
     l_state = d_states[ind];
-    int r = (int)round((curand_uniform(&l_state) * c));
+    r = (int)round((curand_uniform(&l_state) * c));
     d_states[ind] = l_state;
-    lnid = d_ACCEPTORS[r];
+    lnid = d_RN_ARRAY[list_ind * sticker_density * nncells +r];
+
+
+    // atomicAdd(&d_mbbond.get()[0],1);
+
+    nid = d_index[lnid];
+
+
+
+    for (int j = 0; j < D; j++){
+
+        dr0 = x[ind * D + j] - x[nid * D + j];
+        if (dr0 >  Lh[j]){dr_arr[j] = -1.0 * (L[j] - dr0);}
+        else if (dr0 < -1.0 * Lh[j]){dr_arr[j] = (L[j] + dr0);}
+        else{dr_arr[j] = dr0;}
+        dr_sq += dr_arr[j] * dr_arr[j];
+    }
+
+    double mdr = sqrt(dr_sq); //distance
+    if (mdr > EPSILON){ 
+        delr = mdr - r0; //distance - r_eq
+        dU = delr * delr * k_spring;
+    }
+    else
+    {
+        dU = 0.0;
+        delr = 0.0;
+    }
+
+
 
     if (atomicCAS(&d_BONDS.get()[lnid * 2], 0, -1) == 0){ //lock the particle to bond with
-
-        double dr_sq = 0.0;
-        double dr0 = 0.0;
-        double dr_arr[3];
-        double delr = 0.0;
-        double dU = 0.0;
-
-        // atomicAdd(&d_mbbond.get()[0],1);
-
-        int nid = d_index[lnid];
-
-
-
-        for (int j = 0; j < D; j++){
-
-            dr0 = x[ind * D + j] - x[nid * D + j];
-            if (dr0 >  Lh[j]){dr_arr[j] = -1.0 * (L[j] - dr0);}
-            else if (dr0 < -1.0 * Lh[j]){dr_arr[j] = (L[j] + dr0);}
-            else{dr_arr[j] = dr0;}
-            dr_sq += dr_arr[j] * dr_arr[j];
-        }
-
-        double mdr = sqrt(dr_sq); //distance
-        if (mdr > EPSILON){ 
-            delr = mdr - r0; //distance - r_eq
-            dU = delr * delr * k_spring;
-        }
-        else
-        {
-            dU = 0.0;
-            delr = 0.0;
-        }
 
         curandState l_state;
         l_state = d_states[ind];
         float rnd = curand_uniform(&l_state);
         d_states[ind] = l_state;
 
-        if (rnd < exp(-dU + e_bond))
+        if (rnd < exp(e_bond/2.0 - dU))
         {
             atomicExch(&d_BONDS.get()[list_ind * 2], 1);
             atomicExch(&d_BONDS.get()[lnid * 2], 1);
@@ -579,6 +761,7 @@ __global__ void d_break_bonds(
     int n_bonded,
     int n_donors,
     int n_acceptors,
+    int r_n,
     thrust::device_ptr<int> d_index, 
     const int ns,        
     curandState *d_states,
@@ -619,7 +802,7 @@ __global__ void d_break_bonds(
 
 
 
-    // if (rnd > 0.20){return;} // only run on 1% of particles to avoid excessive fluctuations
+    if (rnd > 0.05){return;} // only run on 1% of particles to avoid excessive fluctuations
 
 
     l_state = d_states[ind];
@@ -627,7 +810,7 @@ __global__ void d_break_bonds(
     d_states[ind] = l_state;
 
 
-    atomicAdd(&d_mbbond.get()[1],1);
+    // atomicAdd(&d_mbbond.get()[1],1);
 
 
     for (int j = 0; j < D; j++){
@@ -650,7 +833,8 @@ __global__ void d_break_bonds(
         delr = 0.0;
     }
 
-    if (rnd <= exp(dU - e_bond))
+
+    if (rnd < exp(-e_bond/2.0 + dU))
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);
         atomicExch(&d_BONDS.get()[lnid * 2], 0);
@@ -712,4 +896,168 @@ void Dynamic::UpdateVirial(void){
             bondVir[5] += -mf * VirArr[j*5+1] * VirArr[j*5+2];
         }
     }
+}
+
+
+
+__global__ void d_update_grid(
+    const float *x,
+    const float *Lh,
+    const float *L,
+    thrust::device_ptr<int> d_MASTER_GRID_counter,
+    thrust::device_ptr<int> d_MASTER_GRID,
+    thrust::device_ptr<int> d_Nxx,
+    thrust::device_ptr<float> d_Lg,
+    thrust::device_ptr<int> d_LOW_DENS_FLAG,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    const int nncells,
+    const int n_acceptors,
+    const int sticker_density,
+    thrust::device_ptr<int> d_index, 
+    const int ns,      
+    const int D)
+{
+
+    int acceptor_ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (acceptor_ind >= n_acceptors)
+        return;
+
+    int list_ind = d_ACCEPTORS[acceptor_ind];
+    int ind = d_index[list_ind];
+
+    int xi = floor(x[ind * D] / d_Lg[0]);
+    int yi = floor(x[ind * D + 1] / d_Lg[1]);
+    int zi = floor(x[ind * D + 2] / d_Lg[2]);
+
+    int cell_id;
+
+    int dxx = d_Nxx[0];
+    int dyy = d_Nxx[1];
+    int dzz = d_Nxx[2];
+
+    if (D == 3){cell_id = xi * dyy * dzz + yi * dzz + zi;}
+    else if(D == 2){cell_id = xi * dyy + yi;}
+
+    int insrt_pos = atomicAdd(&d_MASTER_GRID_counter.get()[cell_id], 1);
+    if (insrt_pos < sticker_density){
+        d_MASTER_GRID[cell_id * sticker_density + insrt_pos] = list_ind;
+    }
+    else{
+        ++d_LOW_DENS_FLAG[list_ind];
+    }
+}
+
+
+__global__ void d_update_neighbours(
+    const float *x,
+    const float *Lh,
+    const float *L,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_MASTER_GRID_counter,
+    thrust::device_ptr<int> d_MASTER_GRID,
+    thrust::device_ptr<int> d_Nxx,
+    thrust::device_ptr<float> d_Lg,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<int> d_DONORS,
+    const int nncells,
+    const int n_donors,
+    const float r_n,
+    const int sticker_density,
+    thrust::device_ptr<int> d_index, 
+    const int ns,      
+    const int D)
+{
+
+    int donor_ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (donor_ind >= n_donors)
+        return;
+
+    int list_ind = d_DONORS[donor_ind];
+    int ind = d_index[list_ind];
+
+    int xi = floor(x[ind * D] / d_Lg[0]);
+    int yi = floor(x[ind * D + 1] / d_Lg[1]);
+    int zi = floor(x[ind * D + 2] / d_Lg[2]);
+
+    int dxx = d_Nxx[0];
+    int dyy = d_Nxx[1];
+    int dzz = d_Nxx[2];
+
+    int nxi, nyi, nzi, nid, counter, lnid;
+    counter = 0;
+
+    int ngs[27];
+
+    if (D == 3){
+        for (int i1 = -1; i1 < 2; i1++)
+        {
+            for (int i2 = -1; i2 < 2; i2++)
+            {
+                for (int i3 = -1; i3 < 2; i3++)
+                {
+                    nxi = (xi + i1 + dxx) % dxx;
+                    nyi = (yi + i2 + dyy) % dyy;
+                    nzi = (zi + i3 + dzz) % dzz;
+                    nid = nxi * dyy * dzz + nyi * dzz + nzi;
+                    ngs[counter++] = nid;
+                }
+            }
+        }
+    }
+
+    else if (D == 2){
+        for (int i1 = -1; i1 < 2; i1++)
+        {
+            for (int i2 = -1; i2 < 2; i2++)
+            {
+                nxi = (xi + i1 + dxx) % dxx;
+                nyi = (yi + i2 + dyy) % dyy;
+                nid = nxi * dyy + nyi;
+                ngs[counter] = nid;
+                ++counter;
+                }
+            }
+        }
+
+    float my_x[3], dr_arr[3];
+
+    for (int j = 0; j < D; j++){
+        my_x[j] = x[ind * D + j];
+    }
+
+    for (int i = 0; i < nncells; ++i){
+        for (int j = 0; j < d_MASTER_GRID_counter[ngs[i]]; j++){
+
+            float dist = 0.0f;                
+            float dr_2 = 0.0f;
+            float dr0;
+
+            lnid = d_MASTER_GRID[ngs[i] * sticker_density + j];
+    
+            nid = d_index[lnid];
+
+            for (int j = 0; j < D; j++){
+                dr0 = my_x[j] - x[nid * D + j];
+
+                if (dr0 >  Lh[j]){dr_arr[j] = -1.0f * (L[j] - dr0);}
+                else if (dr0 < -1.0f * Lh[j]){dr_arr[j] = (L[j] + dr0);}
+                else{dr_arr[j] = dr0;}
+
+                dr_2 += dr_arr[j] * dr_arr[j];
+            }
+            if (dr_2 > 1.0E-5f) {
+                dist = sqrt(dr_2);
+            }
+            else{
+                dist = 0.0f;
+            }
+            if (dist <= r_n && d_BONDS[2*lnid] ==0){
+                int insrt_pos = atomicAdd(&d_RN_ARRAY_COUNTER.get()[list_ind], 1);
+                if (insrt_pos < sticker_density * nncells){
+                    d_RN_ARRAY[list_ind * sticker_density*nncells + insrt_pos] = lnid;
+                }
+            }
+        }
+    } 
 }

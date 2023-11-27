@@ -41,7 +41,7 @@ __global__ void d_make_bonds(
     float e_bond,
     float r0,
     float r_n,
-    float active_fraction,
+   thrust::device_ptr<int> d_mbbond,
     float *L,
     float *Lh,
     int D);
@@ -60,7 +60,7 @@ __global__ void d_break_bonds(
     float k_spring,
     float e_bond,
     float r0,
-    float active_fraction,
+    thrust::device_ptr<int> d_mbbond,
     float *L,
     float *Lh,
     int D);
@@ -150,7 +150,6 @@ protected:
     std::string ramp_string;
     int RAMP_FLAG, ramp_interval, ramp_t_end, ramp_reps, ramp_counter;
     float e_bond_final, delta_e_bond;
-    float active_fraction;
 
     int n_donors, n_acceptors, acceptor_tag, donor_tag;
 
@@ -196,8 +195,6 @@ public:
     void UpdateVirial(void) override;
     void UpdateBonders();
     void UpdateNList();
-    void IncreaseCapacity();
-    void write_resume_files();
 };
 
 #endif
