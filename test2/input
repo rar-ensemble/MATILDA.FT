@@ -16,7 +16,7 @@ integrator all GJF
 
 # file k_spring e_bond r_n sticker_density bond_freq bond_log_freq output_file offset
 # extraforce all dynamic ad_input 0.0 2.0 0.0 5.0 100 0.05 100 1000 bonds 0
-extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.05 100 1000 bonds 0
+extraforce all lewis_serial ad_input 0.0 2.0 0.0 0.0 5.0 100 0.05 100 1000 bonds 0
 
 
 Nx 30

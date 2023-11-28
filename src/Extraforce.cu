@@ -58,9 +58,9 @@ ExtraForce* ExtraForceFactory(istringstream &iss){
 	// 	return new LewisFull(iss);
 	// }
 
-	// if (s1 == "lewis_serial"){
-	// 	return new LewisSerial(iss);
-	// }				
+	if (s1 == "lewis_serial"){
+		return new Lewis_Serial(iss);
+	}				
 	die(s1 + " is not a valid ExtraForce, you have failed miserably!\n Supported ExtraForces are: midpush, langevin, wall");
 	return 0;
 }

@@ -82,7 +82,31 @@ __global__ void d_make_bonds_lewis_serial_2(
     thrust::device_ptr<float> d_dU_lewis);  
 
 
-__global__ void d_break_bonds_LEWIS_SERIAL(
+__global__ void d_break_bonds_lewis_serial_1(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
+
+
+__global__ void d_break_bonds_lewis_serial_2(
     const float *x,
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_BONDED,
@@ -186,6 +210,8 @@ public:
     void UpdateNList();
     void IncreaseCapacity();
     void write_resume_files();
+    void MakeBonds();
+    void BreakBonds();
 };
 
 #endif

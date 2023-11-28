@@ -671,6 +671,7 @@ void Lewis::AddExtraForce()
                 } // if n_free_donors > 0
 
             UpdateBonders();
+            
             prepareDensityFields();
             MasterCharge->CalcCharges();
             MasterCharge->CalcEnergy();
