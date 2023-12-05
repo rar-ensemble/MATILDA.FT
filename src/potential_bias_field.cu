@@ -166,7 +166,7 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 	// Assumes same number of periods in each direction
     else if ( phase == 1 ) {
         if ( Dim != 3 ) {
-            die("BCC bias only compatible with 3D simulations!");
+            //die("BCC bias only compatible with 3D simulations!");
         }
 
         // Unit cell size

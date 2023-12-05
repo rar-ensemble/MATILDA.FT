@@ -274,7 +274,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
+                std::cout << idum << " Before " << std::endl;
+                fflush(stdout);
                 iss >> idum;
+                std::cout << idum << " after " << std::endl;
             }
 
             else if (firstWord == "rho0") {
