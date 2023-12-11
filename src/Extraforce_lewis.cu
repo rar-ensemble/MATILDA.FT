@@ -639,7 +639,7 @@ void Lewis::AddExtraForce()
                 MasterCharge->CalcCharges();
                 MasterCharge->CalcEnergy();
 
-                int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+                // int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
 
 
                 d_break_bonds_lewis<<<1, 1>>>(d_x,
@@ -846,7 +846,7 @@ __global__ void d_make_bonds_lewis(
         float rnd = curand_uniform(&l_state);
         d_states[ind] = l_state;
 
-
+            dU = 0;
             if (rnd < 1.0/(1+exp(dU)))
             // if (rnd < exp(e_bond/2.0))
             {
@@ -973,7 +973,7 @@ __global__ void d_break_bonds_lewis(
         dU += qind * d_electrostatic_potential[d_grid_inds[nid * grid_per_partic + grid_ct]] * d_grid_W[nid * grid_per_partic + grid_ct];
 
     }
-
+    dU = 0;
     if (rnd < exp(-e_bond)/(1+exp(-dU)))
     // if (rnd < exp(-e_bond/2.0 + dU ))
     {
