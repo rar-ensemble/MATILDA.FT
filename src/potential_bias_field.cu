@@ -45,6 +45,9 @@ void BiasField::Initialize() {
 
     printf("Setting up FieldPhase pair style..."); fflush(stdout);
 
+	if ( phase == 1 && Dim != 3 ) {
+		die("BCC bias only compatible with 3D simulations!");
+	}
 
     init_device_biasfield<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
         phase, initial_prefactor, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
@@ -109,8 +112,10 @@ BiasField::BiasField(istringstream& iss) : Potential(iss){
 
 	// iss >> type1 >> type2 >> initial_prefactor >> phase >> dir >> n_periods;
 
+	// Switch to 'count from 0' convention
 	type1 -= 1;
 	type2 -= 1;
+	dir -= 1;
 
 	final_prefactor = initial_prefactor;
 
@@ -133,10 +138,16 @@ BiasField::~BiasField() {
 // phase = 1: BCC
 // phase = 2: CYL
 // phase = 3: GYR
-__global__ void init_device_biasfield(float* ur, float* fr,
-	const int phase, const float Ao, const int dir,
-	const int n_periods, const float* dL, const float* dx,
-	const int M, const int* Nx, const int Dim) {
+__global__ void init_device_biasfield(
+	float* ur, 
+	float* fr,
+	const int phase, 
+	const float Ao, 
+	const int dir,
+	const int n_periods, 
+	const float* dL, const float* dx,
+	const int M, const int* Nx, const int Dim) 
+	{
 
 
 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -165,14 +176,11 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 	// BCC phase
 	// Assumes same number of periods in each direction
     else if ( phase == 1 ) {
-        if ( Dim != 3 ) {
-            //die("BCC bias only compatible with 3D simulations!");
-        }
 
         // Unit cell size
         float a0 = dL[0] / float(n_periods);
         
-        float sr[3], dr[3], mdr2, mdr, dLh[3];
+        float sr[3], dr[3], mdr2, dLh[3];
 		for ( int j=0 ; j<Dim ; j++ ) {
 			dLh[j] = 0.5 * dL[j];
 		}
@@ -181,7 +189,9 @@ __global__ void init_device_biasfield(float* ur, float* fr,
             for ( int iy=0 ; iy<n_periods ; iy++ ) {
                 for ( int iz=0 ; iz<n_periods ; iz++ ) {
 
-                    // Position of ``corner'' particle
+					/////////////////////////////////////
+                    // Position of ``corner'' particle //
+					/////////////////////////////////////
                     sr[0] = ix * a0;
                     sr[1] = iy * a0;
                     sr[2] = iz * a0;
@@ -189,12 +199,22 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 					// Distance from particle to current position
 					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
 
+					float stdDev = 2.0;
+					float variance = stdDev * stdDev;
+					float expArg = -mdr2 / 2.0 / variance;
+
 					// Gaussian potential with std dev of 2 hard-coded for now
-					ur[ind] += -Ao * exp( -mdr2 / 2.0 / 4.0 ); 
+					ur[ind] += -Ao * exp( expArg ); 
+
+					fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+					fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+					fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
 
 
 
-                    // Position of ``body-centered'' particle
+					////////////////////////////////////////////
+                    // Position of ``body-centered'' particle //
+					////////////////////////////////////////////
                     sr[0] = ix * a0 + 0.5 * a0;
                     sr[1] = iy * a0 + 0.5 * a0;
                     sr[2] = iz * a0 + 0.5 * a0;
@@ -203,12 +223,18 @@ __global__ void init_device_biasfield(float* ur, float* fr,
 					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
 
 					// Gaussian potential with std dev of 2 hard-coded for now
-					ur[ind] += -Ao * exp( -mdr2 / 2.0 / 4.0 ); 
+					expArg = -mdr2 / 2.0 / variance;
+
+					ur[ind] += -Ao * exp( expArg ); 
+
+					fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+					fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+					fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
 
                 }            
             }            
         }
-    }
+    }// if phase == 1
 
 	// CYL phase
 	// Assumes the same number of periods in both directions of the 
