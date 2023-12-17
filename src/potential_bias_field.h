@@ -4,20 +4,20 @@
 
 #include "potential.h"
 
-#ifndef _PAIR_FIELDPHASE
-#define _PAIR_FIELDPHASE
+#ifndef _PAIR_BIASFIELD
+#define _PAIR_BIASFIELD
 
 
 // This class is of type Potential and inherits all Potential
 // routines. Potential is initialized first, then the Gaussian
 // initialization is performed.
-class FieldPhase : public Potential {
+class BiasField : public Potential {
 private:
 	static int num;
 public:
-    FieldPhase();
-    FieldPhase(std::istringstream&);
-    ~FieldPhase();
+    BiasField();
+    BiasField(std::istringstream&);
+    ~BiasField();
 protected:
     void Initialize();
 	void CalcForces();

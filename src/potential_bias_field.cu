@@ -3,7 +3,7 @@
 
 
 #include "globals.h"
-#include "potential_fieldphases.h"
+#include "potential_bias_field.h"
 #include "device_utils.cuh"
 
 using namespace std;
@@ -19,7 +19,7 @@ using namespace std;
     a target phase. */
 
 
-__global__ void init_device_fieldphase(float*, float*,
+__global__ void init_device_biasfield(float*, float*,
     const int, const float, const int,
     const int, const float*, const float*,
     const int, const int*, const int);
@@ -34,7 +34,7 @@ __global__ void d_multiply_cufftCpx_scalar(cufftComplex*, float, int);
 __global__ void d_multiply_float_scalar(float*, float, int);
 __global__ void d_multiply_float_scalar(float*, float, float*, int);
 
-void FieldPhase::Initialize() {
+void BiasField::Initialize() {
 
     Initialize_Potential();
 
@@ -45,22 +45,25 @@ void FieldPhase::Initialize() {
 
     printf("Setting up FieldPhase pair style..."); fflush(stdout);
 
+	if ( phase == 1 && Dim != 3 ) {
+		die("BCC bias only compatible with 3D simulations!");
+	}
 
-    init_device_fieldphase<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
+    init_device_biasfield<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
         phase, initial_prefactor, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
 
-    init_device_fieldphase<<<M_Grid, M_Block>>>(this->d_master_u, this->d_master_f,
+    init_device_biasfield<<<M_Grid, M_Block>>>(this->d_master_u, this->d_master_f,
         phase, 1.0f, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
 
     cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost); 
 
-    write_grid_data("fieldphase_map.dat", this->u);
+    write_grid_data("biasfield_map.dat", this->u);
 
     printf("done!\n"); fflush(stdout);
 }
 
-void FieldPhase::CalcForces() {
+void BiasField::CalcForces() {
 
 
     // X-component of the force
@@ -96,8 +99,8 @@ void FieldPhase::CalcForces() {
 
 }
 
-FieldPhase::FieldPhase(istringstream& iss) : Potential(iss){
-	potential_type = "FieldPhase";
+BiasField::BiasField(istringstream& iss) : Potential(iss){
+	potential_type = "BiasField";
 	type_specific_id = num++;
 
 	readRequiredParameter(iss, type1);
@@ -109,8 +112,10 @@ FieldPhase::FieldPhase(istringstream& iss) : Potential(iss){
 
 	// iss >> type1 >> type2 >> initial_prefactor >> phase >> dir >> n_periods;
 
+	// Switch to 'count from 0' convention
 	type1 -= 1;
 	type2 -= 1;
+	dir -= 1;
 
 	final_prefactor = initial_prefactor;
 
@@ -119,11 +124,11 @@ FieldPhase::FieldPhase(istringstream& iss) : Potential(iss){
 	ramp_check_input(iss);
 }
 
-FieldPhase::FieldPhase() {
+BiasField::BiasField() {
 
 }
 
-FieldPhase::~FieldPhase() {
+BiasField::~BiasField() {
 
 }
 
@@ -133,10 +138,16 @@ FieldPhase::~FieldPhase() {
 // phase = 1: BCC
 // phase = 2: CYL
 // phase = 3: GYR
-__global__ void init_device_fieldphase(float* ur, float* fr,
-	const int phase, const float Ao, const int dir,
-	const int n_periods, const float* dL, const float* dx,
-	const int M, const int* Nx, const int Dim) {
+__global__ void init_device_biasfield(
+	float* ur, 
+	float* fr,
+	const int phase, 
+	const float Ao, 
+	const int dir,
+	const int n_periods, 
+	const float* dL, const float* dx,
+	const int M, const int* Nx, const int Dim) 
+	{
 
 
 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -146,6 +157,8 @@ __global__ void init_device_fieldphase(float* ur, float* fr,
 	float r[3];
 
 	d_get_r(ind, r, Nx, dx, Dim);
+
+	ur[ind] = 0.0f;
 
 	// Initial lamellar fields, forces
 	if (phase == 0) {
@@ -159,6 +172,69 @@ __global__ void init_device_fieldphase(float* ur, float* fr,
 				fr[ind * Dim + j] = 0.f;
 		}
 	}
+
+	// BCC phase
+	// Assumes same number of periods in each direction
+    else if ( phase == 1 ) {
+
+        // Unit cell size
+        float a0 = dL[0] / float(n_periods);
+        
+        float sr[3], dr[3], mdr2, dLh[3];
+		for ( int j=0 ; j<Dim ; j++ ) {
+			dLh[j] = 0.5 * dL[j];
+		}
+
+        for ( int ix=0 ; ix<n_periods ; ix++ ) {
+            for ( int iy=0 ; iy<n_periods ; iy++ ) {
+                for ( int iz=0 ; iz<n_periods ; iz++ ) {
+
+					/////////////////////////////////////
+                    // Position of ``corner'' particle //
+					/////////////////////////////////////
+                    sr[0] = ix * a0;
+                    sr[1] = iy * a0;
+                    sr[2] = iz * a0;
+
+					// Distance from particle to current position
+					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
+
+					float stdDev = 2.0;
+					float variance = stdDev * stdDev;
+					float expArg = -mdr2 / 2.0 / variance;
+
+					// Gaussian potential with std dev of 2 hard-coded for now
+					ur[ind] += -Ao * exp( expArg ); 
+
+					fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+					fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+					fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
+
+
+
+					////////////////////////////////////////////
+                    // Position of ``body-centered'' particle //
+					////////////////////////////////////////////
+                    sr[0] = ix * a0 + 0.5 * a0;
+                    sr[1] = iy * a0 + 0.5 * a0;
+                    sr[2] = iz * a0 + 0.5 * a0;
+
+					// Distance from particle to current position		
+					mdr2 = d_pbc_mdr2(r, sr, dr, dL, dLh, Dim);
+
+					// Gaussian potential with std dev of 2 hard-coded for now
+					expArg = -mdr2 / 2.0 / variance;
+
+					ur[ind] += -Ao * exp( expArg ); 
+
+					fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+					fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+					fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
+
+                }            
+            }            
+        }
+    }// if phase == 1
 
 	// CYL phase
 	// Assumes the same number of periods in both directions of the 
@@ -220,7 +296,7 @@ __global__ void init_device_fieldphase(float* ur, float* fr,
 }
 
 // Create the update function
-void FieldPhase::Update() {
+void BiasField::Update() {
 
     if (!ramp) return;
 	if (equil) return;
@@ -239,7 +315,7 @@ void FieldPhase::Update() {
 }
 
 
-void FieldPhase::ReportEnergies(int& die_flag){
+void BiasField::ReportEnergies(int& die_flag){
 	static int counter = 0;
 	static string reported_energy = "";
 	reported_energy += " " + to_string(energy) ;
@@ -253,4 +329,4 @@ void FieldPhase::ReportEnergies(int& die_flag){
     }
 }
 
-int    FieldPhase::num = 0;
+int    BiasField::num = 0;

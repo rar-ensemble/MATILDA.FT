@@ -15,7 +15,7 @@
 #include <cufftXt.h>
 #include "field_component.h"
 #include "potential_gaussian.h"
-#include "potential_fieldphases.h"
+#include "potential_bias_field.h"
 #include "potential_erf.h"
 #include "potential_gaussian_erf.h"
 #include "potential_charges.h"
@@ -189,7 +189,7 @@ FieldComponent* Components;
 #ifndef MAIN
 extern
 #endif
-std::vector<FieldPhase> Fields;
+std::vector<BiasField> Fields;
 
 #ifndef MAIN
 extern
