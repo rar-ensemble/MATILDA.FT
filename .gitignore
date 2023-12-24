@@ -42,3 +42,23 @@ git-version.h
 
 examples/*
 makefile
+biasfield_map.dat
+data.dat
+grid_densities.bin
+input
+input.data
+MATILDA.FT.input
+positions.bin
+traj.gsd
+traj.lammpstrj
+src/fieldSpecies0.dat
+src/fieldSpecies1.dat
+src/fts_data.dat
+src/input
+src/rhoSpecies0.dat
+src/rhoSpecies1.dat
+src/smearGaussian.dat
+src/wmi_bkp.dat
+src/wmi_Flory1.dat
+src/wpl_Flory1.dat
+src/wpl_Helfand0.dat
