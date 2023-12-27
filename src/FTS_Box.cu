@@ -41,6 +41,33 @@ void FTS_Box::doTimeStep(int step) {
     }
 
 
+    // If using predictor-corrector scheme, repeat above with predicted
+    // densities and forces
+    if ( PCflag == 1 ) {
+        // Update the potential fields with corrector step
+        for ( int i=0 ; i<Potentials.size(); i++ ) {
+            int ti = time(0);
+            Potentials[i]->correctFields();
+            fieldUpdateTimer += time(0) - ti;
+        }
+        
+        // Zero the species densities and rebuilt the fields
+        for ( int i=0 ; i<Species.size(); i++ ) {
+            int ti = time(0);
+            Species[i].zeroDensity();
+            Species[i].buildPotentialField();
+            speciesTimer += time(0) - ti;
+        }
+
+        // Recalculate all density fields, including populating species densities
+        for ( int i=0 ; i<Molecs.size(); i++ ) {
+            int ti = time(0);
+            Molecs[i]->calcDensity();
+            moleculeTimer += time(0) - ti;
+        }        
+    }
+
+
     /////////////////
     // I/O section //
     /////////////////
@@ -190,6 +217,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
+    PCflag = 0;
 
     std::string line, firstWord;
 

@@ -31,6 +31,9 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     d_wpl.resize(mybox->M, ivalue);
     d_Akpl.resize(mybox->M, ivalue);
 
+    d_rho_total.resize(mybox->M, ivalue);
+    d_dHdw.resize(mybox->M, ivalue);
+
     // Set default update scheme
     updateScheme = "EM";
 
@@ -96,14 +99,21 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     }// optional arguments
 
 
+    if ( updateScheme == "EMPC" ) {
+        d_dHdwplo.resize(mybox->M, ivalue);        
+        d_wplo.resize(mybox->M, ivalue);
 
-}
+        // ensure PC flag set to TRUE.
+        mybox->PCflag = 1;
+    }
 
+}// PotentialHelfand constructor
+
+
+// Updates potential fields using the chosen scheme
+// If two-part predictor/corrector scheme is to be used, then 
+// this step is the predictor step
 void PotentialHelfand::updateFields() {
-
-    // Construct total density field
-    // This field should contain the *smeared* density fields
-    thrust::device_vector<thrust::complex<double>> d_rho_total(mybox->M);
 
     // Initialize to zero
     thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
@@ -115,8 +125,7 @@ void PotentialHelfand::updateFields() {
             d_rho_total.begin(), d_rho_total.begin(), thrust::plus<thrust::complex<double>>());
     }
 
-    // Vector to store the force term
-    thrust::device_vector<thrust::complex<double>> d_dHdw(mybox->M);
+
 
     // cast thrust vectors to cuDoubleComplex for use in kernel
     cuDoubleComplex* _d_dHdw = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
@@ -128,8 +137,14 @@ void PotentialHelfand::updateFields() {
         kappaN, mybox->Nr, mybox->M);
 
 
+
+    if ( updateScheme == "EMPC" ) {
+        storePredictorData();
+    }
+
+
     // Update the fields
-    if ( updateScheme == "EM" ) {
+    if ( updateScheme == "EM" || updateScheme == "EMPC") {
         d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, delt, mybox->M);
     }
 
@@ -161,7 +176,68 @@ void PotentialHelfand::updateFields() {
             thrust::minus<thrust::complex<double>>());
     }
 
+}// updateFields
+
+
+
+
+void PotentialHelfand::correctFields() {
+    if ( updateScheme != "EMPC" ) {
+        return;
+    }
+
+    // Initialize to zero
+    thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
+
+    
+    // Loop over species, adding them to the field
+    for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
+        thrust::transform(mybox->Species[i].d_density.begin(), mybox->Species[i].d_density.begin()+mybox->M,
+            d_rho_total.begin(), d_rho_total.begin(), thrust::plus<thrust::complex<double>>());
+    }
+
+
+
+    // cast thrust vectors to cuDoubleComplex for use in kernel
+    cuDoubleComplex* _d_dHdw = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
+    cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
+    cuDoubleComplex* _d_rho_total = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_total.data());
+
+    cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
+    cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
+
+    // Make the force in real space
+    d_makeHelfandForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, mybox->C,
+        kappaN, mybox->Nr, mybox->M);
+
+
+    // Corrector step for field updates
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, delt, mybox->M);
+    
+
+    
+    // Check for modifiers
+    if ( zeroMean == true ) {
+        thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
+        
+        // dtmp = mean
+        thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
+
+        // wpl(r) = wpl(r) - mean
+        thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
+            thrust::minus<thrust::complex<double>>());
+    }    
 }
+
+
+
+// Stores initial potential and force forms for predictor/corrector updates
+void PotentialHelfand::storePredictorData() {
+    d_wplo = d_wpl;
+    d_dHdwplo = d_dHdw;
+}
+
+
 
 
 // This routine is currently written to deal with dHdw in real space

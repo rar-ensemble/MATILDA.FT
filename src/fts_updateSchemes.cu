@@ -43,3 +43,24 @@ __global__ void d_fts_update1S(
     }
 
 }
+
+// this routine does not care about real space or k space
+// Updates using Eq 5.30 in ``FTS in SM and QF''
+__global__ void d_fts_updateEMPC(
+    cuDoubleComplex* w,             // Field being updated
+    const cuDoubleComplex* wo,       // Original field config
+    const cuDoubleComplex* dHdw,    // corrected force
+    const cuDoubleComplex* dHdwP,   // predicted force
+    const double delt,              // Size of time step
+    const int M                     // number of grid points
+    ) {
+
+    const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind >= M)
+        return;
+
+    double halfDelt = 0.5 * delt;
+    w[ind].x = wo[ind].x - halfDelt * (dHdw[ind].x + dHdwP[ind].x);
+    w[ind].y = wo[ind].y - halfDelt * (dHdw[ind].y + dHdwP[ind].y);
+
+}

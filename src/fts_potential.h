@@ -17,6 +17,7 @@
 #include "include_libs.h"
 #include "FTS_Box.h"
 __global__ void d_fts_updateEM(cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
+__global__ void d_fts_updateEMPC(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
 __global__ void d_fts_update1S(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
 
 class FTS_Box;
@@ -38,8 +39,10 @@ class FTS_Potential {
 
         std::string updateScheme;
         virtual void updateFields() = 0;       
+        virtual void correctFields() = 0;
         virtual std::complex<double> calcHamiltonian() = 0;
         virtual void initLinearCoeffs() = 0;
+        virtual void storePredictorData() = 0;
         std::string printCommand();
         std::string printStyle();
         virtual void writeFields(int) = 0;

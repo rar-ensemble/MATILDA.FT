@@ -31,7 +31,21 @@ class PotentialHelfand : public FTS_Potential {
         std::complex<double> calcHamiltonian() override;
         void writeFields(int) override;
         void initLinearCoeffs() override;
+        void storePredictorData() override;
+        void correctFields() override;
+        
+        // This field should contain the *smeared* density fields
+        thrust::device_vector<thrust::complex<double>> d_rho_total;
 
+        // Vector to store the force term
+        thrust::device_vector<thrust::complex<double>> d_dHdw;
+
+        
+        // Variables used in predictor-corrector methods
+        thrust::device_vector<thrust::complex<double>> d_dHdwplo;
+        thrust::device_vector<thrust::complex<double>> d_wplo;
+
+        
         double delt;                                            // Size of time step
         double kappaN;                                          // Strength of the potential
 };
