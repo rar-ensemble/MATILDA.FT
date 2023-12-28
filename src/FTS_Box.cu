@@ -43,7 +43,7 @@ void FTS_Box::doTimeStep(int step) {
 
     // If using predictor-corrector scheme, repeat above with predicted
     // densities and forces
-    if ( PCflag == 1 ) {
+    if ( PCflag == true ) {
         // Update the potential fields with corrector step
         for ( int i=0 ; i<Potentials.size(); i++ ) {
             int ti = time(0);
@@ -65,7 +65,9 @@ void FTS_Box::doTimeStep(int step) {
             Molecs[i]->calcDensity();
             moleculeTimer += time(0) - ti;
         }        
-    }
+    }// if ( predictorCorrector )
+
+
 
 
     /////////////////
@@ -217,7 +219,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
-    PCflag = 0;
+    PCflag = false;
+    doCL = false;
 
     std::string line, firstWord;
 
@@ -330,7 +333,6 @@ void FTS_Box::readInput(std::ifstream& inp) {
         
         
         if ( firstWord == "endBox" ) {
-            std::cout << "endBox caught" << std::endl;
             break;
         }
 

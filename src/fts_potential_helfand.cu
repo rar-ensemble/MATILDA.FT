@@ -104,7 +104,7 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
         d_wplo.resize(mybox->M, ivalue);
 
         // ensure PC flag set to TRUE.
-        mybox->PCflag = 1;
+        mybox->PCflag = true;
     }
 
 }// PotentialHelfand constructor

@@ -122,7 +122,7 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
         d_wplo.resize(mybox->M, ivalue);
 
         // ensure PC flag set to TRUE.
-        mybox->PCflag = 1;
+        mybox->PCflag = true;
     }
 
     // transfer to device

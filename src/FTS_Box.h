@@ -26,7 +26,8 @@ class FTS_Box : public Box {
         int chemFieldFreq;  // Frequency to write potential fields
         std::complex<double> Heff;  // Effective Hamiltonian
         double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
-        int PCflag;         // Flag for using predictor-corrector methods
+        bool PCflag;         // Flag for using predictor-corrector methods
+        bool doCL;           // Flag for performing complex Langevin simulations
         
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
