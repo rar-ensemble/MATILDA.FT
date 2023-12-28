@@ -43,14 +43,16 @@ class FTS_Molec {
         thrust::host_vector<thrust::complex<double>> density;
         thrust::device_vector<thrust::complex<double>> d_density;
         
+        // cDensity is the particle center density
+        thrust::device_vector<thrust::complex<double>> d_cDensity;
+
         // Molecular partition function
         thrust::complex<double> Q;
 
         double phi;         // Vol fraction of this molecule
         double nmolecs;     // number of molecules of this molecule
 
-        // cDensity is the particle center density
-        thrust::device_vector<thrust::complex<double>> d_cDensity;
+
         
         // Pointer to the box containing this molecule
         FTS_Box* mybox;
