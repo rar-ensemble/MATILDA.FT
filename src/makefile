@@ -42,7 +42,7 @@ SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_po
 	tensor_potential.cu tensor_potential_MaierSaupe.cu device_ms_utils.cu \
 	Box.cu FTS_Box.cu fts_species.cu fts_potential.cu \
 	fts_potential_helfand.cu fts_potential_flory.cu fts_molecule.cu fts_molecule_linear.cu \
-	fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu \
+	fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu fts_make_CLnoise.cu \
 
 SRCS_C = gsd.c
 SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp

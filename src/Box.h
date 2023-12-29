@@ -29,6 +29,8 @@ class Box {
         thrust::host_vector<float> Lh;         // Half box dimensions
         thrust::device_vector<float> d_Lh;
 
+        std::string boxType;
+
         double V;                           // Box volume
         int M;                              // Total number of grid points
         double gvol;                        // Grid volume
@@ -36,6 +38,7 @@ class Box {
         int logFreq;                        // Frequency to print energies
         int densityFieldFreq;               // Frequency to write configs
         int maxSteps;                       // Max number of steps to run
+        int threads;                        // number of threads per GPU block
         long int simTime;                   // Total simulation time
         long int ftTimer;                   // Time spent in FFT routine
 
@@ -55,15 +58,17 @@ class Box {
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
         void unstack2(int, int*);
         int returnDimension(void);
+        void initCuRand(void);
         std::string printCommand();
         virtual void readInput(std::ifstream&) = 0;
         virtual void writeFields() = 0;
         virtual void writeTime() = 0;
         virtual int converged(int) = 0;
-
         virtual void writeData(int) = 0;
-
         virtual void doTimeStep(int) = 0;
+
+        curandState* d_states;
+        int RAND_SEED;
 };
 
 #endif // BOX

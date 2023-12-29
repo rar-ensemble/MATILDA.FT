@@ -219,8 +219,11 @@ void FTS_Box::readInput(std::ifstream& inp) {
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
+    threads = 512;
     PCflag = false;
-    doCL = false;
+    RAND_SEED = int(time(0));
+
+    boxType = "fts";
 
     std::string line, firstWord;
 
@@ -233,6 +236,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
             continue;
 
         std::istringstream iss(line);
+
+        std::cout << line << std::endl;
+        die("here");
         
         while ( iss >> firstWord ) {
 
@@ -305,10 +311,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
-                std::cout << idum << " Before " << std::endl;
-                fflush(stdout);
                 iss >> idum;
-                std::cout << idum << " after " << std::endl;
+                RAND_SEED = idum;
             }
 
             else if (firstWord == "rho0") {
@@ -317,6 +321,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "species" ) {
                 Species.push_back(FTS_Species(iss, this));
+            }
+
+            else if ( firstWord == "threads" ) {
+                iss >> threads;
             }
 
             else if ( firstWord == "tolerance" ) {
@@ -353,7 +361,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
         gvol *= dx[j];
     }
 
-    M_Block = 512;
+    M_Block = threads;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
@@ -381,6 +389,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
+
+    // Initialize the RNG routine
+    initCuRand();
 }
 
 void FTS_Box::writeTime() {

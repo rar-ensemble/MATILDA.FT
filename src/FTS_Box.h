@@ -15,7 +15,6 @@ class FTS_Potential;
 
 class FTS_Box : public Box {
     protected:
-        std::string ftsStyle;              // "scft" or "cl", maybe also "hpf" in future?
     public:
         ~FTS_Box();
         FTS_Box(std::istringstream&);
@@ -27,7 +26,7 @@ class FTS_Box : public Box {
         std::complex<double> Heff;  // Effective Hamiltonian
         double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
         bool PCflag;         // Flag for using predictor-corrector methods
-        bool doCL;           // Flag for performing complex Langevin simulations
+        std::string ftsStyle;              // "scft" or "cl"
         
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
