@@ -237,8 +237,6 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
         std::istringstream iss(line);
 
-        std::cout << line << std::endl;
-        die("here");
         
         while ( iss >> firstWord ) {
 
@@ -515,6 +513,8 @@ FTS_Box::~FTS_Box() {}
 FTS_Box::FTS_Box(std::istringstream& iss ) : Box(iss) {
     std::string s1;
     iss >> ftsStyle;
+
+    if ( ftsStyle != "scft" || ftsStyle != "cl" ) die("Invalid FTS simulation box style! Must be scft or cl.");
 
     std::cout << "Made FTS_Box with style " << ftsStyle << std::endl;
 }

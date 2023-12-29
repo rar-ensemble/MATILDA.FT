@@ -37,6 +37,9 @@ class PotentialFlory : public FTS_Potential {
         thrust::device_vector<thrust::complex<double>> d_rhoJ;
         thrust::device_vector<thrust::complex<double>> d_dHdwpl;
         thrust::device_vector<thrust::complex<double>> d_dHdwmi;
+
+        thrust::device_vector<thrust::complex<double>> d_plNoise;
+        thrust::device_vector<thrust::complex<double>> d_miNoise;
         
         // Forces used in predictor-corrector methods
         thrust::device_vector<thrust::complex<double>> d_dHdwplo;

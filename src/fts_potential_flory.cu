@@ -57,6 +57,11 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     d_dHdwmi.resize(mybox->M, ivalue);
     d_dHdwpl.resize(mybox->M, ivalue);
 
+    if ( mybox->ftsStyle == "cl" ) {
+        d_miNoise.resize(mybox->M, ivalue);
+        d_plNoise.resize(mybox->M, ivalue);
+        std::cout << "Flory noise fields for CL allocated!" << std::endl;
+    }
     
     updateScheme = "EM";
 
@@ -138,6 +143,9 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 // this step is the predictor step
 void PotentialFlory::updateFields() {
 
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
+
     // Assign species I and J
     for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
         if ( actsOn[0] == mybox->Species[i].fts_species ) { d_rhoI = mybox->Species[i].d_density; }
@@ -152,6 +160,18 @@ void PotentialFlory::updateFields() {
     cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
     cuDoubleComplex* _d_wmi = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wmi.data());
 
+    cuDoubleComplex* _d_plNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_plNoise.data());
+    cuDoubleComplex* _d_miNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_miNoise.data());
+
+
+    // Generate noise fields if doing CL
+    if ( doCL ) {
+        double noiseMag = sqrt(2.0 * deltPlus / mybox->gvol );
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_plNoise, mybox->d_states, noiseMag, mybox->M);
+
+        noiseMag = sqrt(2.0 * deltMinus / mybox->gvol );
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_miNoise, mybox->d_states, noiseMag, mybox->M);
+    }
 
     // Forces are generated in real space
     d_makeFloryForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdwpl, _d_dHdwmi, _d_wpl,
@@ -166,8 +186,8 @@ void PotentialFlory::updateFields() {
 
     // Update the fields
     if ( updateScheme == "EM" || updateScheme == "EMPC" ) {
-        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdwpl, deltPlus, mybox->M);
-        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wmi, _d_dHdwmi, deltMinus, mybox->M);
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdwpl, _d_plNoise, doCL, deltPlus, mybox->M);
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wmi, _d_dHdwmi, _d_miNoise, doCL, deltMinus, mybox->M);
     }
 
     else if ( updateScheme == "1S" ) {
@@ -197,10 +217,15 @@ void PotentialFlory::updateFields() {
 
 
 void PotentialFlory::correctFields() {
+
     if ( updateScheme != "EMPC" ) {
         return;
     }
 
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
+
+    
     // Assign species I and J
     for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
         if ( actsOn[0] == mybox->Species[i].fts_species ) { d_rhoI = mybox->Species[i].d_density; }
@@ -218,14 +243,17 @@ void PotentialFlory::correctFields() {
     cuDoubleComplex* _d_wmio = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wmio.data());
     cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
     cuDoubleComplex* _d_dHdwmio = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwmio.data());
+    
+    cuDoubleComplex* _d_plNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_plNoise.data());
+    cuDoubleComplex* _d_miNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_miNoise.data());
 
     // Forces are generated in real space
     d_makeFloryForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdwpl, _d_dHdwmi, _d_wpl,
         _d_wmi, _d_rhoI, _d_rhoJ, mybox->C, chiN, mybox->Nr, mybox->M);
 
     // Update the fields
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdwpl, _d_dHdwplo, deltPlus, mybox->M);
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wmi, _d_wmio, _d_dHdwmi, _d_dHdwmio, deltMinus, mybox->M);
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdwpl, _d_dHdwplo, _d_plNoise, doCL, deltPlus, mybox->M);
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wmi, _d_wmio, _d_dHdwmi, _d_dHdwmio, _d_miNoise, doCL, deltMinus, mybox->M);
 
 }
 
