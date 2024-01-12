@@ -34,6 +34,10 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     d_rho_total.resize(mybox->M, ivalue);
     d_dHdw.resize(mybox->M, ivalue);
 
+    if ( mybox->ftsStyle == "cl" ) {
+        d_noise.resize(mybox->M, ivalue);
+    }
+
     // Set default update scheme
     updateScheme = "EM";
 
@@ -143,10 +147,10 @@ void PotentialHelfand::updateFields() {
         d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_noise, mybox->d_states, noiseMag, mybox->M);
     }
 
+
     // Make the force in real space
     d_makeHelfandForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, mybox->C,
         kappaN, mybox->Nr, mybox->M);
-
 
 
     if ( updateScheme == "EMPC" ) {
@@ -186,6 +190,7 @@ void PotentialHelfand::updateFields() {
         thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
             thrust::minus<thrust::complex<double>>());
     }
+
 
 }// updateFields
 

@@ -18,6 +18,7 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream&, FTS_Box*);
 // then populating species densities
 void FTS_Box::doTimeStep(int step) {
 
+    //std::cout << "Potentials..." << std::endl;
     // Update the potential fields
     for ( int i=0 ; i<Potentials.size(); i++ ) {
         int ti = time(0);
@@ -25,6 +26,7 @@ void FTS_Box::doTimeStep(int step) {
         fieldUpdateTimer += time(0) - ti;
     }
     
+    //std::cout << "Species..." << std::endl;
     // Zero the species densities and rebuilt the fields
     for ( int i=0 ; i<Species.size(); i++ ) {
         int ti = time(0);
@@ -33,6 +35,7 @@ void FTS_Box::doTimeStep(int step) {
         speciesTimer += time(0) - ti;
     }
 
+    //std::cout << "Molecules..." << std::endl;
     // Recalculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         int ti = time(0);
@@ -134,7 +137,9 @@ void FTS_Box::initializeSim() {
     
     Potentials[0]->wpl = Potentials[0]->d_wpl;
 
-    
+    std::cout << "Calculating inital values in initializeSim..." ;
+    fflush(stdout);
+
     // Zero the species densities
     for ( int i=0 ; i<Species.size(); i++ ) {
         Species[i].zeroDensity();
@@ -142,7 +147,6 @@ void FTS_Box::initializeSim() {
     }
 
 
-    thrust::host_vector<thrust::complex<double>> htmp(M);
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         Molecs[i]->calcDensity();
@@ -152,6 +156,7 @@ void FTS_Box::initializeSim() {
     OTP.open("fts_data.dat");
     OTP.close();
 
+    std::cout << "DONE initializeSim" << std::endl;
 
 }
 
@@ -514,7 +519,7 @@ FTS_Box::FTS_Box(std::istringstream& iss ) : Box(iss) {
     std::string s1;
     iss >> ftsStyle;
 
-    if ( ftsStyle != "scft" || ftsStyle != "cl" ) die("Invalid FTS simulation box style! Must be scft or cl.");
+    if ( ftsStyle != "scft" && ftsStyle != "cl" ) die("Invalid FTS simulation box style! Must be scft or cl.");
 
     std::cout << "Made FTS_Box with style " << ftsStyle << std::endl;
 }
