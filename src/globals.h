@@ -27,6 +27,7 @@
 #include "Compute.h"
 #include "Compute_widom.h"
 #include "Compute_avg_sk.h"
+#include "Compute_avg_rho.h"
 #include "Compute_sk.h"
 #include "Compute_chempot.h"
 #include "Extraforce.h"
