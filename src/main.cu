@@ -9,6 +9,7 @@
 #include <fstream>
 #include "git-version.h"
 #include "Box.h"
+#include "Extraforce_dynamic.h"
 
 using namespace std;
 
@@ -167,8 +168,15 @@ int main(int argc, char** argv){
 
 		init_t_out = int(time(0));
 
+		std::cout << "Seting up class dependencies" << std::endl;
+		for (auto Iter: DynamicBonds){
+			static_cast<Dynamic*>(Iter)->SetDependencies();
+		}
 
 		cout << "ENTERING MAIN LOOP!!" << endl;
+
+
+
 		///////////////////////////////////////
 		// BEGINNING OF MAIN SIMULATION LOOP //
 		///////////////////////////////////////

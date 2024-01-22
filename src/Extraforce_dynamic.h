@@ -65,6 +65,75 @@ __global__ void d_break_bonds(
     float *Lh,
     int D);
 
+
+ __global__ void d_break_bonds_primary(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_LINKED_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D);
+
+
+
+ __global__ void d_make_bonds_support(
+    const float *x,
+    float* f,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_LINKED_BONDS,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<float> d_VirArr,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
+    int sticker_density,
+    int nncells,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float r_n,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D);
+
+
+
+  __global__ void d_break_bonds_support(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D);
+
 __global__ void d_update_forces(
     const float* x,    
     float* f,        // [ns*Dim], particle positions
@@ -128,7 +197,7 @@ __global__ void d_update_neighbours(
 class Dynamic : public ExtraForce {
 protected:
     
-    int bond_freq, n_free_donors, n_free_acceptors, n_bonded;  
+    int bond_freq, n_free_donors, n_free_acceptors, n_bonded, n_bonded_effective, n_free_effective;  
     int GRID;
     thrust::device_vector<int> d_mbbond;
     thrust::host_vector<int> mbbond;
@@ -137,8 +206,8 @@ protected:
     
     std::string file_name;
 
-    thrust::host_vector<int> AD, BONDS, BONDED, FREE;
-    thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED;//, d_FLAG_LIST, d_AD;
+    thrust::host_vector<int> AD, BONDS, BONDED, FREE, BONDED_EFFECTIVE, FREE_EFFECTIVE;
+    thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED, d_BONDED_EFFECTIVE, d_FREE_EFFECTIVE;//, d_FLAG_LIST, d_AD;
     
     thrust::device_vector<float> d_VirArr;
     thrust::host_vector<float> VirArr;
@@ -155,6 +224,11 @@ protected:
     int n_donors, n_acceptors, acceptor_tag, donor_tag;
 
     std::string ad_file;
+
+    int link, link_pos;
+    Dynamic *LinkedForce;
+    int LINK_FLAG;
+    std::string direction;
 
     thrust::host_vector<int> DONORS, ACCEPTORS, FREE_ACCEPTORS, S_ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS, d_S_ACCEPTORS, d_FREE_ACCEPTORS;
@@ -198,6 +272,8 @@ public:
     void UpdateNList();
     void IncreaseCapacity();
     void write_resume_files();
+    void SetDependencies();
+    void UpdateLinkedBonders();
 };
 
 #endif
