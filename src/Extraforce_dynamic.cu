@@ -1199,7 +1199,7 @@ __global__ void d_break_bonds_primary(
 
 {
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)
+    if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction) //what shoukd be in n_bonded - I'm doing the
         return;
 
     int list_ind = d_BONDED[tmp_ind];
@@ -1293,7 +1293,7 @@ __global__ void d_make_bonds_support(
 {
 
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_free_effective)
+    if (tmp_ind >= n_free_effective*active_fraction)
         return;
 
     int n_bonded = n_donors - n_free_effective;
@@ -1404,7 +1404,7 @@ __global__ void d_break_bonds_support(
 
 {
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded)
+    if (tmp_ind >= n_bonded*active_fraction)
         return;
 
     int list_ind = d_BONDED[tmp_ind];
