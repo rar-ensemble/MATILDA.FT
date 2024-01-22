@@ -363,9 +363,11 @@ Lewis_Serial::Lewis_Serial(istringstream &iss) : ExtraForce(iss)
         UpdateBonders();
     }
 
+    d_lewis_vect.resize(3);
+    lewis_vect.resize(3);
 
-
-
+    d_dU_lewis.resize(1);
+    dU_lewis.resize(1);
 }
 
 
@@ -548,27 +550,13 @@ void Lewis_Serial::AddExtraForce()
             IncreaseCapacity();
         }
 
-        for (int i = 0; i < int(n_donors/10.0); i++){
-            
-            if (rand()%2 == 0){
-
-                if (n_free_donors > 0){
-                    MakeBonds();
-                } // if n_free_donors > 0
-
-                if (n_bonded > 0){
-                    BreakBonds();
-                } // if n_free_donors > 0
-
+        for (int i = 0; i < 1; i++){
+            if (((double) rand() / (RAND_MAX)) > n_bonded/float(n_donors) && n_free_donors > 0){
+                MakeBonds();
             }
             else{
-
                 if (n_bonded > 0){
                     BreakBonds();
-                } // if n_free_donors > 0
-
-                if (n_free_donors > 0){
-                    MakeBonds();
                 } // if n_free_donors > 0
             }
 
@@ -632,9 +620,6 @@ __global__ void d_make_bonds_lewis_serial_1(
 {
 
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    // if (tmp_ind >= n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)
-    //     return;
-
     int n_bonded = n_donors - n_free_donors;
     int n_free_acceptors = n_acceptors - n_bonded;
 
@@ -642,10 +627,18 @@ __global__ void d_make_bonds_lewis_serial_1(
     int ind = d_index[list_ind];
 
 
-
     curandState l_state;
     l_state = d_states[ind];
     float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+    // if (rnd >= 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * (float)n_free_donors/(n_donors + n_acceptors))
+    //     return;
+
+
+
+    l_state = d_states[ind];
+    rnd = curand_uniform(&l_state);
     d_states[ind] = l_state;
   
 
@@ -775,7 +768,7 @@ __global__ void d_make_bonds_lewis_serial_2(
     d_lewis_vect[2] = -1;
 
 
-    if (rnd < 1.0/(1+exp(d_dU_lewis[0])))
+    if (rnd < 1.0/(2))
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 1);
         atomicExch(&d_BONDS.get()[lnid * 2], 1);
@@ -838,10 +831,13 @@ __global__ void d_break_bonds_lewis_serial_1(
     float rnd = curand_uniform(&l_state);
     d_states[ind] = l_state;
 
-    
+
+
     int n_free_acceptors = n_acceptors - n_bonded;
     int n_free_donors = n_donors-n_bonded;
 
+    // if (rnd >= float(n_bonded)/(n_donors + n_acceptors)*2.0)
+    // return;
 
     int lnid = d_BONDS[list_ind * 2 + 1];
     int nid = d_index[lnid];
@@ -923,7 +919,7 @@ __global__ void d_break_bonds_lewis_serial_2(
     d_states[ind] = l_state;
 
 
-    if (rnd < exp(-e_bond)/(1+exp(-d_dU_lewis[0])))
+    if (rnd < exp(-e_bond)/(2))
 
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);
