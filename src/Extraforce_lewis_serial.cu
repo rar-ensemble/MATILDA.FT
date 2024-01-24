@@ -551,13 +551,13 @@ void Lewis_Serial::AddExtraForce()
         }
 
         for (int i = 0; i < 1; i++){
-            if (((double) rand() / (RAND_MAX)) > n_bonded/float(n_donors) && n_free_donors > 0){
+            if (((double) rand() / (RAND_MAX)) > n_bonded/float(n_donors) && n_free_donors > 0 && ((double) rand() / (RAND_MAX)) < 2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
                 MakeBonds();
             }
-            else{
-                if (n_bonded > 0){
-                    BreakBonds();
-                } // if n_free_donors > 0
+            else if (((double) rand() / (RAND_MAX)) > n_free_donors/float(n_donors) && n_bonded > 0){
+
+                BreakBonds();
+
             }
 
         UpdateBonders();
@@ -768,7 +768,7 @@ __global__ void d_make_bonds_lewis_serial_2(
     d_lewis_vect[2] = -1;
 
 
-    if (rnd < 1.0/(2))
+    if (rnd < 1.0/(1+exp(d_dU_lewis[0])))
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 1);
         atomicExch(&d_BONDS.get()[lnid * 2], 1);
@@ -919,7 +919,7 @@ __global__ void d_break_bonds_lewis_serial_2(
     d_states[ind] = l_state;
 
 
-    if (rnd < exp(-e_bond)/(2))
+    if (rnd < exp(-e_bond)/(1+exp(-d_dU_lewis[0])))
 
     {
         atomicExch(&d_BONDS.get()[list_ind * 2], 0);

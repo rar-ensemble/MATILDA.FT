@@ -28,10 +28,10 @@ data = np.loadtxt('bonds')
 # print((data[-1,2]-data[-1,3]))
 # print((data[-1,2]-data[-1,3])/min(data[-1,2:]))
 
-N = 500
+N = 100
 L = 20
 V = L**3
-nc = 100
+nc = 400
 f = np.average(data[-nc:,1])
 print(f)
 

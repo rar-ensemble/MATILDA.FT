@@ -506,19 +506,19 @@ void Dynamic::UpdateLinkedBonders(){
     // supporting force
     // update the BONDED list of primary force
 
-    if(link_pos == 1){
+    // if(link_pos == 1){
 
-        LinkedForce->n_bonded_effective = 0; //External force - effective list for bond breaking (must be free)
-        BONDS = d_BONDS; //own bonds
+    //     LinkedForce->n_bonded_effective = 0; //External force - effective list for bond breaking (must be free)
+    //     BONDS = d_BONDS; //own bonds
 
-        for (int i = 0; i < group->nsites; ++i){
-            if (AD[i] == donor_tag && BONDS[2*i] == 0){ //;if bond is broken
-                LinkedForce->BONDED_EFFECTIVE[LinkedForce->n_bonded_effective++] = i;
-            }
-        }
+    //     for (int i = 0; i < group->nsites; ++i){
+    //         if (AD[i] == donor_tag && BONDS[2*i] == 0){ //;if bond is broken
+    //             LinkedForce->BONDED_EFFECTIVE[LinkedForce->n_bonded_effective++] = i;
+    //         }
+    //     }
 
-        LinkedForce->d_BONDED_EFFECTIVE = LinkedForce->BONDED_EFFECTIVE;
-    }
+    //     LinkedForce->d_BONDED_EFFECTIVE = LinkedForce->BONDED_EFFECTIVE;
+    // }
 }
 
 void Dynamic::SetDependencies(){
@@ -748,18 +748,18 @@ void Dynamic::AddExtraForce()
                         } // if n_free_donors > 0
 
 
-                        thrust::shuffle(BONDED_EFFECTIVE.begin(),BONDED_EFFECTIVE.begin() + n_bonded_effective,g);
-                        d_BONDED_EFFECTIVE = BONDED_EFFECTIVE;
+                        thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
+                        d_BONDED = BONDED;
+
+                        if (n_bonded > 0){
+
+                            int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
 
 
-                        if (n_bonded_effective > 0){
-
-                            int BLOCKS = (int)ceil((n_bonded_effective *float(n_bonded_effective)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
-
-
-                            d_break_bonds<<<BLOCKS, threads>>>(d_x,
+                            d_break_bonds_primary<<<BLOCKS, threads>>> (d_x,
                                 d_BONDS.data(),
-                                d_BONDED_EFFECTIVE.data(),n_bonded_effective,
+                                LinkedForce->d_BONDS.data(),
+                                d_BONDED.data(),n_bonded,
                                 n_donors,n_acceptors,
                                 r_n,
                                 group->d_index.data(), group->nsites, d_states,
@@ -767,8 +767,7 @@ void Dynamic::AddExtraForce()
                                 active_fraction,
                                 d_L, d_Lh, Dim);
 
-
-                            } // if n_free_donors > 0
+                            } // if n_bonded > 0
 
                     UpdateBonders();
                     UpdateLinkedBonders(); //propagate changes to the linked force
@@ -1199,15 +1198,15 @@ __global__ void d_break_bonds_primary(
 
 {
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction) //what shoukd be in n_bonded - I'm doing the
+    if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction) 
         return;
 
     int list_ind = d_BONDED[tmp_ind];
     int ind = d_index[list_ind];
 
-    //only permit uncinding if the corresponding bond has been broken
+    //only permit unbinding if the corresponding bond has been broken
 
-    if (d_LINKED_BONDS[list_ind] == 1){
+    if (d_LINKED_BONDS[list_ind * 2] == 1){
         return;
     }
 
