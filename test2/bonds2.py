@@ -14,8 +14,8 @@ def logW(nB, nA, nD):
 
 e = [0,1,2,3]
 f = [0.5110399999999999,0.6107799999999999,0.7295900000000001,0.8116999999999998]
-e2 = [0,1,2]
-f2 = [0.6002624999999999,0.73834375,0.8487375]
+e2 = [0,1,2,3]
+f2 = [0.6002624999999999,0.73834375,0.8487375,0.9157437500000001]
 energies = np.arange(0,4.0,0.1)
 nD = 25
 nA = 25
@@ -86,12 +86,10 @@ for E in energies:
     M2.append((nmin * frac)/V / ((nA - nmin * frac)/V * (nD - nmin * frac)/V))
 
 
-
 plt.plot(energies,MEANS, label = "Analytical solution 1:1", color = 'k', lw = 1.2)
 plt.plot(e,f, label = "Simulation (Lewis Bonds) 1:1", color = 'tab:red', marker = 'o', ls = '')
-plt.plot(e2,f2, label = "Simulation (Lewis Bonds) 3:2", color = 'tab:red', marker = 'o', ls = '')
-
-plt.plot(energies,MEANS2, label = "Analytical solution 3:2 / 2:3", color = 'k', ls = '--', lw = 1)
+plt.plot(energies,MEANS2, label = "Analytical solution 3:2 / 2:3", color = 'k', ls = '--', lw = 1.2)
+plt.plot(e2,f2, label = "Simulation (Lewis Bonds) 3:2", color = 'tab:blue', marker = 'o', ls = '')
 plt.title("Penn State")
 plt.legend(fontsize=8,ncol = 2)
 plt.ylabel("Bonded Fraction")

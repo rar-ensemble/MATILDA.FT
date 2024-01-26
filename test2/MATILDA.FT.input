@@ -5,7 +5,7 @@ Nz 30
 delt 0.005
 Default initialization of the 'All' group
 integrator all GJF
-rand_seed 1706125146
+rand_seed 1706307380
 max_steps 100000001
 MAX_BONDS 3
 MAX_ANGLES 3
@@ -21,6 +21,6 @@ pmeorder 1
 charges 0.43484 1
 diffusivity 1 1
 charges 0.43484 1.0
-extraforce all lewis_serial ad_input 0.0 1.0 0.0 0.0 5.0 100 0.05 100 1000 bonds 0
+extraforce all lewis_serial ad_input 0.0 0.0 0.0 0.0 5.0 300 0.05 100 1000 bonds 0
 integrator all GJF
-extraforce all lewis_serial ad_input 0.0 1.0 0.0 0.0 5.0 100 0.05 100 1000 bonds 0
+extraforce all lewis_serial ad_input 0.0 0.0 0.0 0.0 5.0 300 0.05 100 1000 bonds 0

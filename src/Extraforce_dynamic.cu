@@ -175,6 +175,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
             ++i;
             std::cout << "Creating a linked force." << std::endl;
             direction = extra_args[i++];
+            LinkedBonds.push_back(this);
 
             if (direction == "primary"){
                 link_pos = 0;
@@ -412,40 +413,37 @@ void Dynamic::IncreaseCapacity(){
 
         // increase the capacity of the density array if it is not enough to hold all the particles
 
-        int sum = thrust::count(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 1);
-        float ldc = float(sum);
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
 
-        cout << "Input sticker density was: " << sticker_density <<" but at least "<< sticker_density + ldc <<" is required"<<endl;
-        sticker_density += int(ceil(ldc * 5));
-        cout << "Increasing sticker density to " <<  sticker_density <<  " at step " << step << endl;
+        while (sum > 0){
+            int incr = ceil(float(sum)/float(xyz));
+            cout << "#########\nInput sticker density was: " << sticker_density <<" but at least "<< sticker_density + incr <<" is required"<<endl;
+            sticker_density += (incr + 10);
+            cout << "Increasing sticker density to " <<  sticker_density  <<  " at step " << step << "\n#########" << endl;
 
-        d_MASTER_GRID.resize(xyz * sticker_density);                 
-    
-        d_RN_ARRAY.resize(group->nsites * sticker_density * nncells);
-        RN_ARRAY.resize(group->nsites * sticker_density * nncells);
-    
-        d_RN_DISTANCE.resize(group->nsites * sticker_density * nncells);
-        RN_DISTANCE.resize(group->nsites * sticker_density * nncells);
+            d_MASTER_GRID.resize(xyz * sticker_density);                 
+        
+            d_RN_ARRAY.resize(group->nsites * sticker_density * nncells);
+            RN_ARRAY.resize(group->nsites * sticker_density * nncells);
+        
+            d_RN_DISTANCE.resize(group->nsites * sticker_density * nncells);
+            RN_DISTANCE.resize(group->nsites * sticker_density * nncells);
 
-        thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
-        thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
-        thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+            thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+            thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+            thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
 
-        d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
-            d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-            d_Nxx.data(), d_Lg.data(),
-            d_LOW_DENS_FLAG.data(),
-            d_ACCEPTORS.data(),
-            nncells, n_acceptors, sticker_density,
-            group->d_index.data(), group->nsites, Dim);
+            d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                d_Nxx.data(), d_Lg.data(),
+                d_LOW_DENS_FLAG.data(),
+                d_ACCEPTORS.data(),
+                nncells, n_acceptors, sticker_density,
+                group->d_index.data(), group->nsites, Dim);
 
 
-        sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
-
-        if (LOW_DENS_FLAG > 0){
-            die("Error Resizing Arrays!");
-        } 
+            sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        }
 
     
 }
@@ -523,7 +521,7 @@ void Dynamic::UpdateLinkedBonders(){
 
 void Dynamic::SetDependencies(){
     if (LINK_FLAG==1){
-        LinkedForce = static_cast<Dynamic*>(DynamicBonds[link]);
+        LinkedForce = static_cast<Dynamic*>(LinkedBonds[link]);
     }
 }
 
@@ -640,9 +638,8 @@ void Dynamic::AddExtraForce()
                 nncells, n_acceptors, sticker_density,
                 group->d_index.data(), group->nsites, Dim);
             int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-            LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
 
-            if (LOW_DENS_FLAG > 0){
+            if (sum > 0){
                 IncreaseCapacity();
             }
 
@@ -1572,7 +1569,7 @@ __global__ void d_update_grid(
         d_MASTER_GRID[cell_id * sticker_density + insrt_pos] = list_ind;
     }
     else{
-        ++d_LOW_DENS_FLAG[list_ind];
+        d_LOW_DENS_FLAG[list_ind] = 1;
     }
 }
 

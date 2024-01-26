@@ -227,6 +227,11 @@ std::vector<ExtraForce*> DynamicBonds;
 #ifndef MAIN
 extern
 #endif
+std::vector<ExtraForce*> LinkedBonds;
+
+#ifndef MAIN
+extern
+#endif
 std::vector<Group*> Groups;
 
 

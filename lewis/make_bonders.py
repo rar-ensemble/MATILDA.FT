@@ -1,12 +1,12 @@
 import numpy as np
 from random import random
-N = 1000
-L = 20
+N = 2
+L = 60
 # print(N/L**3,10664/(25*25*180))
 with open("ad_input", "w") as f:
-    for n in range(500):
+    for n in range(N//2):
         f.writelines(f"1 ")
-    for n in range(500):
+    for n in range(N//2):
         f.writelines(f"0 ")
 
 
