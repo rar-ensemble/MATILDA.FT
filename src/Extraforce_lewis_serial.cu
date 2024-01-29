@@ -954,67 +954,27 @@ __global__ void d_break_bonds_lewis_serial_2(
 
 void Lewis_Serial::MakeBonds(void){
 
-    UpdateNList();
+    int approx = 2;
 
-    prepareDensityFields();
-    MasterCharge->CalcCharges();
-    MasterCharge->CalcEnergy();
+    if (approx == 0){
 
-    U_Electro_old = MasterCharge->energy;
-
-    dU_lewis[0] = 0.0f;
-    d_dU_lewis = dU_lewis;
-
-    lewis_vect[0] = -1;
-    lewis_vect[1] = -1;  
-    lewis_vect[2] = -1;
-
-    d_lewis_vect = lewis_vect;               
-
-    d_make_bonds_lewis_serial_1<<<1, 1>>>(d_x,d_f,
-        d_BONDS.data(),
-        d_FREE_ACCEPTORS.data(),
-        d_FREE.data(),
-        d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
-        d_VirArr.data(), n_free_donors,
-        n_donors,n_acceptors,
-        sticker_density,nncells,
-        group->d_index.data(), group->nsites, d_states,
-        k_spring, e_bond, r0, r_n,
-        active_fraction,
-        d_L, d_Lh, Dim,
-        qind,
-        d_charges,
-        d_lewis_vect.data(),
-        d_dU_lewis.data());
-
-
-    // Copy device vectors to host vectors
-    lewis_vect = d_lewis_vect;
-    dU_lewis = d_dU_lewis;
-
-    std::cout << "\nBonding @ step  "<< step<< std::endl;
-    std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
-    std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
-
-
-
-    if (lewis_vect[2] == 1){
-
-        // Recalculate electrostatic field
-
+        UpdateNList();
         prepareDensityFields();
         MasterCharge->CalcCharges();
         MasterCharge->CalcEnergy();
 
-        float dUEl = U_Electro_old - MasterCharge->energy;
+        U_Electro_old = MasterCharge->energy;
 
-        std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
-
-        dU_lewis[0] += dUEl;
+        dU_lewis[0] = 0.0f;
         d_dU_lewis = dU_lewis;
 
-        d_make_bonds_lewis_serial_2<<<1, 1>>>(d_x,d_f,
+        lewis_vect[0] = -1;
+        lewis_vect[1] = -1;  
+        lewis_vect[2] = -1;
+
+        d_lewis_vect = lewis_vect;               
+
+        d_make_bonds_lewis_serial_1<<<1, 1>>>(d_x,d_f,
             d_BONDS.data(),
             d_FREE_ACCEPTORS.data(),
             d_FREE.data(),
@@ -1030,8 +990,281 @@ void Lewis_Serial::MakeBonds(void){
             d_charges,
             d_lewis_vect.data(),
             d_dU_lewis.data());
+
+
+        // Copy device vectors to host vectors
+        lewis_vect = d_lewis_vect;
+        dU_lewis = d_dU_lewis;
+
+        std::cout << "\nBonding @ step  "<< step<< std::endl;
+        std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+
+
+
+        if (lewis_vect[2] == 1){
+
+            // Recalculate electrostatic field
+
+            prepareDensityFields();
+            MasterCharge->CalcCharges();
+            MasterCharge->CalcEnergy();
+
+            float dUEl = U_Electro_old - MasterCharge->energy;
+
+            std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+
+            dU_lewis[0] += dUEl;
+            d_dU_lewis = dU_lewis;
+
+            d_make_bonds_lewis_serial_2<<<1, 1>>>(d_x,d_f,
+                d_BONDS.data(),
+                d_FREE_ACCEPTORS.data(),
+                d_FREE.data(),
+                d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                d_VirArr.data(), n_free_donors,
+                n_donors,n_acceptors,
+                sticker_density,nncells,
+                group->d_index.data(), group->nsites, d_states,
+                k_spring, e_bond, r0, r_n,
+                active_fraction,
+                d_L, d_Lh, Dim,
+                qind,
+                d_charges,
+                d_lewis_vect.data(),
+                d_dU_lewis.data());
+            
+            lewis_vect = d_lewis_vect;
+
+            if (lewis_vect[2] == 1){
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+            }
+            else{
+                prepareDensityFields();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
+            }
+        }
+    }
+
+    else if(approx == 1){
+
+
+        UpdateNList();
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+        U_Electro_old = MasterCharge->energy;
+
+        dU_lewis[0] = 0.0f;
+        d_dU_lewis = dU_lewis;
+
+        lewis_vect[0] = -1;
+        lewis_vect[1] = -1;  
+        lewis_vect[2] = -1;
+
+        d_lewis_vect = lewis_vect;               
+
+        d_make_bonds_lewis_serial_1<<<1, 1>>>(d_x,d_f,
+            d_BONDS.data(),
+            d_FREE_ACCEPTORS.data(),
+            d_FREE.data(),
+            d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+            d_VirArr.data(), n_free_donors,
+            n_donors,n_acceptors,
+            sticker_density,nncells,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0, r_n,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_lewis_vect.data(),
+            d_dU_lewis.data());
+
+        // Copy device vectors to host vectors
+        lewis_vect = d_lewis_vect;
+
+        std::cout << "\nBonding 2-step approx @ step: "<< step<< std::endl;
+        std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+
+
+
+        if (lewis_vect[2] == 1){
+
+            // Recalculate electrostatic field
+
+            prepareDensityFields();
+            MasterCharge->CalcCharges();
+            MasterCharge->CalcEnergy();
+
+            std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+
+            d_make_bonds_lewis_serial_2_approx<<<1, 1>>>(d_x,d_f,
+                d_BONDS.data(),
+                d_FREE_ACCEPTORS.data(),
+                d_FREE.data(),
+                d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                d_VirArr.data(), n_free_donors,
+                n_donors,n_acceptors,
+                sticker_density,nncells,
+                group->d_index.data(), group->nsites, d_states,
+                k_spring, e_bond, r0, r_n,
+                active_fraction,
+                d_L, d_Lh, Dim,
+                qind,
+                d_charges,
+                d_lewis_vect.data(),
+                d_dU_lewis.data(),
+                d_electrostatic_potential,
+                d_grid_W,
+                d_grid_inds,
+                grid_per_partic);
+            
+            lewis_vect = d_lewis_vect;
+
+            if (lewis_vect[2] == 1){
+                cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+            }
+            else{
+                prepareDensityFields();
+                MasterCharge->CalcCharges();
+                MasterCharge->CalcEnergy();
+                std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
+            }
+        }
+    }
+    else if (approx ==2){
+
+
+        UpdateNList();
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+        U_Electro_old = MasterCharge->energy;
+
+        std::cout << "\nBonding one-step approx @ step: "<< step<< std::endl;
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;       
+
+        d_make_bonds_lewis_serial<<<1, 1>>>(d_x,d_f,
+            d_BONDS.data(),
+            d_FREE_ACCEPTORS.data(),
+            d_FREE.data(),
+            d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+            d_VirArr.data(), n_free_donors,
+            n_donors,n_acceptors,
+            sticker_density,nncells,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0, r_n,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_electrostatic_potential,
+            d_grid_W,
+            d_grid_inds,
+            grid_per_partic);
+
+
+
+
+        // Recalculate electrostatic field
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+
+        cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+        std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
+
+
+    }
+}
+
+void Lewis_Serial::BreakBonds(void){
+
+    thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
+    d_BONDED = BONDED;
+
+    int approx =1;
+
+    if (approx == 0){
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+        U_Electro_old = MasterCharge->energy;
+
+        dU_lewis[0] = 0.0f;
+        d_dU_lewis = dU_lewis;
+
+        lewis_vect[0] = -1;
+        lewis_vect[1] = -1;  
+        lewis_vect[2] = -1;
+        d_lewis_vect = lewis_vect;              
+
+        d_break_bonds_lewis_serial_1<<<1, 1>>>(d_x,
+            d_BONDS.data(),
+            d_BONDED.data(),n_bonded,
+            n_donors,n_acceptors,
+            r_n,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_lewis_vect.data(),
+            d_dU_lewis.data());
+
+        // Copy device vectors to host vectors
+        lewis_vect = d_lewis_vect;
+        dU_lewis = d_dU_lewis;
+
+        // Recalculate electrostatic field
+
+        std::cout << "\nBreaking @ step  "<< step<< std::endl;
+        std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+        float dUEl = U_Electro_old - MasterCharge->energy;
+
+        dU_lewis[0] += dUEl;
+        d_dU_lewis = dU_lewis;
+
+        d_break_bonds_lewis_serial_2<<<1, 1>>>(d_x,
+            d_BONDS.data(),
+            d_BONDED.data(),n_bonded,
+            n_donors,n_acceptors,
+            r_n,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_lewis_vect.data(),
+            d_dU_lewis.data());
         
         lewis_vect = d_lewis_vect;
+
+
+        std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
 
         if (lewis_vect[2] == 1){
             cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
@@ -1043,92 +1276,124 @@ void Lewis_Serial::MakeBonds(void){
             std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
         }
     }
-}
-
-void Lewis_Serial::BreakBonds(void){
-
-    thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
-    d_BONDED = BONDED;
-
-    prepareDensityFields();
-    MasterCharge->CalcCharges();
-    MasterCharge->CalcEnergy();
-
-    U_Electro_old = MasterCharge->energy;
-
-    dU_lewis[0] = 0.0f;
-    d_dU_lewis = dU_lewis;
-
-    lewis_vect[0] = -1;
-    lewis_vect[1] = -1;  
-    lewis_vect[2] = -1;
-    d_lewis_vect = lewis_vect;              
-
-    
-
- 
-
-    d_break_bonds_lewis_serial_1<<<1, 1>>>(d_x,
-        d_BONDS.data(),
-        d_BONDED.data(),n_bonded,
-        n_donors,n_acceptors,
-        r_n,
-        group->d_index.data(), group->nsites, d_states,
-        k_spring, e_bond, r0,
-        active_fraction,
-        d_L, d_Lh, Dim,
-        qind,
-        d_charges,
-        d_lewis_vect.data(),
-        d_dU_lewis.data());
-
-    // Copy device vectors to host vectors
-    lewis_vect = d_lewis_vect;
-    dU_lewis = d_dU_lewis;
-
-    // Recalculate electrostatic field
-
-    std::cout << "\nBreaking @ step  "<< step<< std::endl;
-    std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
-
-    std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
-
-    prepareDensityFields();
-    MasterCharge->CalcCharges();
-    MasterCharge->CalcEnergy();
-
-    float dUEl = U_Electro_old - MasterCharge->energy;
-
-    dU_lewis[0] += dUEl;
-    d_dU_lewis = dU_lewis;
-
-    d_break_bonds_lewis_serial_2<<<1, 1>>>(d_x,
-        d_BONDS.data(),
-        d_BONDED.data(),n_bonded,
-        n_donors,n_acceptors,
-        r_n,
-        group->d_index.data(), group->nsites, d_states,
-        k_spring, e_bond, r0,
-        active_fraction,
-        d_L, d_Lh, Dim,
-        qind,
-        d_charges,
-        d_lewis_vect.data(),
-        d_dU_lewis.data());
-    
-    lewis_vect = d_lewis_vect;
 
 
-    std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
 
-    if (lewis_vect[2] == 1){
-        cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+    if (approx == 1){
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+        U_Electro_old = MasterCharge->energy;
+
+        dU_lewis[0] = 0.0f;
+        d_dU_lewis = dU_lewis;
+
+        lewis_vect[0] = -1;
+        lewis_vect[1] = -1;  
+        lewis_vect[2] = -1;
+        d_lewis_vect = lewis_vect;              
+
+        d_break_bonds_lewis_serial_1<<<1, 1>>>(d_x,
+            d_BONDS.data(),
+            d_BONDED.data(),n_bonded,
+            n_donors,n_acceptors,
+            r_n,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_lewis_vect.data(),
+            d_dU_lewis.data());
+
+        // Copy device vectors to host vectors
+        lewis_vect = d_lewis_vect;
+
+        // Recalculate electrostatic field
+
+        std::cout << "\nBreaking 2 step approx @ step: "<< step<< std::endl;
+        std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+
+        d_break_bonds_lewis_serial_2_approx<<<1, 1>>>(d_x,
+            d_BONDS.data(),
+            d_BONDED.data(),n_bonded,
+            n_donors,n_acceptors,
+            r_n,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_lewis_vect.data(),
+            d_dU_lewis.data(),
+            d_electrostatic_potential,
+            d_grid_W,
+            d_grid_inds,
+            grid_per_partic);
+        
+        lewis_vect = d_lewis_vect;
+
+
+        std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+
+        if (lewis_vect[2] == 1){
+            cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+        }
+        else{
+            prepareDensityFields();
+            MasterCharge->CalcCharges();
+            MasterCharge->CalcEnergy();
+            std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
+        }
     }
-    else{
+
+
+    else if (approx == 2){
+
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
+
+
+        std::cout << "\nBreaking one-step approx @ step: "<< step<< std::endl;
+        std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+        std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+
+        d_break_bonds_lewis_serial<<<1, 1>>>(d_x,
+            d_BONDS.data(),
+            d_BONDED.data(),n_bonded,
+            n_donors,n_acceptors,
+            r_n,
+            group->d_index.data(), group->nsites, d_states,
+            k_spring, e_bond, r0,
+            active_fraction,
+            d_L, d_Lh, Dim,
+            qind,
+            d_charges,
+            d_electrostatic_potential,
+            d_grid_W,
+            d_grid_inds,
+            grid_per_partic);
+        
+
+        cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
+
         prepareDensityFields();
         MasterCharge->CalcCharges();
         MasterCharge->CalcEnergy();
         std::cout << "Final Electrostatic: "<<  MasterCharge->energy<< std::endl;
+
     }
 }
 
@@ -1247,5 +1512,397 @@ void Lewis_Serial::write_resume_files(){
         }
     }
     bond_file.close(); 
+
+}
+
+
+
+__global__ void d_make_bonds_lewis_serial(
+    const float *x,
+    float* f,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<float> d_VirArr,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
+    int sticker_density,
+    int nncells,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float r_n,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    float*d_electrostatic_potential,
+    float* d_grid_W,
+    int* d_grid_inds,
+    int grid_per_partic)
+
+{
+
+    int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
+
+    int list_ind = d_FREE[tmp_ind];
+    int ind = d_index[list_ind];
+
+
+    int lnid;
+    int c = d_RN_ARRAY_COUNTER[list_ind];
+    if (c == 0){
+        return;
+    }
+
+    lnid=d_ACCEPTORS[tmp_ind];
+
+    if (lnid == -1){
+        return;
+    }
+
+    if (d_BONDS[lnid * 2]==1){
+        return;
+    }
+
+
+    double dr_sq = 0.0;
+    double dr0;
+    double dr_arr[3];
+    double delr;
+    double dU;
+    int nid;
+    int r;
+
+    nid = d_index[lnid];
+
+    for (int j = 0; j < D; j++){
+
+        dr0 = x[ind * D + j] - x[nid * D + j];
+        if (dr0 >  Lh[j]){dr_arr[j] = -1.0 * (L[j] - dr0);}
+        else if (dr0 < -1.0 * Lh[j]){dr_arr[j] = (L[j] + dr0);}
+        else{dr_arr[j] = dr0;}
+        dr_sq += dr_arr[j] * dr_arr[j];
+    }
+
+    double mdr = sqrt(dr_sq); //distance
+    if (mdr > EPSILON){ 
+        delr = mdr - r0; //distance - r_eq
+        dU = delr * delr * k_spring;
+    }
+    else
+    {
+        dU = 0.0;
+        delr = 0.0;
+    }
+
+
+    for (int grid_ct=0; grid_ct < grid_per_partic; ++grid_ct){
+        dU += qind * d_electrostatic_potential[d_grid_inds[ind * grid_per_partic + grid_ct]] * d_grid_W[ind * grid_per_partic + grid_ct];
+        dU -= qind * d_electrostatic_potential[d_grid_inds[nid * grid_per_partic + grid_ct]] * d_grid_W[nid * grid_per_partic + grid_ct];
+    }
+
+    printf("Bonding %f\n",dU);
+
+
+    curandState l_state;
+    l_state = d_states[ind];
+    float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+
+    if (rnd < 1.0/(1+exp(dU)))
+    {
+        atomicExch(&d_BONDS.get()[list_ind * 2], 1);
+        atomicExch(&d_BONDS.get()[lnid * 2], 1);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], lnid);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], list_ind);
+
+        d_charges[ind] += qind; 
+        d_charges[nid] -= qind;    
+        printf("Accepted!\n");
+
+    }
+    else
+    {
+
+        atomicExch(&d_BONDS.get()[list_ind * 2], 0);
+        atomicExch(&d_BONDS.get()[lnid * 2], 0);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);   
+
+    }     
+}
+
+
+
+
+
+
+__global__ void d_make_bonds_lewis_serial_2_approx(
+    const float *x,
+    float* f,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<float> d_VirArr,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
+    int sticker_density,
+    int nncells,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float r_n,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis,
+    float*d_electrostatic_potential,
+    float* d_grid_W,
+    int* d_grid_inds,
+    int grid_per_partic)
+
+
+{
+
+    int list_ind = d_lewis_vect[0];
+    int lnid = d_lewis_vect[1];
+    d_lewis_vect[2] = -1;
+
+    int ind = d_index[list_ind];
+    int nid = d_index[lnid];
+
+
+    curandState l_state;
+    l_state = d_states[ind];
+    float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+    float dU = d_dU_lewis[0];
+
+
+    for (int grid_ct=0; grid_ct < grid_per_partic; ++grid_ct){
+        dU += qind * d_electrostatic_potential[d_grid_inds[ind * grid_per_partic + grid_ct]] * d_grid_W[ind * grid_per_partic + grid_ct];
+        dU -= qind * d_electrostatic_potential[d_grid_inds[nid * grid_per_partic + grid_ct]] * d_grid_W[nid * grid_per_partic + grid_ct];
+    }
+
+    printf("%f\n",dU);
+
+
+    if (rnd < 1.0/(1+exp(dU)))
+    {
+        atomicExch(&d_BONDS.get()[list_ind * 2], 1);
+        atomicExch(&d_BONDS.get()[lnid * 2], 1);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], lnid);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], list_ind);
+        d_lewis_vect[2] = 1;
+
+    }
+    else
+    {
+
+        atomicExch(&d_BONDS.get()[list_ind * 2], 0);
+        atomicExch(&d_BONDS.get()[lnid * 2], 0);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
+
+         // Fix charges  
+        d_charges[ind] -= qind; 
+        d_charges[nid] += qind;       
+
+    }     
+
+}
+        
+
+__global__ void d_break_bonds_lewis_serial(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    float*d_electrostatic_potential,
+    float* d_grid_W,
+    int* d_grid_inds,
+    int grid_per_partic)
+
+
+{
+    int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
+
+    int list_ind = d_BONDED[tmp_ind];
+    int ind = d_index[list_ind];
+
+    int n_free_acceptors = n_acceptors - n_bonded;
+    int n_free_donors = n_donors-n_bonded;
+
+    int lnid = d_BONDS[list_ind * 2 + 1];
+    int nid = d_index[lnid];
+
+
+
+    double dr_sq = 0.0;
+    double dr0;
+    double dr_arr[3];
+    double delr;
+    double dU;
+
+    for (int j = 0; j < D; j++){
+
+        dr0 = x[ind * D + j] - x[nid * D + j];
+        if (dr0 >  Lh[j]){dr_arr[j] = -1.0 * (L[j] - dr0);}
+        else if (dr0 < -1.0 * Lh[j]){dr_arr[j] = (L[j] + dr0);}
+        else{dr_arr[j] = dr0;}
+        dr_sq += dr_arr[j] * dr_arr[j];
+    }
+
+    double mdr = sqrt(dr_sq); //distance
+    if (mdr > EPSILON){ 
+        delr = mdr - r0; //distance - r_eq
+        dU = delr * delr * k_spring;
+    }
+    else
+    {
+        dU = 0.0;
+        delr = 0.0;
+    }
+
+
+    curandState l_state;
+    l_state = d_states[ind];
+    float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+    for (int grid_ct=0; grid_ct < grid_per_partic; ++grid_ct){
+        dU -= qind * d_electrostatic_potential[d_grid_inds[ind * grid_per_partic + grid_ct]] * d_grid_W[ind * grid_per_partic + grid_ct];
+        dU += qind * d_electrostatic_potential[d_grid_inds[nid * grid_per_partic + grid_ct]] * d_grid_W[nid * grid_per_partic + grid_ct];
+    }
+
+    printf("Breaking %f\n",dU);
+
+
+    if (rnd < exp(-e_bond)/(1+exp(-dU)))
+
+    {
+        atomicExch(&d_BONDS.get()[list_ind * 2], 0);
+        atomicExch(&d_BONDS.get()[lnid * 2], 0);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
+
+        d_charges[ind] -= qind; 
+        d_charges[nid] += qind;
+
+
+    }
+
+}
+
+
+__global__ void d_break_bonds_lewis_serial_2_approx(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis,
+    float*d_electrostatic_potential,
+    float* d_grid_W,
+    int* d_grid_inds,
+    int grid_per_partic)
+
+
+{
+    int list_ind = d_lewis_vect[0];
+    int lnid = d_lewis_vect[1];
+
+    int ind = d_index[list_ind];
+    int nid = d_index[lnid];
+
+
+    curandState l_state;
+    l_state = d_states[ind];
+    float rnd = curand_uniform(&l_state);
+    d_states[ind] = l_state;
+
+    float dU = d_dU_lewis[0];
+
+    for (int grid_ct=0; grid_ct < grid_per_partic; ++grid_ct){
+        dU -= qind * d_electrostatic_potential[d_grid_inds[ind * grid_per_partic + grid_ct]] * d_grid_W[ind * grid_per_partic + grid_ct];
+        dU += qind * d_electrostatic_potential[d_grid_inds[nid * grid_per_partic + grid_ct]] * d_grid_W[nid * grid_per_partic + grid_ct];
+    }
+
+    printf("Breaking %f\n",dU);
+
+
+    if (rnd < exp(-e_bond)/(1+exp(-dU)))
+
+    {
+        atomicExch(&d_BONDS.get()[list_ind * 2], 0);
+        atomicExch(&d_BONDS.get()[lnid * 2], 0);
+
+        atomicExch(&d_BONDS.get()[list_ind * 2 + 1], -1);
+        atomicExch(&d_BONDS.get()[lnid * 2 + 1], -1);
+        d_lewis_vect[2] = 1;
+
+    }
+    else{
+
+        d_charges[ind] += qind; 
+        d_charges[nid] -= qind;
+
+    }
 
 }
