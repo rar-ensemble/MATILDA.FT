@@ -35,6 +35,7 @@ void write_kspace_cudaComplex(const char*, cufftComplex*);
 __global__ void d_prepareDensity(int, float*, cufftComplex*, int);
 int print_timestep();
 ofstream dout;
+ofstream dout_gamma;
 void unstack_like_device(int id, int* nn);
 void run_computes();
 void run_frame_printing();
@@ -257,7 +258,60 @@ int main(int argc, char** argv){
 					// Finalize time step //
 			update_potentials();
 
+
+		//
+
+		
 		}// main loop over steps
+
+
+//    Surface tension
+
+		
+		if (GAMMA_FLAG == 1){
+
+			if (*SurfaceTensions[0]->LogCheck == 1){
+				// Output old log
+
+				dout.open("gamma0.dat")
+
+				int die_flag = 0;
+				cout << "Step " << step << " of " << max_steps << " ";
+				cout << "Global step " << global_step;
+
+
+				cout << " U/V: " << Upe / V << \
+					" Ubond: " << Ubond ;
+				if ( n_total_angles > 0 )
+					cout << " Uangle: " << Uangle ;
+				cout << " Pdiags: " << Ptens[0] << " " << Ptens[1] << " ";
+
+				if (Dim == 3)
+					cout << Ptens[2] << " ";
+
+				dout << step << " " <<  global_step << " " << Upe << " " << Ubond << " ";
+				if ( n_total_angles > 0 ) 
+					dout << Uangle << " " ;
+				for (int i = 0; i < n_P_comps; i++)
+					dout << Ptens[i] << " ";
+
+				
+				for (auto& Iter: Potentials)
+				{
+					Iter->ReportEnergies(die_flag);
+				}
+				cout << " UDBond: " << Udynamicbond;
+				dout << " " << Udynamicbond;
+				
+
+				dout << endl;
+				cout<<endl;
+				return die_flag;
+
+
+			}
+
+		}
 
 
 
@@ -473,6 +527,8 @@ void set_write_status(){
 	// }
 	// else{
 		write_data_header("data.dat");
+		write_data_header("gamma0.dat");
+		write_data_header("gamma.dat");
 	// 	if (prod_traj_freq > 0)
 	// 		traj_freq = prod_traj_freq;
 	// 	if (prod_grid_freq > 0)

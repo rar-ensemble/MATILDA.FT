@@ -18,6 +18,7 @@ void write_runtime_parameters(int, string);
 void gsd_read_conf(const char* file_name, int frame_num, int process);
 
 Potential* PotentialFactory(istringstream &iss);
+Measure* MeasureFactory(istringstream &iss);
 ExtraForce* ExtraForceFactory(istringstream &iss);
 NList* NListFactory(istringstream &iss);
 Compute* ComputeFactory(istringstream &iss);

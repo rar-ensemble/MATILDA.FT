@@ -273,6 +273,11 @@ std::vector<float> dr_Triggers;
 #ifndef MAIN
 extern
 #endif
+std::vector<SurfaceTensions*> SurfaceTensions;
+
+#ifndef MAIN
+extern
+#endif
 float MAX_DISP;
 
 #ifndef MAIN
@@ -285,6 +290,15 @@ extern
 #endif
 float U_Electro_old;
 
+#ifndef MAIN
+extern
+#endif
+float U_Electro_old;
+
+#ifndef MAIN
+extern
+#endif
+int GAMMA_FLAG;
 
 void die(const char*);
 void check_cudaError(const char*);

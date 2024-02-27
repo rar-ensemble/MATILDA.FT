@@ -26,6 +26,8 @@ __global__ void d_assignValueR(float*, float, int, int);
 
 
 void initialize() {
+
+	GAMMA_FLAG = 0;
 	step = 0;
 	mem_use = 0;
     extra_ns_memory = 0;
@@ -52,6 +54,8 @@ void initialize() {
 	// Define the number of pressure tensor components
 	// if Dim == 2: 0=xx, 1=yy, 2=xy
 	// If Dim == 3: 0=xx, 1=yy, 2=zz, 3=xy, 4=xz, 5=yz
+
+
 	n_P_comps = int(Dim*(Dim +1)) / 2;
 
 	print_tot_time = 0;
