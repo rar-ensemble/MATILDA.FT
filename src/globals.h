@@ -35,6 +35,7 @@
 #include "global_templated_functions.h"
 #include "group_region.h"
 #include "include_libs.h"
+#include "Measure_surface_tension.h"
 
 #include "Box.h"
 
@@ -273,7 +274,7 @@ std::vector<float> dr_Triggers;
 #ifndef MAIN
 extern
 #endif
-std::vector<SurfaceTensions*> SurfaceTensions;
+std::vector<SurfaceTension*> SurfaceTensions;
 
 #ifndef MAIN
 extern
@@ -290,10 +291,6 @@ extern
 #endif
 float U_Electro_old;
 
-#ifndef MAIN
-extern
-#endif
-float U_Electro_old;
 
 #ifndef MAIN
 extern

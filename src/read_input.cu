@@ -186,6 +186,11 @@ void read_input() {
 				NLists.push_back(NListFactory(iss));
             }
 
+			else if (word == "measure") {
+				MeasureFactory(iss);
+				while (iss >> word) {};// Loop over rest of the line
+            }
+
             else if (word == "extraSiteMemory") {
                 if ( config_read_flag )
                     die("extraSiteMemory command must come before read_data in input file!");

@@ -38,7 +38,9 @@ public:
 
     std::string name;            // Name of the Measure
     int id;
-    virtual void AddMeasure(void) = 0;
+    virtual void RestoreState()=0;
+    virtual void PerturbState()=0;
+
 
     
     std::string printCommand(){

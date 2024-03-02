@@ -15,26 +15,35 @@
 //     const int D);
 
 
-#ifndef _EXTRAFORCE_SURFACE_TENSION
-#define _EXTRAFORCE_SURFACE_TENSION
+#ifndef _MEASURE_SURFACE_TENSION
+#define _MEASURE_SURFACE_TENSION
 
 
 class SurfaceTension : public Measure {
 protected:
-    float delta;         // Force magnitude to push particles
+
     int freq;
 public:
 	~SurfaceTension();
 	SurfaceTension(std::istringstream&);
-    void AddMeasure() override;
+
     int LogCheck();
 
-	float st_dx[3];
-    float st_L[3];
-	float st_gvol;
+    void RestoreState() override;
+    void PerturbState() override;
+    void WriteLog();
+
+    std::string file_name;
+
+	float p_dx[3];
+    float p_L[3];
+	float p_gvol;
     float delta;
     float scales[3];
-    float *st_x;
+    float *p_x;
+    float *p_x0;
+
+    float gvol0;
 
 };
 

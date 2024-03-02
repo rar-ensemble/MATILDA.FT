@@ -1,6 +1,6 @@
 Dim 3
 
-max_steps 2
+max_steps 20
 log_freq 1
 binary_freq 500000
 traj_freq 100
@@ -27,4 +27,4 @@ Nz 375
 
 # potential gaussian 1 1 0.003688  1.0
 
-measure surface_tension 0.1 10
+measure surface_tension 0.1 1

@@ -10,6 +10,8 @@
 #include "git-version.h"
 #include "Box.h"
 #include "Extraforce_dynamic.h"
+#include "Measure.h"
+#include "Measure_surface_tension.h"
 
 using namespace std;
 
@@ -35,6 +37,7 @@ void write_kspace_cudaComplex(const char*, cufftComplex*);
 __global__ void d_prepareDensity(int, float*, cufftComplex*, int);
 int print_timestep();
 ofstream dout;
+ofstream dout_gamma0;
 ofstream dout_gamma;
 void unstack_like_device(int id, int* nn);
 void run_computes();
@@ -259,59 +262,72 @@ int main(int argc, char** argv){
 			update_potentials();
 
 
-		//
-
-		
-		}// main loop over steps
-
-
 //    Surface tension
 
 		
 		if (GAMMA_FLAG == 1){
 
-			if (*SurfaceTensions[0]->LogCheck == 1){
+			auto measure = SurfaceTensions[0];
+
+			if (measure->LogCheck() == 1){
+
+				cuda_collect_x();
+
+
 				// Output old log
 
-				dout.open("gamma0.dat")
+				// dout_gamma0 << step << " " <<  global_step << " " << Upe << " " << Ubond << " ";
+				// if ( n_total_angles > 0 ) 
+				// 	dout_gamma0 << Uangle << " " ;
+				// for (int i = 0; i < n_P_comps; i++)
+				// 	dout_gamma0 << Ptens[i] << " ";
 
-				int die_flag = 0;
-				cout << "Step " << step << " of " << max_steps << " ";
-				cout << "Global step " << global_step;
+				// for (auto& Iter: Potentials)
+				// {
+				// 	Iter->ReportEnergies(die_flag);
+				// }
+				// dout_gamma0 << " " << measure->delta;
+				// dout_gamma0 << endl;
 
 
-				cout << " U/V: " << Upe / V << \
-					" Ubond: " << Ubond ;
-				if ( n_total_angles > 0 )
-					cout << " Uangle: " << Uangle ;
-				cout << " Pdiags: " << Ptens[0] << " " << Ptens[1] << " ";
+				// perturb
 
-				if (Dim == 3)
-					cout << Ptens[2] << " ";
+				measure->PerturbState();
 
-				dout << step << " " <<  global_step << " " << Upe << " " << Ubond << " ";
-				if ( n_total_angles > 0 ) 
-					dout << Uangle << " " ;
-				for (int i = 0; i < n_P_comps; i++)
-					dout << Ptens[i] << " ";
 
-				
-				for (auto& Iter: Potentials)
-				{
-					Iter->ReportEnergies(die_flag);
-				}
-				cout << " UDBond: " << Udynamicbond;
-				dout << " " << Udynamicbond;
-				
+				// prepareDensityFields();
+				// // zero_forces();
+				// // forces();
 
-				dout << endl;
-				cout<<endl;
-				return die_flag;
+				// calc_properties(1);
 
+				// output new
+
+				// dout_gamma << step << " " <<  global_step << " " << Upe << " " << Ubond << " ";
+				// if ( n_total_angles > 0 ) 
+				// 	dout_gamma << Uangle << " " ;
+				// for (int i = 0; i < n_P_comps; i++)
+				// 	dout_gamma << Ptens[i] << " ";
+
+				// for (auto& Iter: Potentials)
+				// {
+				// 	Iter->ReportEnergies(die_flag);
+				// }
+				// dout_gamma << " " << measure->delta;
+				// dout_gamma << endl;	
+
+				measure->RestoreState();	
 
 			}
-
 		}
+
+
+
+
+
+		
+		}// main loop over steps
+
 
 
 
@@ -359,6 +375,10 @@ int main(int argc, char** argv){
 	cudaStreamDestroy(stream1);
 	cudaStreamDestroy(stream2);
 	cudaStreamDestroy(stream3);
+
+	dout.close();
+	dout_gamma.close();
+	dout_gamma0.close();
 
 	return 0;
 }
@@ -487,6 +507,7 @@ void write_data_header(const char* lbl){
 
 	dout << endl;
 
+
 }
 
 void set_write_status(){
@@ -527,8 +548,45 @@ void set_write_status(){
 	// }
 	// else{
 		write_data_header("data.dat");
-		write_data_header("gamma0.dat");
-		write_data_header("gamma.dat");
+
+	if (GAMMA_FLAG == 1){
+
+		dout_gamma0.open("gamma0.dat");
+		dout_gamma0 << "# step global_step Upe Ubond ";
+		if ( n_total_angles > 0 )
+			dout_gamma0 << "Angles " ;
+		if (Dim == 2)
+			dout_gamma0 << "Pxx Pyy Pxy";
+		else if (Dim == 3)
+			dout_gamma0 << " Pxx Pyy Pzz Pxy Pxz Pyz";
+		
+		for (auto Iter: Potentials){
+			dout_gamma0 << " " + Iter->potential_type;
+			if (Iter->potential_type != "Charges")
+				dout_gamma0 << Iter->type_specific_id ;
+			if (Iter->potential_type == "MaierSaupe")
+				dout_gamma0 << " Lambda" + Iter->potential_type << Iter->type_specific_id;
+		}
+		dout_gamma0 << endl;
+
+		dout_gamma.open("gamma.dat");
+		dout_gamma << "# step global_step Upe Ubond ";
+		if ( n_total_angles > 0 )
+			dout_gamma << "Angles " ;
+		if (Dim == 2)
+			dout_gamma << "Pxx Pyy Pxy";
+		else if (Dim == 3)
+			dout_gamma << " Pxx Pyy Pzz Pxy Pxz Pyz";
+		
+		for (auto Iter: Potentials){
+			dout_gamma << " " + Iter->potential_type;
+			if (Iter->potential_type != "Charges")
+				dout_gamma << Iter->type_specific_id ;
+			if (Iter->potential_type == "MaierSaupe")
+				dout_gamma << " Lambda" + Iter->potential_type << Iter->type_specific_id;
+		}
+		dout_gamma << endl;
+	}
 	// 	if (prod_traj_freq > 0)
 	// 		traj_freq = prod_traj_freq;
 	// 	if (prod_grid_freq > 0)
