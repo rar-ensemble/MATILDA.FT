@@ -42,7 +42,8 @@ matilda-update.ft
 git-version.h
 
 examples/*
-makefile
 
-/matilda.ft
+matilda.ft
 /src/objects/*
+gpu-tild
+

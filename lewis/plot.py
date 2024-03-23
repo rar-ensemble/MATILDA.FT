@@ -30,8 +30,9 @@ def fun(dx,a1,a2):
 PARAMS = []
 for i,data in enumerate([U125,U175,U225,U275,U375]):
     plt.plot(dx,data * 120**3/res[i]**3, marker = 'o', ls = '',label = res[i], color=colors[i])
+    print(data * 120**3/res[i]**3)
     param, cov = curve_fit(fun, dx[3:], data[3:] * 120**3/res[i]**3, p0 = (1.6,0.01), bounds=[(0.0,0),(2,2)])
-    print(param)
+    # print(param)
     PARAMS.append(param[0])
     # param = (1.5,0.01)
     plt.plot(y,fun(y,*param), label = "fit", color = colors[i])

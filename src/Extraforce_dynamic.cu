@@ -416,10 +416,11 @@ void Dynamic::IncreaseCapacity(){
         int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
 
         while (sum > 0){
-            int incr = ceil(float(sum)/float(xyz));
-            cout << "#########\nInput sticker density was: " << sticker_density <<" but at least "<< sticker_density + incr <<" is required"<<endl;
-            sticker_density += (incr + 10);
-            cout << "Increasing sticker density to " <<  sticker_density  <<  " at step " << step << "\n#########" << endl;
+            // int incr = ceil(float(sum)/float(xyz));
+            // sticker_density += (incr + 10);
+            int old_density = sticker_density;
+            sticker_density = int(sticker_density*1.2);
+            cout <<  "#########\nAt step " << step << " sticker density: " << old_density << " | new sticker density: " <<  sticker_density  <<  "\n#########" << endl;
 
             d_MASTER_GRID.resize(xyz * sticker_density);                 
         
@@ -625,6 +626,7 @@ void Dynamic::AddExtraForce()
     if (LINK_FLAG == 0){
 
         if (step % bond_freq == 0 && step > 0){
+
 
             thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
             thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
@@ -1696,7 +1698,7 @@ void Dynamic::write_resume_files(){
     FILE* otp;
     int i, j;
 
-    std::string dump_name = "resume.lammsptrj";
+    std::string dump_name = "resume_bonds.lammpstrj";
 
     otp = fopen(dump_name.c_str(), "w");
 
@@ -1730,7 +1732,7 @@ void Dynamic::write_resume_files(){
     this->BONDS = d_BONDS;
     ofstream bond_file;
 
-    bond_file.open("resume_bonds", ios::out | ios::trunc);
+    bond_file.open(file_name +"_resume", ios::out | ios::trunc);
 
     bond_file << "TIMESTEP: " << global_step << std::endl;
 

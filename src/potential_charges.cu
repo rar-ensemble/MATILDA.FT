@@ -138,9 +138,15 @@ float Charges::CalcEnergy(){
     energy = 0;
     *electrostatic_energy = 0;
 
+    float mult = 1.0f;
+
+    for(int i = 0; i < Dim; ++i){
+        mult*=L[i]/float(Nx[i]);
+    }
+
 	for (int i = 0; i < M; i++) {
-		*electrostatic_energy += electrostatic_potential[i] * charge_density_field[i]; // *M; //* d_x[i];
-		energy += electrostatic_potential[i] * charge_density_field[i]; // *M; //* d_x[i];
+		*electrostatic_energy += electrostatic_potential[i] * charge_density_field[i] * mult;
+		energy += electrostatic_potential[i] * charge_density_field[i] * mult;
 	}
     return energy;
 }
