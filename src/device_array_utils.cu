@@ -236,8 +236,8 @@ __global__ void d_prepareElectrostaticPotential(cufftComplex* d_tc, cufftComplex
 
 	if (k2 != 0) {
 		//d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp(-1 * k2 / (2 * length_scale * length_scale));
-		d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
-		d_ep[ind].y = ((d_tc[ind].y * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
+		d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale );
+		d_ep[ind].y = ((d_tc[ind].y * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale );
 	}
 	else {
 		d_ep[ind].x = 0.f;
@@ -279,7 +279,7 @@ __global__ void d_prepareElectricField(cufftComplex* d_cpxx, cufftComplex* d_cpx
 	int dir;
 	k2 = d_get_k(ind, k, L, Nx, Dim);
 
-	float exp_k = exp(-k2 * length_scale * length_scale /2.0);
+	float exp_k = 1;//exp(-k2 * length_scale * length_scale);
 	float d_ep_y = d_ep[ind].y;
 	float d_ep_x = d_ep[ind].x;
 
