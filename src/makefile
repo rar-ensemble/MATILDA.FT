@@ -22,30 +22,33 @@ CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
 LIBS = -lm -lcudart -lcufft -L${CUDA_LOC}/lib
 
        
-SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_posits.cu \
-	device_array_utils.cu device_bonds.cu device_comm_utils.cu \
-	device_grid_utils.cu device_utils.cu  field_component.cu forces.cu \
-	initialize.cu integ_utils.cu io_utils.cu main.cu potential.cu \
-	potential_bias_field.cu potential_gaussian.cu pbc_utils.cu read_input.cu \
-	potential_erf.cu reduce_utils.cu update_potentials.cu device_GJF_integrator.cu \
-	potential_charges.cu potential_gaussian_erf.cu \
-	Compute.cu angles.cu device_angles.cu random.cu grid_utils.cu \
-	Extraforce.cu die.cu \
-	Extraforce_dpd.cu Extraforce_langevin.cu Extraforce_lewis.cu Extraforce_midpush.cu Extraforce_wall.cu \
-	group.cu \
-	group_id.cu group_region.cu group_type.cu\
-	integrator.cu \
-	integrator_VV.cu integrator_EM.cu integrator_GJF.cu\
-	nlist.cu \
-	nlist_half_distance.cu nlist_bonding.cu \
-	Compute_widom.cu Compute_avg_sk.cu Compute_sk.cu Compute_chempot.cu\
-	tensor_potential.cu tensor_potential_MaierSaupe.cu device_ms_utils.cu \
-	Box.cu FTS_Box.cu fts_species.cu fts_potential.cu \
-	fts_potential_helfand.cu fts_potential_flory.cu fts_molecule.cu fts_molecule_linear.cu \
-	fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu Compute_avg_rho.cu \
+SRCS = 	Box.cu main.cu die.cu random.cu \
+	FTS_Box.cu fts_species.cu fts_potential.cu fts_potential_helfand.cu fts_potential_flory.cu \
+	fts_molecule.cu fts_molecule_linear.cu fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu 
 
-SRCS_C = gsd.c
-SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
+# array_utils.cu device_array_utils.cu device_bonds.cu device_grid_utils.cu device_utils.cu  field_component.cu
+# bonds.cu calc_properties.cu config_utils.cu cuda_random_posits.cu \
+# device_array_utils.cu device_bonds.cu device_comm_utils.cu Compute_avg_rho.cu \
+# device_grid_utils.cu device_utils.cu  field_component.cu forces.cu \
+# initialize.cu integ_utils.cu io_utils.cu main.cu potential.cu \
+# potential_bias_field.cu potential_gaussian.cu pbc_utils.cu read_input.cu \
+# potential_erf.cu reduce_utils.cu update_potentials.cu device_GJF_integrator.cu \
+# potential_charges.cu potential_gaussian_erf.cu \
+# Compute.cu angles.cu device_angles.cu random.cu grid_utils.cu \
+# Extraforce.cu die.cu \
+# Extraforce_dpd.cu Extraforce_langevin.cu Extraforce_lewis.cu Extraforce_midpush.cu Extraforce_wall.cu \
+# group.cu \
+# group_id.cu group_region.cu group_type.cu\
+# integrator.cu \
+# integrator_VV.cu integrator_EM.cu integrator_GJF.cu\
+# nlist.cu \
+# nlist_half_distance.cu nlist_bonding.cu \
+# Compute_widom.cu Compute_avg_sk.cu Compute_sk.cu Compute_chempot.cu\
+# tensor_potential.cu tensor_potential_MaierSaupe.cu device_ms_utils.cu \
+
+
+#SRCS_C = gsd.c
+#SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
 
 OBJFOLDER := objects
 OBJS_MAKE  	  = $(addprefix $(OBJFOLDER)/, ${OBJS})

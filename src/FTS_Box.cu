@@ -330,7 +330,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
         
         
         if ( firstWord == "endBox" ) {
-            std::cout << "endBox caught" << std::endl;
+            std::cout << "endBox caught in outer loop" << std::endl;
             break;
         }
 

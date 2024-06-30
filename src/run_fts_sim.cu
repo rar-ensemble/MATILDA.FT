@@ -3,9 +3,9 @@
 
 
 #include "include_libs.h"
-#include "globals.h"
 #include "FTS_Box.h"
 
+extern std::vector<Box*> box;
 
 void run_fts_sim() {
 
