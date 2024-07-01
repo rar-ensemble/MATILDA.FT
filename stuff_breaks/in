@@ -1,0 +1,3 @@
+/home/marshmallow/mistakes-were-made/generators/generate-base-blend-neutral-cross-small.py --e_bond 10 --n_sites 5 --cross_fraction 0 --lx 14 --ly 14 --lz 14 --nlx 15 --nly 15 --nlz 15
+
+natgym@cedJo9
