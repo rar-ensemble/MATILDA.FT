@@ -225,10 +225,15 @@ extern
 #endif
 std::vector<ExtraForce*> DynamicBonds;
 
-#ifndef MAIN
-extern
-#endif
-std::vector<ExtraForce*> LinkedBonds;
+// #ifndef MAIN
+// extern
+// #endif
+// std::vector<ExtraForce*> LinkedBonds;
+
+// #ifndef MAIN
+// extern
+// #endif
+// std::vector<ExtraForce*> DualBonds;
 
 #ifndef MAIN
 extern

@@ -35,4 +35,4 @@ Atoms
 with open("input.data",'w') as f:
     f.writelines(str)
     for i in range(N):
-        f.writelines(f"{i+1} {i+1} 1  {0.0} {random()*L}  {random()*L}  {random()*L}\n")
+        f.writelines(f"{i+1} {i+1} 1 0 {random()*L}  {random()*L}  {random()*L}\n")

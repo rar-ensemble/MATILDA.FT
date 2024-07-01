@@ -511,9 +511,9 @@ Potential* PotentialFactory(istringstream &iss){
 	if (s1 == "fieldphase"){
 		return new FieldPhase(iss);
 	}
-	if (s1 == "maiersaupe"){
-		return new MaierSaupe(iss);
-	}
+	// if (s1 == "maiersaupe"){
+	// 	return new MaierSaupe(iss);
+	// }
 	if (s1 == "charges"){
 		return new Charges(iss);
 	}

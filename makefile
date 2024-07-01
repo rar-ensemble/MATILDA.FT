@@ -3,7 +3,7 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-CUDA_LOC = /usr/local/cuda
+CUDA_LOC = /opt/packages/cuda/v11.7.1/
 
 
 CC = ${CUDA_LOC}/bin/nvcc
@@ -12,9 +12,9 @@ CC = ${CUDA_LOC}/bin/nvcc
 
 EIGEN_LOC = ../include/eigen-3.4.0
 
-CFLAGS = -std=c++14 -rdc=true -O3 -Wno-deprecated-gpu-targets -lineinfo -arch=compute_86 -code=compute_86,sm_86 -diag-suppress 177
+CFLAGS = -std=c++14 -rdc=true -O3 -Wno-deprecated-gpu-targets -lineinfo -diag-suppress 177
 # --default-stream per-thread
-CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
+CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr 
 # CPPFLAGS = --expt-relaxed-constexpr
 #CFLAGS = -std=c++11 -rdc=true -arch=sm_37 -dlto -O3 -I${CUDA_LOC}/include -lineinfo -g 
 
@@ -30,22 +30,21 @@ SRCS = array_utils.cu bonds.cu calc_properties.cu config_utils.cu cuda_random_po
 	potential_charges.cu potential_gaussian_erf.cu \
 	Compute.cu angles.cu device_angles.cu random.cu grid_utils.cu \
 	Extraforce.cu die.cu \
-	Extraforce_dpd.cu Extraforce_langevin.cu Extraforce_dynamic.cu Extraforce_midpush.cu Extraforce_wall.cu\
-	group.cu\
+	Extraforce_dpd.cu Extraforce_langevin.cu Extraforce_dynamic.cu Extraforce_midpush.cu Extraforce_wall.cu Extraforce_lewis.cu Extraforce_lewis_full.cu\
+	group.cu Extraforce_lewis_serial.cu \
 	group_id.cu group_region.cu group_type.cu\
 	integrator.cu \
 	integrator_VV.cu integrator_EM.cu integrator_GJF.cu\
-	Measure.cu Measure_surface_tension.cu\
 	nlist.cu \
 	nlist_half_distance.cu nlist_bonding.cu \
 	Compute_widom.cu Compute_avg_sk.cu Compute_sk.cu Compute_chempot.cu\
-	tensor_potential.cu device_ms_utils.cu \
+	tensor_potential.cu tensor_potential_MaierSaupe.cu device_ms_utils.cu \
 	Box.cu FTS_Box.cu fts_species.cu fts_potential.cu \
 	fts_potential_helfand.cu fts_potential_flory.cu fts_molecule.cu fts_molecule_linear.cu \
 	fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu \
 
 SRCS_C = gsd.c
-#SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
+SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
 
 OBJFOLDER := objects
 OBJS_MAKE  	  = $(addprefix $(OBJFOLDER)/, ${OBJS})

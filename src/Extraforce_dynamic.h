@@ -160,6 +160,7 @@ __global__ void d_update_grid(
     thrust::device_ptr<int> d_Nxx,
     thrust::device_ptr<float> d_Lg,
     thrust::device_ptr<int> d_LOW_DENS_FLAG,
+    thrust::device_ptr<int> d_LOW_DENS_FLAG2,
     thrust::device_ptr<int> d_ACCEPTORS,
     const int nncells,
     const int n_acceptors,
@@ -225,10 +226,13 @@ protected:
 
     std::string ad_file;
 
-    int link, link_pos;
+    int link, link_pos, n_dual_links;
     Dynamic *LinkedForce;
+    std::vector<Dynamic*> LinkedDualForce;
     int LINK_FLAG;
+    int DUAL_POINT;
     std::string direction;
+    std::vector<int>dual_links;
 
     thrust::host_vector<int> DONORS, ACCEPTORS, FREE_ACCEPTORS, S_ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS, d_S_ACCEPTORS, d_FREE_ACCEPTORS;
@@ -243,6 +247,10 @@ protected:
     thrust::host_vector<float> Lg; // grid cell length [Dim]
 
     thrust::device_vector<int> d_LOW_DENS_FLAG;
+    thrust::device_vector<int> d_LOW_DENS_FLAG2;
+
+    // thrust::host_vector<int> h_LOW_DENS_FLAG;
+    // thrust::host_vector<int> h_LOW_DENS_FLAG2;
 
     thrust::device_vector<int> d_MASTER_GRID;
     thrust::device_vector<int> d_MASTER_GRID_counter;
@@ -268,6 +276,7 @@ public:
     void WriteBonds();
     // void UpdateHD(void);
     void UpdateVirial(void) override;
+    void WriteEnergy(void);
     void UpdateBonders();
     void UpdateNList();
     void IncreaseCapacity();

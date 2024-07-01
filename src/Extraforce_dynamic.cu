@@ -30,6 +30,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 {
 
     LINK_FLAG = 0;
+    DUAL_POINT = 0;
     DynamicBonds.push_back(this);
     thrust::default_random_engine g(time(0));
 
@@ -50,7 +51,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     
 
     std::vector<int> d_vect, a_vect;
-    int adc = 0;
+    int adc = -1;
     while (str2 >> adc){
         if (adc == 1){
             d_vect.push_back(1); // stores indices within the group
@@ -58,6 +59,9 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
         else if(adc == 0){
             a_vect.push_back(1);
+        }
+        else{
+            die("Invalid mapping!");
         }
     }
     if (d_vect.size() >= a_vect.size()){
@@ -83,7 +87,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     getline(in, line);
     istringstream str(line);
 
-    int ad = 0;
+    int ad = -1;
     int count = 0;
     while (str >> ad){
         AD.push_back(ad);
@@ -107,11 +111,19 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     ACCEPTORS = d_ACCEPTORS;
     DONORS = d_DONORS;
 
+
+    // std::cout << "Donors" << std::endl;
     // for (auto element: DONORS){
     //     std::cout << element << ", ";
     // }
 
+    // std::cout <<std::endl;
+    // std::cout << "Acceptors" << std::endl;
 
+    // for (auto element: ACCEPTORS){
+    //     std::cout << element << ", ";
+    // }
+    //    std::cout <<std::endl;
 
 
     readRequiredParameter(iss, k_spring);
@@ -126,6 +138,9 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     cout << "sticker_density: " << sticker_density << endl;
     readRequiredParameter(iss, active_fraction);
     cout << "Active fraction: " << active_fraction << endl;
+    if (active_fraction <= 0 || active_fraction > 1){
+        die("Invalid active fraction!");
+    }
     readRequiredParameter(iss, bond_freq);
     cout << "bond_freq: " << bond_freq << endl;
     readRequiredParameter(iss, bond_log_freq);
@@ -175,7 +190,7 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
             ++i;
             std::cout << "Creating a linked force." << std::endl;
             direction = extra_args[i++];
-            LinkedBonds.push_back(this);
+            // LinkedBonds.push_back(this);
 
             if (direction == "primary"){
                 link_pos = 0;
@@ -193,6 +208,37 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
             LINK_FLAG = 1;
         }
 
+
+        else if (extra_args[i] == "dual_point"){
+            ++i;
+            direction = extra_args[i++];
+            // DualBonds.push_back(this);
+
+            if (direction == "primary"){
+                link_pos = 0;
+                n_dual_links = std::stoi(extra_args[i++]);
+                for (int j =0; j < n_dual_links; ++j){
+                    dual_links.push_back(std::stoi(extra_args[i++]));
+                }
+
+                std::cout << "Dual force: " << direction << " linked to ";
+                for (int j =0; j < n_dual_links; ++j){
+                    std::cout << dual_links[j]<< " ";
+                }
+                std::cout << std::endl;
+            }
+
+            else if (direction == "support"){
+                link_pos = 1;
+                std::cout << "Dual force: " << direction <<std::endl;
+            }
+            else{
+                die("Ivalid link parameter!");
+            }
+
+        
+            DUAL_POINT = 1;
+        }
 
         else{
             ++i;
@@ -353,8 +399,16 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     ACCEPTOR_LOCKS.resize(group->nsites);
 
 
+    d_LOW_DENS_FLAG.resize(xyz); // Check if the per-cell capacity set is enough
+    d_LOW_DENS_FLAG2.resize(group->nsites); // Check if the per-cell capacity set is enough
 
-    d_LOW_DENS_FLAG.resize(group->nsites);
+
+    // h_LOW_DENS_FLAG.resize(xyz); // Check if the per-cell capacity set is enough
+    // h_LOW_DENS_FLAG2.resize(group->nsites); // Check if the per-cell capacity set is enough
+
+    // std::cout << "Address" << thrust::raw_pointer_cast(&d_MASTER_GRID_counter[0]) << " " << thrust::raw_pointer_cast(&d_LOW_DENS_FLAG[0])<<endl;
+
+
 
     thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
     thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
@@ -363,14 +417,18 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
     thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
     thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+    thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
+
 
     std::cout << "Total cells: " << xyz << ", sticker_density: " << sticker_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
 
     if (RESUME_BONDS ==1){
         std::cout << "Resume file for bonds read" << std::endl;
+        std::cout << "File name: " << bonds_resume_file << std::endl;
 
 
-        std::ifstream infile("resume_bonds");
+        std::ifstream infile(bonds_resume_file);
         std::string line;
 
         std::getline(infile, line);
@@ -404,6 +462,24 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
         d_BONDS = BONDS;
         UpdateBonders();
+
+
+        this->BONDS = d_BONDS;
+        ofstream bond_file;
+
+        bond_file.open("prev_" + file_name +"_resume", ios::out | ios::trunc);
+
+        bond_file << "TIMESTEP: " << global_step << std::endl;
+
+        for (int j = 0; j < group->nsites; ++j)
+        {
+            if (BONDS[2 * j + 1] != -1 && AD[j] == donor_tag)
+            {
+                bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
+            }
+        }
+        bond_file.close(); 
+
     }
 
 }
@@ -411,16 +487,48 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
 void Dynamic::IncreaseCapacity(){
 
+    // cout << file_name << std::endl;
+
         // increase the capacity of the density array if it is not enough to hold all the particles
 
-        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        // int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        // std::cout << "Sum: " << sum << std::endl;
 
-        while (sum > 0){
-            // int incr = ceil(float(sum)/float(xyz));
-            // sticker_density += (incr + 10);
+        int max_val = *thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+        if (max_val == 0){
+            return;
+        }
+        thrust::device_vector<int>::iterator iterb = thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+        unsigned int position_bin = iterb - d_LOW_DENS_FLAG.begin();
+        // thrust::device_vector<float>::iterator iterp = thrust::max_element(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end());
+        // unsigned int position_par = iterp - d_vec.begin();
+        cout <<  "\n#########\n" << "Detected low capacity: " << max_val << " at position " <<position_bin << endl;
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        std::cout << "Sum of bins: " << sum << std::endl;
+        int sum2 = thrust::reduce(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0, thrust::plus<int>());
+        std::cout << "Sum of particles: " << sum2 <<  std::endl;
+
+
+            // h_LOW_DENS_FLAG = d_LOW_DENS_FLAG;
+            // h_LOW_DENS_FLAG2 = d_LOW_DENS_FLAG2;
+
+            // cout << "PRE LOW DENDS GRID " << endl;
+            // for (auto e: h_LOW_DENS_FLAG){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+            // cout << "PRE LOW DENDS PART " << endl;
+            // for (auto e: h_LOW_DENS_FLAG2){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+
+        while (max_val > 0){
             int old_density = sticker_density;
-            sticker_density = int(sticker_density*1.2);
-            cout <<  "#########\nAt step " << step << " sticker density: " << old_density << " | new sticker density: " <<  sticker_density  <<  "\n#########" << endl;
+            sticker_density = sticker_density+ max_val + 1;
+            cout << file_name << " at step " << step << "| old capacity: " << old_density << " >> new capacity: " <<  sticker_density << endl;
 
             d_MASTER_GRID.resize(xyz * sticker_density);                 
         
@@ -432,18 +540,60 @@ void Dynamic::IncreaseCapacity(){
 
             thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
             thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
             thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+            thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
+
+            // cout << "LOW DENDS GRID " << endl;
+            // for (auto e: h_LOW_DENS_FLAG){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+            // cout << "LOW DENDS PART " << endl;
+            // for (auto e: h_LOW_DENS_FLAG2){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+            cudaDeviceSynchronize();
 
             d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
                 d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
                 d_Nxx.data(), d_Lg.data(),
                 d_LOW_DENS_FLAG.data(),
+                d_LOW_DENS_FLAG2.data(),
                 d_ACCEPTORS.data(),
                 nncells, n_acceptors, sticker_density,
                 group->d_index.data(), group->nsites, Dim);
 
+            cudaDeviceSynchronize();
 
-            sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+
+            // cout << "LOW DENDS GRID 2" << endl;
+            // for (auto e: h_LOW_DENS_FLAG){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+            // cout << "LOW DENDS PART 2" << endl;
+            // for (auto e: h_LOW_DENS_FLAG2){
+            //     std::cout << e <<", ";
+            // }
+            // std::cout << endl;
+
+            max_val = *thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+            thrust::device_vector<int>::iterator iterb = thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+            unsigned int position_bin = iterb - d_LOW_DENS_FLAG.begin();
+            if (max_val !=0){
+                cout << "\nNon zero max after increase! " << max_val << " at position " << position_bin << endl;
+                int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+                std::cout << "Sum of bins: " << sum << std::endl;
+                int sum2 = thrust::reduce(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0, thrust::plus<int>());
+                std::cout << "Sum of particles: " << sum2 <<  "\n#########\n" << std::endl;
+            }
+            
         }
 
     
@@ -486,43 +636,53 @@ void Dynamic::UpdateLinkedBonders(){
 
     // primary force
     // update the FREE list of supporting force
+
+    if (LINK_FLAG==1){
     
-    if(link_pos == 0){
+        if(link_pos == 0){
 
-        LinkedForce->n_free_effective = 0; //External force - effective free list (available)
-        BONDS = d_BONDS; //own bonds
+            LinkedForce->n_free_effective = 0; //External force - effective free list (available)
+            BONDS = d_BONDS; //own bonds
 
-        for (int i = 0; i < group->nsites; ++i){
-            if (AD[i] == donor_tag && BONDS[2*i] == 1){ //if bonded is available for second bond
-                LinkedForce->FREE_EFFECTIVE[LinkedForce->n_free_effective++] = i; //lists are 1:1
+            for (int i = 0; i < group->nsites; ++i){
+                if (AD[i] == donor_tag && BONDS[2*i] == 1){ //if bonded is available for second bond
+                    LinkedForce->FREE_EFFECTIVE[LinkedForce->n_free_effective++] = i; //lists are 1:1
+                }
+            }
+
+            LinkedForce->d_FREE_EFFECTIVE = LinkedForce->FREE_EFFECTIVE;
+
+        }
+    }
+
+    if (DUAL_POINT==1){
+        if(link_pos == 0){
+            for (int j =0; j < n_dual_links; ++j){
+
+                LinkedDualForce[j]->n_bonded= n_bonded; 
+                LinkedDualForce[j]->n_free_donors= n_free_donors;
+                LinkedDualForce[j]->n_free_acceptors= n_free_acceptors; 
+
+                LinkedDualForce[j]->d_BONDED =  d_BONDED;
+                LinkedDualForce[j]->d_FREE =  d_FREE;
+                LinkedDualForce[j]->d_BONDS = d_BONDS;
             }
         }
 
-        LinkedForce->d_FREE_EFFECTIVE = LinkedForce->FREE_EFFECTIVE;
-
+        
     }
-
-    // supporting force
-    // update the BONDED list of primary force
-
-    // if(link_pos == 1){
-
-    //     LinkedForce->n_bonded_effective = 0; //External force - effective list for bond breaking (must be free)
-    //     BONDS = d_BONDS; //own bonds
-
-    //     for (int i = 0; i < group->nsites; ++i){
-    //         if (AD[i] == donor_tag && BONDS[2*i] == 0){ //;if bond is broken
-    //             LinkedForce->BONDED_EFFECTIVE[LinkedForce->n_bonded_effective++] = i;
-    //         }
-    //     }
-
-    //     LinkedForce->d_BONDED_EFFECTIVE = LinkedForce->BONDED_EFFECTIVE;
-    // }
 }
 
 void Dynamic::SetDependencies(){
+
     if (LINK_FLAG==1){
-        LinkedForce = static_cast<Dynamic*>(LinkedBonds[link]);
+        LinkedForce = static_cast<Dynamic*>(DynamicBonds[link]);
+    }
+    if (DUAL_POINT==1 && link_pos == 0){
+        for (int j =0; j < n_dual_links; ++j){
+            LinkedDualForce.push_back(static_cast<Dynamic*>(DynamicBonds[dual_links[j]]));
+
+        }
     }
 }
 
@@ -623,27 +783,32 @@ void Dynamic::AddExtraForce()
     // }
 
 
-    if (LINK_FLAG == 0){
+    if (LINK_FLAG == 0 && DUAL_POINT == 0){
 
-        if (step % bond_freq == 0 && step > 0){
+        if (step % bond_freq == 0 && step > 1){
 
 
             thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
             thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
             thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+            thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
+
+            cudaDeviceSynchronize();
 
             d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
                 d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
                 d_Nxx.data(), d_Lg.data(),
                 d_LOW_DENS_FLAG.data(),
+                d_LOW_DENS_FLAG2.data(),
                 d_ACCEPTORS.data(),
                 nncells, n_acceptors, sticker_density,
                 group->d_index.data(), group->nsites, Dim);
-            int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-
-            if (sum > 0){
-                IncreaseCapacity();
-            }
+                // int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+            
+            cudaDeviceSynchronize();
+            
+            IncreaseCapacity();
 
             for (int i = 0; i < 2; i++){
                 if (n_free_donors > 0){
@@ -697,7 +862,8 @@ void Dynamic::AddExtraForce()
         } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
     } // if (LINK_FLAG==0)
 
-    else{
+    else if (LINK_FLAG == 1 && DUAL_POINT == 0)
+    {
         
         // primary list
 
@@ -708,13 +874,14 @@ void Dynamic::AddExtraForce()
                 thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
                 thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
 
-                d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
-                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
-                    d_Nxx.data(), d_Lg.data(),
-                    d_LOW_DENS_FLAG.data(),
-                    d_ACCEPTORS.data(),
-                    nncells, n_acceptors, sticker_density,
-                    group->d_index.data(), group->nsites, Dim);
+            d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+                d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                d_Nxx.data(), d_Lg.data(),
+                d_LOW_DENS_FLAG.data(),
+                d_LOW_DENS_FLAG2.data(),
+                d_ACCEPTORS.data(),
+                nncells, n_acceptors, sticker_density,
+                group->d_index.data(), group->nsites, Dim);
                 int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
                 LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
 
@@ -839,6 +1006,167 @@ void Dynamic::AddExtraForce()
 
         }
     }
+
+    else if (LINK_FLAG == 0 && DUAL_POINT == 1){
+
+        if (link_pos==0){
+
+            if (step % bond_freq == 0 && step > 0){
+
+
+                thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+                thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+                thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+                d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_LOW_DENS_FLAG.data(),
+                    d_LOW_DENS_FLAG2.data(),
+                    d_ACCEPTORS.data(),
+                    nncells, n_acceptors, sticker_density,
+                    group->d_index.data(), group->nsites, Dim);
+                int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+
+                if (sum > 0){
+                    IncreaseCapacity();
+                }
+
+                for (int i = 0; i < 2; i++){
+                    if (n_free_donors > 0){
+                            UpdateNList();
+
+                            int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+
+                            d_make_bonds<<<BLOCKS, threads>>>(d_x,d_f,
+                                d_BONDS.data(),
+                                d_FREE_ACCEPTORS.data(),
+                                d_FREE.data(),
+                                d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                                d_VirArr.data(), n_free_donors,
+                                n_donors,n_acceptors,
+                                sticker_density,nncells,
+                                group->d_index.data(), group->nsites, d_states,
+                                k_spring, e_bond, r0, r_n,
+                                active_fraction,
+                                d_L, d_Lh, Dim);
+
+                            // UpdateBonders();
+
+                        } // if n_free_donors > 0
+
+
+                    thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
+                    d_BONDED = BONDED;
+
+
+                    if (n_bonded > 0){
+
+                        int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+
+
+                        d_break_bonds<<<BLOCKS, threads>>>(d_x,
+                            d_BONDS.data(),
+                            d_BONDED.data(),n_bonded,
+                            n_donors,n_acceptors,
+                            r_n,
+                            group->d_index.data(), group->nsites, d_states,
+                            k_spring, e_bond, r0,
+                            active_fraction,
+                            d_L, d_Lh, Dim);
+
+
+                        } // if n_free_donors > 0
+
+                    UpdateBonders();
+                    UpdateLinkedBonders(); //propagate changes to the linked force
+
+                }// loop
+            } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
+        }
+    } // if (LINK_FLAG==0)
+
+    else if (LINK_FLAG == 1 && DUAL_POINT == 1)
+    {
+        
+        // primary list
+
+        if (link_pos == 0){
+
+            if (step % bond_freq == 0 && step > 0){
+                thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
+                thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+                thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+
+                d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
+                    d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
+                    d_Nxx.data(), d_Lg.data(),
+                    d_LOW_DENS_FLAG.data(),
+                    d_LOW_DENS_FLAG2.data(),
+                    d_ACCEPTORS.data(),
+                    nncells, n_acceptors, sticker_density,
+                    group->d_index.data(), group->nsites, Dim);
+                int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+                LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+
+                if (LOW_DENS_FLAG > 0){
+                    IncreaseCapacity();
+                }
+
+                for (int i = 0; i < 2; i++){
+                
+                    if (n_free_donors > 0){
+
+                            UpdateNList();
+
+                            int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+
+                            d_make_bonds<<<BLOCKS, threads>>>(d_x,d_f,
+                                d_BONDS.data(),
+                                d_FREE_ACCEPTORS.data(),
+                                d_FREE.data(),
+                                d_RN_ARRAY.data(),d_RN_ARRAY_COUNTER.data(),
+                                d_VirArr.data(), n_free_donors,
+                                n_donors,n_acceptors,
+                                sticker_density,nncells,
+                                group->d_index.data(), group->nsites, d_states,
+                                k_spring, e_bond, r0, r_n,
+                                active_fraction,
+                                d_L, d_Lh, Dim);
+
+
+                        } // if n_free_donors > 0
+
+
+                        thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
+                        d_BONDED = BONDED;
+
+                        if (n_bonded > 0){
+
+                            int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+
+
+                            d_break_bonds_primary<<<BLOCKS, threads>>> (d_x,
+                                d_BONDS.data(),
+                                LinkedForce->d_BONDS.data(),
+                                d_BONDED.data(),n_bonded,
+                                n_donors,n_acceptors,
+                                r_n,
+                                group->d_index.data(), group->nsites, d_states,
+                                k_spring, e_bond, r0,
+                                active_fraction,
+                                d_L, d_Lh, Dim);
+
+                            } // if n_bonded > 0
+
+                    UpdateBonders();
+                    UpdateLinkedBonders(); //propagate changes to the linked force
+
+                }// loop
+            } // end if (step % lewis_bond_freq == 0 && step >= bond_freq)
+        }
+    }
+
 
     if(step >= bond_freq){
         d_update_forces<<<GRID, threads>>>(d_x, d_f, d_L, d_Lh,
@@ -1021,7 +1349,7 @@ __global__ void d_make_bonds(
     double dr_sq = 0.0;
     double dr0 = 0.0;
     double dr_arr[3];
-    double delr = r_n + 1.0;
+    double delr = 0.0;
     double dU = 0.0;
     int nid;
     int r;
@@ -1291,7 +1619,7 @@ __global__ void d_make_bonds_support(
 {
 
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_free_effective*active_fraction)
+    if (tmp_ind >= n_free_effective)
         return;
 
     int n_bonded = n_donors - n_free_effective;
@@ -1402,7 +1730,7 @@ __global__ void d_break_bonds_support(
 
 {
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded*active_fraction)
+    if (tmp_ind >= n_bonded)
         return;
 
     int list_ind = d_BONDED[tmp_ind];
@@ -1486,12 +1814,35 @@ void Dynamic::WriteBonds(void)
     bond_file << "TIMESTEP: " << global_step << " " << float(n_bonded)/min(n_donors,n_acceptors) << std::endl;//" " <<mbbond[0] <<" " << mbbond[1] << endl;
     for (int j = 0; j < group->nsites; ++j)
     {
-        if (BONDS[2 * j + 1] != -1 && AD[j] == donor_tag)
+        if (BONDS[2 * j + 1] != -1 && AD[j] == donor_tag && BONDS[2 * j] == 1)
         {
             bond_file << group->index[j] + 1 << " " << this->group->index[BONDS[2 * j + 1]] + 1 << endl;
         }
     }
     bond_file.close();
+
+}
+
+
+
+void Dynamic::WriteEnergy(void)
+{
+
+    VirArr = d_VirArr;
+    float E_bond_total = 0;
+
+    // Column 3 stores the current  bond energy
+
+    for (int k = 0; k < n_bonded; ++k){
+        int j = d_BONDED[k];
+        E_bond_total += VirArr[j*5+3];
+    }
+
+    ofstream energy_file;
+    energy_file.open("energy_"+file_name, ios::out | ios::app);
+
+    energy_file << global_step << " " << E_bond_total << std::endl;
+    energy_file.close();
 
 }
 
@@ -1537,6 +1888,7 @@ __global__ void d_update_grid(
     thrust::device_ptr<int> d_Nxx,
     thrust::device_ptr<float> d_Lg,
     thrust::device_ptr<int> d_LOW_DENS_FLAG,
+    thrust::device_ptr<int> d_LOW_DENS_FLAG2,
     thrust::device_ptr<int> d_ACCEPTORS,
     const int nncells,
     const int n_acceptors,
@@ -1553,9 +1905,13 @@ __global__ void d_update_grid(
     int list_ind = d_ACCEPTORS[acceptor_ind];
     int ind = d_index[list_ind];
 
-    int xi = floor(x[ind * D] / d_Lg[0]);
-    int yi = floor(x[ind * D + 1] / d_Lg[1]);
-    int zi = floor(x[ind * D + 2] / d_Lg[2]);
+    float lx = d_Lg[0];
+    float ly = d_Lg[1];
+    float lz = d_Lg[2];
+
+    int xi = floor(x[ind * D] / lx);
+    int yi = floor(x[ind * D + 1] / ly);
+    int zi = floor(x[ind * D + 2] / lz);
 
     int cell_id;
 
@@ -1563,15 +1919,37 @@ __global__ void d_update_grid(
     int dyy = d_Nxx[1];
     int dzz = d_Nxx[2];
 
+    if (xi == dxx){xi = dxx - 1;}
+    if (yi == dyy){yi = dyy - 1;}
+    if (zi == dzz){zi = dzz - 1;}
+
     if (D == 3){cell_id = xi * dyy * dzz + yi * dzz + zi;}
     else if(D == 2){cell_id = xi * dyy + yi;}
+
+    // if (acceptor_ind==0){
+    //     printf(" >> addr: %d %d %d\n", &d_MASTER_GRID_counter.get()[0],&d_LOW_DENS_FLAG.get()[0], &d_MASTER_GRID_counter.get()[0] - &d_LOW_DENS_FLAG.get()[0]);
+    // }
+    // if (acceptor_ind==400){
+    //     printf(" >> addr1: %d %d %d\n", &d_MASTER_GRID_counter.get()[0],&d_LOW_DENS_FLAG.get()[0], &d_MASTER_GRID_counter.get()[0] - &d_LOW_DENS_FLAG.get()[0]);
+    // }
+
+    if (cell_id >= dxx*dyy*dzz){
+
+        printf("Something went wrong! Particle group id %d \n Position %.8f %.8f %.8f\n",ind, x[ind * D],x[ind * D+1],x[ind * D+2]);
+        printf("Mapping: %.8f %.8f %.8f\n",x[ind * D]/lx,x[ind * D+1]/ly,x[ind * D+2]/lz);
+        printf("Indices %d %d %d\n",xi,yi,zi);
+
+    }
 
     int insrt_pos = atomicAdd(&d_MASTER_GRID_counter.get()[cell_id], 1);
     if (insrt_pos < sticker_density){
         d_MASTER_GRID[cell_id * sticker_density + insrt_pos] = list_ind;
     }
     else{
-        d_LOW_DENS_FLAG[list_ind] = 1;
+        // d_LOW_DENS_FLAG[list_ind] = 1;
+        atomicAdd(&d_LOW_DENS_FLAG.get()[cell_id], 1);
+        atomicAdd(&d_LOW_DENS_FLAG2.get()[list_ind], 1);
+        printf("Increase capacity from particle_id %d in cell_id %d\n",ind,cell_id);
     }
 }
 

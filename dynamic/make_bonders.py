@@ -1,16 +1,9 @@
 import numpy as np
 from random import random
-N = 20
+N = 30
 L = 20
 # print(N/L**3,10664/(25*25*180))
-with open("ad_file1", "w") as f:
-    for n in range(5):
-        f.writelines(f"1 ")
-    for n in range(5):
-        f.writelines(f"0 ")
-
-
-with open("ad_file2", "w") as f:
+with open("ad_file", "w") as f:
     for n in range(5):
         f.writelines(f"1 ")
     for n in range(5):
@@ -18,12 +11,16 @@ with open("ad_file2", "w") as f:
 
 
 with open("id_file1", "w") as f:
-    for n in range(N//2):
+    for n in range(0,10):
         f.writelines(f"{n+1} ")
 
 
 with open("id_file2", "w") as f:
-    for n in range(N//2, N):
+    for n in range(10, 20):
+        f.writelines(f"{n +1} ")
+
+with open("id_file3", "w") as f:
+    for n in range(20, 30):
         f.writelines(f"{n +1} ")
 
 str = f"""Madatory string --> First rule of programing: if it works then don't touch it!

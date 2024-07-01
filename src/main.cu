@@ -173,7 +173,7 @@ int main(int argc, char** argv){
 		init_t_out = int(time(0));
 
 		std::cout << "Seting up class dependencies" << std::endl;
-		for (auto Iter: LinkedBonds){
+		for (auto Iter: DynamicBonds){
 			static_cast<Dynamic*>(Iter)->SetDependencies();
 		}
 

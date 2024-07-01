@@ -128,14 +128,6 @@ void Charges::CalcVirial() {
 
 
 
-float calc_self_interaction_sum(float* charges, int ns, float bjerrumLength, float smearingLength) {
-    float coef = bjerrumLength / (sqrt(M_PI) * 2* smearingLength);
-    float sum = 0.0f;
-    for (int i = 0; i < ns; ++i) {
-        sum += coef * charges[i] * charges[i];
-    }
-    return sum;
-}
 
 
 
@@ -152,25 +144,10 @@ float Charges::CalcEnergy(){
         mult*=L[i]/float(Nx[i]);
     }
 
-    for (int i = 0; i < M; i++) {
-        *electrostatic_energy += electrostatic_potential[i] * mult * 0.5 * charge_density_field[i];
-        energy += electrostatic_potential[i] * mult * 0.5* charge_density_field[i];
-    }
-
-    // minus self interaction
-    float self_interaction_sum = calc_self_interaction_sum(charges, ns, charge_bjerrum_length, charge_smearing_length);
-    energy -= self_interaction_sum;
-
-    // Output the self_interaction_sum to a text file
-    std::ofstream outFile("self_interaction_sum.txt");
-    if (outFile.is_open()) {
-        outFile << "Self-interaction Sum: " << self_interaction_sum << std::endl;
-        outFile.close();
-    } else {
-        // Optionally handle the error if the file could not be opened
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
-
+	for (int i = 0; i < M; i++) {
+		*electrostatic_energy += electrostatic_potential[i] * charge_density_field[i] * mult;
+		energy += electrostatic_potential[i] * charge_density_field[i] * mult;
+	}
     return energy;
 }
 
