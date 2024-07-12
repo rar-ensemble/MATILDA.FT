@@ -38,6 +38,7 @@ class Box {
         int maxSteps;                       // Max number of steps to run
         long int simTime;                   // Total simulation time
         long int ftTimer;                   // Time spent in FFT routine
+        int blockSize;                      // GPU block size
 
         cufftHandle fftplan;                // FFT Plan
         void cufftWrapperDouble(thrust::device_vector<thrust::complex<double>>,

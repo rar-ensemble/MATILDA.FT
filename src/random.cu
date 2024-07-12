@@ -63,26 +63,6 @@ double ran2 (void)
 }
 
 
-void random_unit_vec( double *v ) {
-  double xi[3], mxi, mxi2;
-  int i;
-
-  mxi2 = 23432.;
-
-  while ( mxi2 > 1.0 ) {
-    mxi2 = 0.0 ;
-    for ( i=0 ; i<3 ; i++ ) {
-      xi[i] = 1.0 - 2.0 * ran2() ;
-      mxi2 += xi[i] * xi[i] ;
-    }
-
-  }
-
-  mxi = sqrt( mxi2 );
-
-  for ( i=0 ; i<3 ; i++ )
-    v[i] = xi[i] / mxi ;
-} 
 
 
 double gasdev2() {
@@ -108,3 +88,19 @@ double gasdev2() {
   }
 }
 
+void random_unit_vec( double *v, int dim ) {
+  double xi[3], mxi, mxi2;
+  int i;
+
+  mxi2 = 0.0 ;
+  for ( i=0 ; i<dim ; i++ ) {
+    xi[i] = gasdev2() ;
+    mxi2 += xi[i] * xi[i] ;
+  }
+
+
+  mxi = sqrt( mxi2 );
+
+  for ( i=0 ; i<dim ; i++ )
+    v[i] = xi[i] / mxi ;
+} 
