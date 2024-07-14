@@ -235,6 +235,9 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
 void PS_Box::makeLinear(std::istringstream& iss ) {
     if ( rho0 < 0.0 ) die("rho0 must be defined before molecules created!");
     
+    int maxBonds = 2;   // Linear polymer specific max of two bonds per site
+    int maxAngles = 0;  // Needs to be changed to 3 after angles implemented
+
     int numBlocks, Ntot = 0;
     double phi;   
 
@@ -291,7 +294,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             for ( int s=0 ; s<Nblocks[j]; s++ ) {
 
                 // Re-size this particles' dimensions
-                partic[ind].setSizes(Dim,2,0);
+                partic[ind].setSizes(Dim, maxBonds, maxAngles);
 
 
                 // Track species info
