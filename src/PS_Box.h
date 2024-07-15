@@ -11,6 +11,7 @@
 
 #include "ps_particles.h"
 #include "ps_species.h"
+#include "ps_groups.h"
 
 class PS_Box : public Box {
     protected:
@@ -35,6 +36,7 @@ class PS_Box : public Box {
 
         std::vector<PS_Particle> partic;    // vector of particle info
         std::vector<PS_Species> species;    // vector of species IDs
+        std::vector<PS_Group> group;      // Vector of particle groups
                 
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer

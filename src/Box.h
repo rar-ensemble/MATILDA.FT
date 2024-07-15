@@ -14,6 +14,7 @@ class Box {
     protected:
         int Dim;                            // System dimensionality
         std::string input_command;          // Command to create this box
+        int nTotalBoxes;                    // Number of simulation boxes
 
         void init_fft_plan(cufftType);
         void execute_fft(FFT_COMPLEX * , FFT_COMPLEX *, int );

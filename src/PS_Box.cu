@@ -227,6 +227,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     }
 
     writeDataConfig("init.input.data");
+    std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
     simTime = time(0);
 
