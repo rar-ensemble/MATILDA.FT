@@ -53,13 +53,15 @@ void PS_Box::initializeSim() {
 
 
 void PS_Box::readInput(std::ifstream& inp) {
+    std::cout << "In read input!" << std::endl;
 
     // Set some preliminary/default variables
     M = 1;
     V = 1.0;
     blockSize = 512;
+    Nr = 100;
     rho0 = C = -1.0;
-    ntot = 0;
+    nstot = nBondsTot = nAnglesTot = 0;
 
     // Some default values
     logFreq = 100;
@@ -77,6 +79,7 @@ void PS_Box::readInput(std::ifstream& inp) {
         std::istringstream iss(line);
         
         while ( iss >> firstWord ) {
+            // std::cout << "Line read: " << line << std::endl;
 
             if ( firstWord == "endBox" ) {
                 std::cout << "endBox caught" << std::endl;
@@ -113,8 +116,17 @@ void PS_Box::readInput(std::ifstream& inp) {
                 }
             }
 
-            else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { iss >> logFreq; }
+            else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { 
+                iss >> logFreq; 
+            }
 
+            else if ( firstWord == "molecule" ) {
+                std::string nextWord;
+                iss >> nextWord;
+                if ( nextWord == "linear" ) {
+                    makeLinear(iss);
+                }
+            }
 
             else if ( firstWord == "Nr" ) {
                 iss >> Nr;
@@ -145,11 +157,15 @@ void PS_Box::readInput(std::ifstream& inp) {
                 iss >> rho0;
             }
 
+            else if ( firstWord == "species" ) {
+                species.push_back(PS_Species(iss, this));
+            }
+
             else {
                 std::string s1 = "Invalid keyword " + firstWord + " in FTS_Box::readInput()";
                 die(s1.c_str());
             }
-            std::cout << line << std::endl;
+            std::cout << "Finished input line: " << line << std::endl;
 
         }// while ( iss >> firstWord && firstWord != "endBox" ) 
         
@@ -160,6 +176,10 @@ void PS_Box::readInput(std::ifstream& inp) {
         }
 
     }// while (!inp.eof())
+
+    if ( nstot == 0 ) {
+        die("Box created with no particles?!?");
+    }
 
     // After input read, make the FFT plan
     // This currently assumes complex-double to complex-double transforms
@@ -176,9 +196,11 @@ void PS_Box::readInput(std::ifstream& inp) {
         gvol *= dx[j];
     }
 
+    // gpuGrid, block sizes
     M_Block = blockSize;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
+    // Define C, rho0 depending on what is given
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
 
     double Rg = pow( (Nr-1.0)/6.0, 0.5);
@@ -192,9 +214,25 @@ void PS_Box::readInput(std::ifstream& inp) {
         std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [b^-3]" << std::endl;
     }
 
+
+    // Count number of bonds, angles
+    for ( int i=0 ; i<nstot ; i++ ) {
+        for ( int j=0 ; j<partic[i].nBonds ; j++ ) {
+            if ( partic[i].bondedTo[j] > i ) nBondsTot++;
+        }
+
+        for ( int j=0 ; j<partic[i].nAngles ; j++ ) {
+            die("angle counter not set up in PS_Box.cu::readInput");
+        }
+    }
+
+    writeDataConfig("init.input.data");
+
     simTime = time(0);
 
-}
+}// End of readInput()
+
+
 
 void PS_Box::writeFields() {
 }
@@ -219,6 +257,8 @@ PS_Box::PS_Box(std::istringstream& iss ) : Box(iss) {
     std::cout << "Made PS_Box " << std::endl;
 }
 
+
+// Finds the index in the species vector with the label 'testLabel'
 int PS_Box::findSpeciesInteger(std::string testLabel) {
     int id = -1;
     for ( int i=0 ; i<species.size() ; i++ ) {
@@ -232,6 +272,106 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
     return id;
 }
 
+void PS_Box::writeDataConfig(std::string filename) {
+    
+    std::ofstream out(filename);
+
+    out << "Created by MATILDA.FT\n\n" ;
+
+    out << nstot << " atoms" << std::endl;
+    out << nBondsTot << " bonds" << std::endl;
+    out << nAnglesTot << " angles" << std::endl;
+
+    // blank line
+    out << std::endl;
+
+    // Find number of particle species
+    int max = -342332;
+    for ( int i=0 ; i<nstot ; i++ ) {
+        if ( partic[i].intSpecies > max ) max = partic[i].intSpecies;
+    }
+    out << max+1 << " atom types" << std::endl;
+
+    // Find number of bond types
+    max = -1;
+    for ( int i=0 ; i<nstot ; i++ ) {
+        for ( int j=0 ; j<partic[i].nBonds; j++ ) 
+            if ( partic[i].bondType[j] > max ) max = partic[i].bondType[j];
+    }
+    out << max+1 << " bond types" << std::endl;
+
+    // Find number of bond types
+    max = -1;
+    for ( int i=0 ; i<nstot ; i++ ) {
+        for ( int j=0 ; j<partic[i].nAngles; j++ ) 
+            die("angles not set up in writeDataCofnig");//if ( partic[i].bondType[j] > max ) max = partic[i].bondType[j];
+    }
+    out << max+1 << " angle types" << std::endl;
+
+
+    // blank line
+    out << std::endl;
+
+    // Box dimensions
+    out << "0.0 " << L[0] << " xlo xhi" << std::endl;
+    out << "0.0 " << L[1] << " ylo yhi" << std::endl;
+    if ( Dim > 2 ) out << "0.0 " << L[2] << " zlo zhi" << std::endl;
+    else out << "0.0 1.0 zlo zhi" << std::endl;
+
+
+
+    // blank line
+    out << std::endl;
+
+    out << "Masses\n" << std::endl;
+    for ( int i=0 ; i<species.size(); i++ ) {
+        out << i+1 << " " << species[i].mass << std::endl;
+    }
+
+
+    // blank line
+    out << std::endl;
+
+
+    // Write out particle coordinates and types
+    out << "Atoms\n" << std::endl;
+    for ( int i=0 ; i<nstot; i++ ) {
+
+        out << i+1 << " " << partic[i].mID+1 << " " << partic[i].intSpecies+1 << "  " ;
+        for ( int j=0 ; j<Dim ; j++ ) 
+            out << partic[i].x[j] << " " ;
+        if ( Dim < 3 )
+            out << "0.0 " ;
+        out << std::endl;
+
+    }// i=0 ; i<nstot
+
+
+    // blank line
+    out << std::endl;
+
+
+    // Write out bond list and types
+    out << "Bonds\n" << std::endl;
+    int bondCounter = 0;
+    for ( int i=0 ; i<nstot ; i++ ) {
+
+        for ( int j=0 ; j<partic[i].nBonds; j++ ) {
+            // Only write each bond once (when i < bondedTo)
+            if ( i < partic[i].bondedTo[j] ) {
+                out << bondCounter+1 << " " << partic[i].bondType[j]+1 << " " << i+1 << " " << partic[i].bondedTo[j]+1 << std::endl;
+                
+                bondCounter++;
+            }
+        }
+    }
+
+
+    out.close();
+}// end of writeDataConfig
+
+
+// Generate a new linear polymer of arbitrary blockiness and add it to the box
 void PS_Box::makeLinear(std::istringstream& iss ) {
     if ( rho0 < 0.0 ) die("rho0 must be defined before molecules created!");
     
@@ -239,9 +379,27 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     int maxAngles = 0;  // Needs to be changed to 3 after angles implemented
 
     int numBlocks, Ntot = 0;
-    double phi;   
 
-    iss >> phi;
+    // Both set to negative values to determine which keyword given
+    double phi = -1.0;  
+    int nmolecs = -1; 
+
+    std::string s1;
+
+    // read either phi or nmolecs keyword
+    iss >> s1;
+    if ( s1 == "phi" ) {
+        iss >> phi;
+    }
+    else if ( s1 == "nmolecs" ) {
+        iss >> nmolecs;
+    }
+    else { 
+        std::cout << "invalid keyword: " << s1 << std::endl;
+        die("invalid keyword after molecule linear. must be 'phi' or 'nmolecs'"); 
+    }
+
+    // Read in the number of blocks
     iss >> numBlocks; 
     
     std::vector<int> Nblocks(numBlocks);
@@ -262,7 +420,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     // Check for optional arguments
     if ( iss.tellg() != -1 ) {
-        std::string s1;
+
         iss >> s1;
         if ( s1 == "wlc" || s1 == "drude" || s1 == "charge" ) {
             die("worm-like chains, drude oscillators, and charges not implemented!");
@@ -274,15 +432,29 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     }
 
     // Compute number of molecules of this type to add
-    int nmolecs = int( rho0 * V * phi / float(Ntot) );
-    std::cout << "Generating " << nmolecs << " molecules each with " << Ntot << "sites" << std::endl;
+    // if volume fraction was read
+    if ( phi > 0.0 ) { nmolecs = int( rho0 * V * phi / float(Ntot) ); }
+
+    std::cout << "Generating " << nmolecs << " molecules each with " << Ntot << " sites" << std::endl;
 
     // particle index to be incremented as particles added
-    int ind = ntot;
+    int ind = nstot;
+
+
+    // Find starting molecule ID
+    // If there were no existing molecules, this logic should start at 0
+    int molecInd = -1;
+    for ( int i=0 ; i<nstot ; i++ ) {
+        if (partic[i].mID > molecInd) molecInd = partic[i].mID;
+    }
+    molecInd++;
+
+
 
     // Update number of sites in the box
-    ntot += nmolecs * Ntot;
-    partic.resize(ntot);
+    nstot += nmolecs * Ntot;
+    partic.resize(nstot);
+    std::cout << "nstot valued to: " << nstot << std::endl;
 
 
     // Main loop over molecules, blocks, sites on each block
@@ -318,6 +490,9 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
                     for ( int a=0 ; a<Dim ; a++ ) {
                         partic[ind].x[a] = partic[ind-1].x[a] + ru[a];
+
+                        if ( partic[ind].x[a] > L[a] ) partic[ind].x[a] -= L[a];
+                        else if ( partic[ind].x[a] < 0.0 ) partic[ind].x[a] += L[a];
                     }
                 }
 
@@ -326,6 +501,9 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     partic[ind].v[a] = partic[ind].f[a] = 0.0;
                 }
 
+                partic[ind].nBonds = 0;
+                partic[ind].bondedTo.resize(maxBonds);
+                partic[ind].bondType.resize(maxBonds);
 
                 // Initialize bonds
                 // If not the first monomer on a chain, make a bond to previous monomer
@@ -333,7 +511,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     int nb = partic[ind].nBonds;
                     
                     partic[ind].bondedTo[nb] = ind-1;
-                    partic[ind].bondedTo[nb] = blockBondType[j];
+                    partic[ind].bondType[nb] = blockBondType[j];
                     partic[ind].nBonds++;
                 }
 
@@ -342,15 +520,27 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     int nb = partic[ind].nBonds;
 
                     partic[ind].bondedTo[nb] = ind+1;
-                    partic[ind].bondedTo[nb] = blockBondType[j];
+                    partic[ind].bondType[nb] = blockBondType[j];
                     partic[ind].nBonds++;
                 }
+
+                // if ( ind < 35 ) {
+                //     std::cout << partic[ind].nBonds << " " << partic[ind].bondedTo[0] 
+                // }
+
+                partic[ind].mID = molecInd;
 
                 // Increment the particle index
                 ind++;
 
+
             }// s=0:N[j]
         }// j=0:numBlocks; 
+
+        // Increment molecule index
+        molecInd++;
     }// i=0:nmolecs
 
+
+    std::cout << "nstot ended at: " << nstot << std::endl;
 }

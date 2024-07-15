@@ -4,6 +4,7 @@
 
 #include "Box.h"
 #include "FTS_Box.h"
+#include "PS_Box.h"
 
 void die(const char*);
 
@@ -161,6 +162,10 @@ Box* BoxFactory(std::istringstream &iss) {
 	iss >> s1;
 	if ( s1 == "fts" ) {
         return new FTS_Box(iss);
+    }
+
+    else if ( s1 == "ps" ) {
+        return new PS_Box(iss);
     }
 
     else {

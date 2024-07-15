@@ -19,6 +19,7 @@ class PS_Particle {
     public:
         std::string species;   // Particle type as a string
         int intSpecies;        // Particle type index
+        int mID;               // Molecule ID
 
         std::vector<float> x;   // [Dim] Store particle position
         std::vector<float> v;   // [Dim] store particle velo

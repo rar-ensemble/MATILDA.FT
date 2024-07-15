@@ -20,13 +20,14 @@ class PS_Box : public Box {
         PS_Box(std::istringstream&);
 
         double rho0;        // System density
-        double Nr;          // Reference chain length used to       
-                            // non-dimensionalize fields
+        double Nr;          // Reference chain length 
                             
         double C;           // System concentration
         double Utot;        // Total potential energy
 
-        int ntot;           // Total number of particles/atoms
+        int nstot;           // Total number of particles/atoms
+        int nBondsTot;      // Total number of bonds
+        int nAnglesTot;      // Total number of bonds
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
         int fieldFreq;      // Frequency to write density field data
@@ -47,6 +48,8 @@ class PS_Box : public Box {
         void writeData(int) override;
         void writeFields() override;
         void writeTime() override;
+        int converged(int dm) {return 0; };
+        void writeDataConfig(std::string);
 
 };
 
