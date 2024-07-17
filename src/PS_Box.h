@@ -26,17 +26,51 @@ class PS_Box : public Box {
         double C;           // System concentration
         double Utot;        // Total potential energy
 
-        int nstot;           // Total number of particles/atoms
+        int nstot;          // Total number of particles/atoms
         int nBondsTot;      // Total number of bonds
-        int nAnglesTot;      // Total number of bonds
+        int nAnglesTot;     // Total number of bonds
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
         int fieldFreq;      // Frequency to write density field data
+        int MAXBONDS;       // Max number of bonds per particle
+        int MAXANGLES;      // Max number of angles per particle
         
+        thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
+        thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions 
+        
+        thrust::host_vector<float> v;       // [nstot*Dim] particle velocities
+        thrust::device_vector<float> d_v;   // [nstot*Dim] devoce particle velocities
+        
+        thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
+        thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
+
+
+        thrust::host_vector<std::string> species;   // [nstot] text label for species
+        
+        thrust::host_vector<int> intSpecies;        // [nstot] particle type index
+        thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
+
+        thrust::host_vector<int> mID;               // [nstot] molecule index
+        thrust::device_vector<int> d_mID;           // [nstot] device molecule index
+
+        thrust::host_vector<int> nBonds;        // [nstot] number of bonds 
+        thrust::device_vector<int> d_nBonds;    // [nstot] device number of bonds 
+
+        thrust::host_vector<int> bondedTo;    // [MAXBONDS*nstot] bond partner list
+        thrust::device_vector<int> d_bondedTo;// [MAXBONDS*nstot] device bond partner list
+
+        thrust::host_vector<int> bondType;    // [MAXBONDS*nstot] bond types for each particles
+        thrust::device_vector<int> d_bondType;// [MAXBONDS*nstot] device, bond types for particles
+
+        thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
+        thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
+
+
+        // Variables named for G&A
 
         std::vector<PS_Particle> partic;    // vector of particle info
         std::vector<PS_Species> species;    // vector of species IDs
-        std::vector<PS_Group> group;      // Vector of particle groups
+        std::vector<PS_Group> group;        // Vector of particle groups
                 
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
