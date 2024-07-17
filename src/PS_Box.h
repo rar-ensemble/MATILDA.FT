@@ -9,7 +9,6 @@
 #include <cufft.h>
 #include <cufftXt.h>
 
-#include "ps_particles.h"
 #include "ps_species.h"
 #include "ps_groups.h"
 
@@ -45,7 +44,7 @@ class PS_Box : public Box {
         thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
 
 
-        thrust::host_vector<std::string> species;   // [nstot] text label for species
+        thrust::host_vector<std::string> speciesType;   // [nstot] text label for species
         
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
         thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
@@ -68,10 +67,10 @@ class PS_Box : public Box {
 
         // Variables named for G&A
 
-        std::vector<PS_Particle> partic;    // vector of particle info
         std::vector<PS_Species> species;    // vector of species IDs
         std::vector<PS_Group> group;        // Vector of particle groups
                 
+        void allocHostParticleArrays(int);  // Uses 'resize' to allocate host particle arrays
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
         

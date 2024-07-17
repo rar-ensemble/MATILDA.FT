@@ -59,6 +59,8 @@ void PS_Box::readInput(std::ifstream& inp) {
     M = 1;
     V = 1.0;
     blockSize = 512;
+    MAXBONDS = 2;
+    MAXANGLES = 3;
     Nr = 100;
     rho0 = C = -1.0;
     nstot = nBondsTot = nAnglesTot = 0;
@@ -217,11 +219,11 @@ void PS_Box::readInput(std::ifstream& inp) {
 
     // Count number of bonds, angles
     for ( int i=0 ; i<nstot ; i++ ) {
-        for ( int j=0 ; j<partic[i].nBonds ; j++ ) {
-            if ( partic[i].bondedTo[j] > i ) nBondsTot++;
+        for ( int j=0 ; j<nBonds[i] ; j++ ) {
+            if ( bondedTo[i*MAXBONDS+j] > i ) nBondsTot++;
         }
 
-        for ( int j=0 ; j<partic[i].nAngles ; j++ ) {
+        for ( int j=0 ; j<nAngles[i] ; j++ ) {
             die("angle counter not set up in PS_Box.cu::readInput");
         }
     }
@@ -289,23 +291,23 @@ void PS_Box::writeDataConfig(std::string filename) {
     // Find number of particle species
     int max = -342332;
     for ( int i=0 ; i<nstot ; i++ ) {
-        if ( partic[i].intSpecies > max ) max = partic[i].intSpecies;
+        if ( intSpecies[i] > max ) max = intSpecies[i];
     }
     out << max+1 << " atom types" << std::endl;
 
     // Find number of bond types
     max = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
-        for ( int j=0 ; j<partic[i].nBonds; j++ ) 
-            if ( partic[i].bondType[j] > max ) max = partic[i].bondType[j];
+        for ( int j=0 ; j<nBonds[i]; j++ ) 
+            if ( bondType[i*MAXBONDS+j] > max ) max = bondType[i*MAXBONDS+j];
     }
     out << max+1 << " bond types" << std::endl;
 
-    // Find number of bond types
+    // Find number of angle types
     max = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
-        for ( int j=0 ; j<partic[i].nAngles; j++ ) 
-            die("angles not set up in writeDataCofnig");//if ( partic[i].bondType[j] > max ) max = partic[i].bondType[j];
+        for ( int j=0 ; j<nAngles[i]; j++ ) 
+            die("angles not set up in writeDataCofnig");
     }
     out << max+1 << " angle types" << std::endl;
 
@@ -338,9 +340,9 @@ void PS_Box::writeDataConfig(std::string filename) {
     out << "Atoms\n" << std::endl;
     for ( int i=0 ; i<nstot; i++ ) {
 
-        out << i+1 << " " << partic[i].mID+1 << " " << partic[i].intSpecies+1 << "  " ;
+        out << i+1 << " " << mID[i]+1 << " " << intSpecies[i]+1 << "  " ;
         for ( int j=0 ; j<Dim ; j++ ) 
-            out << partic[i].x[j] << " " ;
+            out << x[i*Dim+j] << " " ;
         if ( Dim < 3 )
             out << "0.0 " ;
         out << std::endl;
@@ -357,10 +359,10 @@ void PS_Box::writeDataConfig(std::string filename) {
     int bondCounter = 0;
     for ( int i=0 ; i<nstot ; i++ ) {
 
-        for ( int j=0 ; j<partic[i].nBonds; j++ ) {
+        for ( int j=0 ; j<nBonds[i]; j++ ) {
             // Only write each bond once (when i < bondedTo)
-            if ( i < partic[i].bondedTo[j] ) {
-                out << bondCounter+1 << " " << partic[i].bondType[j]+1 << " " << i+1 << " " << partic[i].bondedTo[j]+1 << std::endl;
+            if ( i < bondedTo[i*MAXBONDS+j] ) {
+                out << bondCounter+1 << " " << bondType[i*MAXBONDS+j]+1 << " " << i+1 << " " << bondedTo[i*MAXBONDS+j]+1 << std::endl;
                 
                 bondCounter++;
             }
@@ -371,6 +373,27 @@ void PS_Box::writeDataConfig(std::string filename) {
     out.close();
 }// end of writeDataConfig
 
+
+// Reallocates all of the 'particle-size' arrays to the new value of nstot, 'newns'.
+// This can also be used for the intial allocation 
+// ONLY AFFECTS HOST ARRAYS
+void PS_Box::allocHostParticleArrays(int newns) {
+    x.resize(newns*Dim);
+    v.resize(newns*Dim);
+    v.resize(newns*Dim);
+
+    species.resize(newns);
+    intSpecies.resize(newns);
+
+    mID.resize(newns);
+
+    nBonds.resize(newns);
+    bondedTo.resize(newns*MAXBONDS);
+    bondType.resize(newns*MAXBONDS);
+
+    nAngles.resize(newns);
+
+}
 
 // Generate a new linear polymer of arbitrary blockiness and add it to the box
 void PS_Box::makeLinear(std::istringstream& iss ) {
@@ -446,7 +469,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     // If there were no existing molecules, this logic should start at 0
     int molecInd = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
-        if (partic[i].mID > molecInd) molecInd = partic[i].mID;
+        if (mID[i] > molecInd) molecInd = mID[i];
     }
     molecInd++;
 
@@ -454,8 +477,8 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     // Update number of sites in the box
     nstot += nmolecs * Ntot;
-    partic.resize(nstot);
-    std::cout << "nstot valued to: " << nstot << std::endl;
+    allocHostParticleArrays(nstot);
+    std::cout << "nstot changed values to: " << nstot << std::endl;
 
 
     // Main loop over molecules, blocks, sites on each block
@@ -466,20 +489,16 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             
             for ( int s=0 ; s<Nblocks[j]; s++ ) {
 
-                // Re-size this particles' dimensions
-                partic[ind].setSizes(Dim, maxBonds, maxAngles);
-
-
                 // Track species info
-                partic[ind].species = speciesBlocks[j];
-                partic[ind].intSpecies = speciesVal;
+                speciesType[ind] = speciesBlocks[j];
+                intSpecies[ind] = speciesVal;
                 
                 
                 // Is this a chain end? 
                 // If so, place randomly in the box
                 if ( j==0 && s==0 ) {
                     for ( int a=0 ; a<Dim ; a++ ) {
-                        partic[ind].x[a] = ran2() * L[a];
+                        x[ind*Dim+a] = ran2() * L[a];
                     }
                 }
 
@@ -490,46 +509,47 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     random_unit_vec(ru, Dim);
 
                     for ( int a=0 ; a<Dim ; a++ ) {
-                        partic[ind].x[a] = partic[ind-1].x[a] + ru[a];
+                        int prevXInd = (ind-1)*Dim+a;
+                        int Xind = ind*Dim+a;
 
-                        if ( partic[ind].x[a] > L[a] ) partic[ind].x[a] -= L[a];
-                        else if ( partic[ind].x[a] < 0.0 ) partic[ind].x[a] += L[a];
+                        x[Xind] = x[prevXInd] + ru[a];
+
+                        if ( x[Xind] > L[a] ) x[Xind] -= L[a];
+                        else if ( x[Xind] < 0.0 ) x[Xind] += L[a];
                     }
                 }
 
                 // Initialize velocities, forces to 0.0
                 for ( int a=0 ; a<Dim ; a++ ) {
-                    partic[ind].v[a] = partic[ind].f[a] = 0.0;
+                    v[ind*Dim+a] = f[ind*Dim+a] = 0.0;
                 }
 
-                partic[ind].nBonds = 0;
-                partic[ind].bondedTo.resize(maxBonds);
-                partic[ind].bondType.resize(maxBonds);
-
+                nBonds[ind] = 0;
+                
                 // Initialize bonds
                 // If not the first monomer on a chain, make a bond to previous monomer
                 if ( j != 0 || s != 0 ) {
-                    int nb = partic[ind].nBonds;
+                    int nb = nBonds[ind];
                     
-                    partic[ind].bondedTo[nb] = ind-1;
-                    partic[ind].bondType[nb] = blockBondType[j];
-                    partic[ind].nBonds++;
+                    bondedTo[ind*MAXBONDS+nb] = ind-1;
+                    bondType[ind*MAXBONDS+nb] = blockBondType[j];
+                    nBonds[ind]++;
                 }
 
                 // if not the last monomer on a chain, make a bond to next monomer
                 if ( j != (numBlocks-1) || s != (Nblocks[j]-1 ) ) {
-                    int nb = partic[ind].nBonds;
-
-                    partic[ind].bondedTo[nb] = ind+1;
-                    partic[ind].bondType[nb] = blockBondType[j];
-                    partic[ind].nBonds++;
+                    int nb = nBonds[ind];
+                    
+                    bondedTo[ind*MAXBONDS+nb] = ind+1;
+                    bondType[ind*MAXBONDS+nb] = blockBondType[j];
+                    nBonds[ind]++;
                 }
 
                 // if ( ind < 35 ) {
                 //     std::cout << partic[ind].nBonds << " " << partic[ind].bondedTo[0] 
                 // }
 
-                partic[ind].mID = molecInd;
+                mID[ind] = molecInd;
 
                 // Increment the particle index
                 ind++;
@@ -543,5 +563,5 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     }// i=0:nmolecs
 
 
-    std::cout << "nstot ended at: " << nstot << std::endl;
+    std::cout << "nstot is " << nstot << " after molecule creation" << std::endl;
 }

@@ -36,7 +36,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 
         // Count the number of this type
         for ( int i=0 ; i<mybox->nstot; i++ ) {
-            if ( mybox->partic[i].intSpecies == typ ) nsites++;
+            if ( mybox->intSpecies[i] == typ ) nsites++;
         }
 
         // Allocate needed memory
@@ -46,7 +46,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
         // Store the particle list
         int listInd = 0;
         for ( int i=0 ; i<mybox->nstot; i++ ) {
-            if ( mybox->partic[i].intSpecies == typ ) {
+            if ( mybox->intSpecies[i] == typ ) {
                 siteList[listInd] = i;
                 listInd++;
             }
