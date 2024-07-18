@@ -72,7 +72,6 @@ int main(int argc, char** argv)
 			}
 		}
 
-		run_fts_sim();
 
 	} // while (!in2.eof())
 
