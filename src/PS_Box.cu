@@ -484,11 +484,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     // Main loop over molecules, blocks, sites on each block
     for ( int i=0 ; i<nmolecs ; i++ ) {
         for ( int j=0 ; j<numBlocks; j++ ) {
-            
             int speciesVal = findSpeciesInteger(speciesBlocks[j]);
+            std::cout << "here! " << Nblocks[j] << " " << speciesVal << std::endl;
             
             for ( int s=0 ; s<Nblocks[j]; s++ ) {
-
+                std::cout << "Start particle " << ind << "....";
                 // Track species info
                 speciesType[ind] = speciesBlocks[j];
                 intSpecies[ind] = speciesVal;
@@ -553,7 +553,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
                 // Increment the particle index
                 ind++;
-
+                std::cout << "Done!" << std::endl;
 
             }// s=0:N[j]
         }// j=0:numBlocks; 
