@@ -22,6 +22,7 @@ class PS_Species {
 
 
         int returnIntSpecies();     // Returns integer species number
+        std::string returnSpecies();// Returns text species label
         void setIntSpecies(int);    // Sets integer species number
 
         int isSpecies(std::string); // Compares text string to species text label

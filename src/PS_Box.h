@@ -31,6 +31,7 @@ class PS_Box : public Box {
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
         int fieldFreq;      // Frequency to write density field data
+        int pmeorder;       // Order of the PME interpolation
         int MAXBONDS;       // Max number of bonds per particle
         int MAXANGLES;      // Max number of angles per particle
         
@@ -43,9 +44,6 @@ class PS_Box : public Box {
         thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
         thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
 
-
-        thrust::host_vector<std::string> speciesType;   // [nstot] text label for species
-        
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
         thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
 

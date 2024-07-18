@@ -122,6 +122,16 @@ void PS_Box::readInput(std::ifstream& inp) {
                 iss >> logFreq; 
             }
 
+            else if ( firstWord == "MAXANGLES" ) {
+                if ( nstot > 0 ) die("MAXANGLES must be set before defining any molecules");
+                iss >> MAXANGLES;
+            }
+
+            else if ( firstWord == "MAXBONDS" ) {
+                if ( nstot > 0 ) die("MAXBONDS must be set before defining any molecules");
+                iss >> MAXBONDS;
+            }
+
             else if ( firstWord == "molecule" ) {
                 std::string nextWord;
                 iss >> nextWord;
@@ -378,11 +388,11 @@ void PS_Box::writeDataConfig(std::string filename) {
 // This can also be used for the intial allocation 
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
+    std::cout << "Reallocating for " << newns << " sites..." ;
     x.resize(newns*Dim);
     v.resize(newns*Dim);
-    v.resize(newns*Dim);
+    f.resize(newns*Dim);
 
-    species.resize(newns);
     intSpecies.resize(newns);
 
     mID.resize(newns);
@@ -392,15 +402,12 @@ void PS_Box::allocHostParticleArrays(int newns) {
     bondType.resize(newns*MAXBONDS);
 
     nAngles.resize(newns);
-
+    std::cout << "done!" << std::endl;
 }
 
 // Generate a new linear polymer of arbitrary blockiness and add it to the box
 void PS_Box::makeLinear(std::istringstream& iss ) {
     if ( rho0 < 0.0 ) die("rho0 must be defined before molecules created!");
-    
-    int maxBonds = 2;   // Linear polymer specific max of two bonds per site
-    int maxAngles = 0;  // Needs to be changed to 3 after angles implemented
 
     int numBlocks, Ntot = 0;
 
@@ -465,32 +472,31 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     int ind = nstot;
 
 
+    // Update number of sites in the box
+    nstot += nmolecs * Ntot;
+    allocHostParticleArrays(nstot);
+    std::cout << "nstot changed values to: " << nstot << ", starting index: " << ind << std::endl;
+
+
+
     // Find starting molecule ID
-    // If there were no existing molecules, this logic should start at 0
     int molecInd = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
         if (mID[i] > molecInd) molecInd = mID[i];
     }
-    molecInd++;
+    if ( molecInd < 0 ) molecInd = 0;
 
 
-
-    // Update number of sites in the box
-    nstot += nmolecs * Ntot;
-    allocHostParticleArrays(nstot);
-    std::cout << "nstot changed values to: " << nstot << std::endl;
 
 
     // Main loop over molecules, blocks, sites on each block
     for ( int i=0 ; i<nmolecs ; i++ ) {
         for ( int j=0 ; j<numBlocks; j++ ) {
             int speciesVal = findSpeciesInteger(speciesBlocks[j]);
-            std::cout << "here! " << Nblocks[j] << " " << speciesVal << std::endl;
             
             for ( int s=0 ; s<Nblocks[j]; s++ ) {
-                std::cout << "Start particle " << ind << "....";
+
                 // Track species info
-                speciesType[ind] = speciesBlocks[j];
                 intSpecies[ind] = speciesVal;
                 
                 
@@ -545,17 +551,13 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     nBonds[ind]++;
                 }
 
-                // if ( ind < 35 ) {
-                //     std::cout << partic[ind].nBonds << " " << partic[ind].bondedTo[0] 
-                // }
-
                 mID[ind] = molecInd;
 
                 // Increment the particle index
                 ind++;
-                std::cout << "Done!" << std::endl;
 
             }// s=0:N[j]
+
         }// j=0:numBlocks; 
 
         // Increment molecule index

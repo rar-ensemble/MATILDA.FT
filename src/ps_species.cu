@@ -42,6 +42,10 @@ int PS_Species::returnIntSpecies() {
     return intSpecies;
 }
 
+std::string PS_Species::returnSpecies() {
+    return speciesLabel;
+}
+
 void PS_Species::setIntSpecies(int speciesIntVal) {
     intSpecies = speciesIntVal;
 }
