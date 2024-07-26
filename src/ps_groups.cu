@@ -14,7 +14,8 @@ PS_Group::PS_Group(std::istringstream& iss, PS_Box* box) : mybox(box) {
 }
 
 PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
-    inputCommand = inp + char(typ);
+    inputCommand = std::string("group ") + inp;
+
     
     // Make the group for "all" particles
     if ( inp == "all" || inp == "All" ) {
@@ -32,6 +33,10 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 
     // Make the group for particles of integer type 'typ'
     if ( inp == "type" || inp == "Type" ) {
+        // name = "type" + std::to_string(typ+1);
+        name = mybox->species[typ].returnSpecies();
+
+        inputCommand = inputCommand + std::string(" ") + std::to_string(typ+1);
         nsites = 0;
 
         // Count the number of this type
@@ -52,8 +57,12 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
             }
         }
 
+        std::cout << "Group based on type " << typ+1 << " has " << nsites << " members, is named " << name << "." << std::endl;
+
     }// type-based group
 
+
+    std::cout << "Group constructor for typ = " << typ << ", command: " << inputCommand << std::endl;
 
     // Copy site list to device
     d_siteList = siteList;

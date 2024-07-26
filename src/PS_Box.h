@@ -66,23 +66,28 @@ class PS_Box : public Box {
         // Variables named for G&A
 
         std::vector<PS_Species> species;    // vector of species IDs
-        std::vector<PS_Group> group;        // Vector of particle groups
+        std::vector<PS_Group> psGroup;        // Vector of particle groups
                 
-        void allocHostParticleArrays(int);  // Uses 'resize' to allocate host particle arrays
+        void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
+        void allocDeviceParticleArrays(int);    // Uses 'resize' to allocate device particle arrays
+        void sendAllHostToDevice(void);         // Sends all particle-sized arrays from host to dev
 
-        void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
-        
+             
         int findSpeciesInteger(std::string);
 
         std::ofstream OTP;
-        void readInput(std::ifstream&);
-        void doTimeStep(int);
-        void initializeSim() override;
+        void readInput(std::ifstream&);     // Reads the input file
+        void doTimeStep(int);               // Performs one time step of a sim
+        void initializeSim() override;      // Initializes files prior to beginning simulation
         void writeData(int) override;
-        void writeFields() override;
-        void writeTime() override;
-        int converged(int dm) {return 0; };
-        void writeDataConfig(std::string);
+        void writeFields() override;        // Currently does nothing?
+        void writeTime() override;          // Writes subroutine run times
+        int converged(int dm) {return 0; }; // No implemented for PS methods
+        void writeDataConfig(std::string);  // Writes LAMMPS data file format
+        void createDefaultGroups();         // Makes default groups
+
+
+        void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
 
 };
 

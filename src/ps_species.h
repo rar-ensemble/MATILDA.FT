@@ -9,6 +9,7 @@ class PS_Species {
         int intSpecies;
         std::string speciesLabel;
         std::string inputCommand;
+        int groupID;
         
         PS_Box* mybox;
 
@@ -24,6 +25,9 @@ class PS_Species {
         int returnIntSpecies();     // Returns integer species number
         std::string returnSpecies();// Returns text species label
         void setIntSpecies(int);    // Sets integer species number
+        
+        void setGroupID(int);       // Sets integer group ID
+        int returnGroupID(void);    // Returns integer group ID
 
         int isSpecies(std::string); // Compares text string to species text label
 };

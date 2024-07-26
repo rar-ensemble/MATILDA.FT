@@ -52,6 +52,11 @@ void PS_Box::initializeSim() {
 }
 
 
+// Reads all of the commands from the input file from when this
+// box is created (using the 'box' command) until the 'endBox' 
+// command is caught. 
+// This routine also serves to initialize the simulation box
+// in preparation for a run.
 void PS_Box::readInput(std::ifstream& inp) {
     std::cout << "In read input!" << std::endl;
 
@@ -84,7 +89,6 @@ void PS_Box::readInput(std::ifstream& inp) {
             // std::cout << "Line read: " << line << std::endl;
 
             if ( firstWord == "endBox" ) {
-                std::cout << "endBox caught" << std::endl;
                 break;
             }
 
@@ -183,7 +187,7 @@ void PS_Box::readInput(std::ifstream& inp) {
         
         
         if ( firstWord == "endBox" ) {
-            std::cout << "endBox caught in outer loop" << std::endl;
+            std::cout << "endBox caught" << std::endl;
             break;
         }
 
@@ -241,10 +245,24 @@ void PS_Box::readInput(std::ifstream& inp) {
     writeDataConfig("init.input.data");
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
+
+    createDefaultGroups();
+
     simTime = time(0);
 
 }// End of readInput()
 
+
+void PS_Box::createDefaultGroups() {
+    psGroup.push_back(PS_Group("all", -1, this));
+
+    for ( int i=0 ; i<species.size(); i++ ) {
+        psGroup.push_back(PS_Group("type", i, this));
+
+        std::cout << "Group name: " << psGroup[i+1].returnName() << std::endl;
+    }
+    std::cout << "Groups for all, each type created" << std::endl;
+}
 
 
 void PS_Box::writeFields() {
@@ -388,7 +406,7 @@ void PS_Box::writeDataConfig(std::string filename) {
 // This can also be used for the intial allocation 
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
-    std::cout << "Reallocating for " << newns << " sites..." ;
+    std::cout << "Reallocating for " << newns << " sites on the host..." ;
     x.resize(newns*Dim);
     v.resize(newns*Dim);
     f.resize(newns*Dim);
@@ -404,6 +422,47 @@ void PS_Box::allocHostParticleArrays(int newns) {
     nAngles.resize(newns);
     std::cout << "done!" << std::endl;
 }
+
+
+// Reallocates all of the 'particle-size' arrays to the new value of nstot, 'newns'.
+// This can also be used for the intial allocation 
+// ONLY AFFECTS DEVICE ARRAYS
+void PS_Box::allocDeviceParticleArrays(int newns) {
+    std::cout << "Reallocating for " << newns << " sites on the device..." ;
+    d_x.resize(newns*Dim);
+    d_v.resize(newns*Dim);
+    d_f.resize(newns*Dim);
+
+    d_intSpecies.resize(newns);
+
+    d_mID.resize(newns);
+
+    d_nBonds.resize(newns);
+    d_bondedTo.resize(newns*MAXBONDS);
+    d_bondType.resize(newns*MAXBONDS);
+
+    d_nAngles.resize(newns);
+    std::cout << "done!" << std::endl;
+}
+
+// Sends all particle-size arrays from host to device. Intended to be used after
+// initialization when info needs to go to device for running simulations, though
+// could be used any time.
+void PS_Box::sendAllHostToDevice(void) {
+    d_x = x;
+    d_v = v;
+    d_f = f;
+
+    d_intSpecies = intSpecies;
+    
+    d_nBonds = nBonds;
+    d_bondedTo = bondedTo;
+    d_bondType = bondType;
+
+    d_nAngles = nAngles;
+}
+
+
 
 // Generate a new linear polymer of arbitrary blockiness and add it to the box
 void PS_Box::makeLinear(std::istringstream& iss ) {

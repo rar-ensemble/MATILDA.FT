@@ -42,6 +42,14 @@ int PS_Species::returnIntSpecies() {
     return intSpecies;
 }
 
+void PS_Species::setGroupID(int gid) {
+    groupID = gid;
+}
+
+int PS_Species::returnGroupID(void) {
+    return groupID;
+}
+
 std::string PS_Species::returnSpecies() {
     return speciesLabel;
 }
