@@ -26,5 +26,6 @@
 #include <thrust/fill.h>
 #include <thrust/replace.h>
 #include <thrust/complex.h>
+#include "global_templated_functions.h"
 
 #endif
