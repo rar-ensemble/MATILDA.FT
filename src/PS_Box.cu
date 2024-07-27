@@ -15,6 +15,14 @@ void random_unit_vec(double*, int);
 // then populating species densities
 void PS_Box::doTimeStep(int step) {
 
+    // First integration step, when needed
+
+
+    // Forces
+    // 1. update grid weights; 2. zero forces; 3. bonded forces; 4. NB forces; 5. Extras
+
+
+    // Second integration step
 
     // Write log data
     if ( step % logFreq == 0 ) {
