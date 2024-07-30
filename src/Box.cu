@@ -21,14 +21,19 @@ void Box::setDimension(int d) {
 
     Nx.resize(Dim);
     d_Nx.resize(Dim);
+    _d_Nx = (int*) thrust::raw_pointer_cast(d_Nx.data());
 
     dx.resize(Dim);
+    d_dx.resize(Dim);
+    _d_dx = (double*) thrust::raw_pointer_cast(d_dx.data());
 
     L.resize(Dim);
     d_L.resize(Dim);
+    _d_L = (float*) thrust::raw_pointer_cast(d_L.data());
 
     Lh.resize(Dim);
     d_Lh.resize(Dim);
+    _d_Lh = (float*) thrust::raw_pointer_cast(d_Lh.data());
 }
 
 int Box::returnDimension() {

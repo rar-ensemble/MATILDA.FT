@@ -21,14 +21,20 @@ class Box {
     public:
         thrust::host_vector<int> Nx;        // Grid dimensions
         thrust::device_vector<int> d_Nx;    
+        int* _d_Nx;
 
         thrust::host_vector<float> L;       // Box dimensions
         thrust::device_vector<float> d_L;
+        float* _d_L;
 
         thrust::host_vector<double> dx;     // grid spacing in each direction
+        thrust::device_vector<double> d_dx;
+        double* _d_dx;
+        
 
-        thrust::host_vector<float> Lh;         // Half box dimensions
+        thrust::host_vector<float> Lh;      // Half box dimensions
         thrust::device_vector<float> d_Lh;
+        float* _d_Lh;
 
         double V;                           // Box volume
         int M;                              // Total number of grid points

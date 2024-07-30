@@ -10,6 +10,11 @@ void die(const char*);
 double ran2(void);
 void random_unit_vec(double*, int);
 
+__global__ void d_calcGridWeights(float*, int*, const float*, const int*, 
+const float*, const int, const int, const int, const int);
+
+
+
 // Executes the commands for a given time step
 // Updates all fields, then recomputes all molecule densities
 // then populating species densities
@@ -19,7 +24,15 @@ void PS_Box::doTimeStep(int step) {
 
 
     // Forces
-    // 1. update grid weights; 2. zero forces; 3. bonded forces; 4. NB forces; 5. Extras
+    // 1. update grid weights, fill grid. 
+    d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, _d_dxf,
+        nstot, pmeorder, M, Dim );
+
+
+    // 2. zero forces; 
+    // 3. bonded forces; 
+    // 4. NB forces; 
+    // 5. Extras
 
 
     // Second integration step
@@ -29,7 +42,7 @@ void PS_Box::doTimeStep(int step) {
         writeData(step);
     }
 
-}
+} // doTimeStep
 
 
 // Write Hamiltonian terms to output file
@@ -172,6 +185,10 @@ void PS_Box::readInput(std::ifstream& inp) {
                 M *= Nx[2];
             }
 
+            else if ( firstWord == "pmeorder" ) {
+                iss >> pmeorder;
+            }
+
 
             else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
                 iss >> idum;
@@ -199,7 +216,7 @@ void PS_Box::readInput(std::ifstream& inp) {
             break;
         }
 
-    }// while (!inp.eof())
+    }// while (!inp.eof()), finished reading up to 'endBox' or end of file
 
     if ( nstot == 0 ) {
         die("Box created with no particles?!?");
@@ -213,16 +230,22 @@ void PS_Box::readInput(std::ifstream& inp) {
     if ( this->Dim == 3 ) 
         cufftPlan3d(&fftplan, Nx[2], Nx[1], Nx[0], CUFFT_Z2Z);
 
-    // Define gvol, dx
+    // Define gvol, dx, gridPerPartic
     gvol = 1.0;
+    gridPerPartic = 1;
     for ( int j=0 ; j<Dim ; j++ ) {
         dx[j] = L[j] / double(Nx[j]);
         gvol *= dx[j];
+
+        gridPerPartic *= (pmeorder+1);
     }
 
     // gpuGrid, block sizes
     M_Block = blockSize;
     M_Grid = (int)ceil((double)(M) / M_Block);
+
+    nsBlock = blockSize;
+    nsGrid = (int)ceil((double)(nstot) / nsBlock);
 
     // Define C, rho0 depending on what is given
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
@@ -253,7 +276,9 @@ void PS_Box::readInput(std::ifstream& inp) {
     writeDataConfig("init.input.data");
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
-
+    allocHostParticleArrays(nstot);
+    allocDeviceParticleArrays(nstot);
+    
     createDefaultGroups();
 
     simTime = time(0);
@@ -423,6 +448,9 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
     mID.resize(newns);
 
+    gridW.resize(newns * gridPerPartic);
+    gridInds.resize(newns * gridPerPartic);
+
     nBonds.resize(newns);
     bondedTo.resize(newns*MAXBONDS);
     bondType.resize(newns*MAXBONDS);
@@ -438,12 +466,17 @@ void PS_Box::allocHostParticleArrays(int newns) {
 void PS_Box::allocDeviceParticleArrays(int newns) {
     std::cout << "Reallocating for " << newns << " sites on the device..." ;
     d_x.resize(newns*Dim);
+    _d_x = (float*) thrust::raw_pointer_cast(d_x.data());
+    
     d_v.resize(newns*Dim);
     d_f.resize(newns*Dim);
 
     d_intSpecies.resize(newns);
 
     d_mID.resize(newns);
+
+    d_gridW.resize(newns * gridPerPartic);
+    d_gridInds.resize(newns * gridPerPartic);
 
     d_nBonds.resize(newns);
     d_bondedTo.resize(newns*MAXBONDS);
@@ -460,6 +493,10 @@ void PS_Box::sendAllHostToDevice(void) {
     d_x = x;
     d_v = v;
     d_f = f;
+
+    for ( int j=0 ; j<Dim ; j++ ) {
+        _d_dxf[j] = (float)d_dx[j];
+    }
 
     d_intSpecies = intSpecies;
     

@@ -32,32 +32,51 @@ class PS_Box : public Box {
         int gsdFreq;        // Frequency to write to gsd files
         int fieldFreq;      // Frequency to write density field data
         int pmeorder;       // Order of the PME interpolation
+        int gridPerPartic;  // Number of grid points each particle interacts
         int MAXBONDS;       // Max number of bonds per particle
         int MAXANGLES;      // Max number of angles per particle
+        int nsGrid;         // GPU grid number for 'all' particle operations
+        int nsBlock;        // GPU block number for 'all' particle operations
+
+        float* _d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
-        thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions 
+        thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions
+        float* _d_x;                        // Pointer to d_x.data() 
         
         thrust::host_vector<float> v;       // [nstot*Dim] particle velocities
         thrust::device_vector<float> d_v;   // [nstot*Dim] devoce particle velocities
+        float* _d_v;                        // Pointer to d_v.data() 
         
         thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
         thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
+        float* _d_f;                        // Pointer to d_f.data() 
 
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
         thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
+        int* _d_intSpecies;                         // pointer to d_intSpecies.data()
 
         thrust::host_vector<int> mID;               // [nstot] molecule index
         thrust::device_vector<int> d_mID;           // [nstot] device molecule index
+        int* _d_mID;                                // pointer to d_mID.data()
+
+        thrust::device_vector<float> d_gridW;   // [nstot*gridPerPartic] particle-to-grid weights
+        float* _d_gridW;                        // Pointer to d_gridW.data()
+
+        thrust::device_vector<int> d_gridInds;  // [nstot*gridPerPartic] particle-to-grid indices
+        int* _d_gridInds;                        // Pointer to d_gridInds.data()
 
         thrust::host_vector<int> nBonds;        // [nstot] number of bonds 
         thrust::device_vector<int> d_nBonds;    // [nstot] device number of bonds 
+        int* _d_nBonds;                         // pointer to d_nBonds.data()
 
         thrust::host_vector<int> bondedTo;    // [MAXBONDS*nstot] bond partner list
         thrust::device_vector<int> d_bondedTo;// [MAXBONDS*nstot] device bond partner list
+        int* _d_bondedTo;                         // pointer to d_nBonds.data()
 
         thrust::host_vector<int> bondType;    // [MAXBONDS*nstot] bond types for each particles
         thrust::device_vector<int> d_bondType;// [MAXBONDS*nstot] device, bond types for particles
+        int* _d_bondType;                         // pointer to d_nBonds.data()
 
         thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
         thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
