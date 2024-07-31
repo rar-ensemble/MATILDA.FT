@@ -36,6 +36,7 @@ class PS_Box : public Box {
         int MAXBONDS;       // Max number of bonds per particle
         int MAXANGLES;      // Max number of angles per particle
         int nsGrid;         // GPU grid number for 'all' particle operations
+        int DnsGrid;        // GPU grid number for Dim*all particle ops
         int nsBlock;        // GPU block number for 'all' particle operations
 
         float* _d_dxf;      // float version of grid spacing
@@ -94,6 +95,7 @@ class PS_Box : public Box {
              
         int findSpeciesInteger(std::string);
 
+        void NVT(int) override;
         std::ofstream OTP;
         void readInput(std::ifstream&);     // Reads the input file
         void doTimeStep(int);               // Performs one time step of a sim

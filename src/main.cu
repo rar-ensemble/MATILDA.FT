@@ -23,6 +23,7 @@ void run_fts_sim(void);
 
 int main(int argc, char** argv)
 {
+	int nBoxes = 0;
 
 	// Store start time
 	main_t_in = int(time(0));
@@ -64,14 +65,26 @@ int main(int argc, char** argv)
 			continue;
 
 		std::istringstream iss(line);
-		// Loop over words in line
-		while (iss >> word) {
-			if( word == "box" ) {
-				box.push_back(BoxFactory(iss));
-				box.back()->readInput(in2);
-			}
+		iss >> word;
+
+		if ( word == "box" ) {
+			box.push_back(BoxFactory(iss));
+			box.back()->readInput(in2);
+			nBoxes++;
 		}
 
+
+		else if ( word == "run" ) {
+			iss >> word;
+			if ( word != "nvt" ) {
+				die("invalid run style!");
+			}
+
+			int runSteps;
+			iss >> runSteps;
+			
+			box.at(0)->NVT(runSteps);
+		}
 
 	} // while (!in2.eof())
 

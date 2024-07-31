@@ -1,0 +1,50 @@
+// Copyright (c) 2024 University of Pennsylvania
+// Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
+
+
+// Assigns a device float array value of 'val'
+__global__ void d_assignFloatVal(
+    float* f,               // [N] array to be modified
+    const float val,        // value to be placed in array
+    const int N             // array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    f[id] = val;
+}
+
+
+// Intended to be called from the group class to fill the group's 
+// density field. 
+__global__ void d_fillDensityGrid(
+    float* rho,             // [M] density field
+    const int* sites,       // [ns] indices of particles in the group
+    const int* gridInds,    // [ns*gridPerPartic] indices of grids for each partic
+    const float* gridW,     // [ns*gridPerPartic] weights for each grid point
+    const int gridPerPartic,// Number of grid points per particle
+    const int ns            // number of sites in this group
+) {
+
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns)
+        return;
+
+    int pind = sites[id];
+
+    for ( int i=0 ; i<gridPerPartic; i++ ) {
+        // index \in [0, ns*gridPerPartic)
+        int index = pind * gridPerPartic + i;
+
+        // index \in [0,M)
+        int gind = gridInds[index];
+        
+        // Weight of the particle to gind
+        float W3 = gridW[index];
+
+        // Accumulate the grid density
+        atomicAdd(&rho[gind], W3);
+    }// i=0:gridPerPartic
+
+}

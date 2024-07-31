@@ -48,6 +48,7 @@ class FTS_Box : public Box {
         void initSmearGaussian(thrust::host_vector<thrust::complex<double>>&, const double, const double);
         int converged(int) override;
 
+        void NVT(int) override;
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);
         void writeComplexGridData(std::string, std::vector<std::complex<double>>);

@@ -12,6 +12,9 @@
 #define _PS_GROUPS
 
 #include "include_libs.h"
+__global__ void d_assignFloatVal(float*, const float, const int);
+__global__ void d_fillDensityGrid(float*, const int*, const int*, const float*,
+const int, const int);
 
 class PS_Box;
 
@@ -24,14 +27,22 @@ class PS_Group {
         int nsites;                         // Number of particles in this group
         thrust::host_vector<int> siteList;  // List of sites in this group
         thrust::device_vector<int> d_siteList;  // Device list of sites in this group
+        int* _d_siteList;
+
+        int Grid, Block;    // GPU config variables for this group
 
         thrust::host_vector<float> rho;     // [M] density field for this group
         thrust::device_vector<float> d_rho; // [M] device density field for this group
+        float* _d_rho;
 
         PS_Box* mybox;
         PS_Group();
         PS_Group(std::istringstream&, PS_Box*);
         PS_Group(std::string, int, PS_Box*);
+
+        void zeroFields();
+        void allocateGroupMemory(int);
+        void makeDensityField();
         std::string returnName();
         virtual ~PS_Group();
 };

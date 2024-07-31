@@ -22,7 +22,7 @@ CPPFLAGS = -I${EIGEN_LOC} --expt-relaxed-constexpr
 LIBS = -lm -lcudart -lcufft -L${CUDA_LOC}/lib
 
        
-SRCS = 	Box.cu main.cu die.cu random.cu \
+SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	FTS_Box.cu fts_species.cu fts_potential.cu fts_potential_helfand.cu fts_potential_flory.cu \
 	fts_molecule.cu fts_molecule_linear.cu fft_wrapper.cu run_fts_sim.cu fts_updateSchemes.cu \
 	PS_Box.cu ps_species.cu ps_grid_utils.cu ps_groups.cu ps_integrator.cu

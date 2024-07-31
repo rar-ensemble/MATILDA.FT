@@ -98,6 +98,10 @@ void FTS_Box::doTimeStep(int step) {
 }
 
 
+void FTS_Box::NVT(int nsteps) {
+
+}
+
 // Write Hamiltonian terms to output file
 void FTS_Box::writeData(int step) {
 

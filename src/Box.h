@@ -69,6 +69,8 @@ class Box {
         virtual void writeTime() = 0;
         virtual int converged(int) = 0;
 
+        virtual void NVT(int) = 0;
+
         virtual void writeData(int) = 0;
 
         virtual void doTimeStep(int) = 0;

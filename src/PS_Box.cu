@@ -25,17 +25,30 @@ void PS_Box::doTimeStep(int step) {
 
     // Forces
     // 1. update grid weights, fill grid. 
-    d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, _d_dxf,
-        nstot, pmeorder, M, Dim );
+    d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, 
+        _d_dxf, nstot, pmeorder, M, Dim );
 
+    // update the fields
+    for ( int i=0 ; i<psGroup.size(); i++ ) {
+        // zero density, grid force fields
+        psGroup[i].zeroFields();
 
-    // 2. zero forces; 
+        // Fill density field
+        psGroup[i].makeDensityField();
+    }
+
+    // Zero particle forces
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
+
     // 3. bonded forces; 
     // 4. NB forces; 
     // 5. Extras
 
 
+
     // Second integration step
+
+
 
     // Write log data
     if ( step % logFreq == 0 ) {
@@ -43,6 +56,16 @@ void PS_Box::doTimeStep(int step) {
     }
 
 } // doTimeStep
+
+
+void PS_Box::NVT(int maxSteps) {
+    std::cout << "RUNNING NVT?!?" << std::endl;
+    
+    for ( int i=0 ; i<maxSteps; i++ ) {
+        doTimeStep(i);
+    }
+}
+
 
 
 // Write Hamiltonian terms to output file
@@ -246,6 +269,7 @@ void PS_Box::readInput(std::ifstream& inp) {
 
     nsBlock = blockSize;
     nsGrid = (int)ceil((double)(nstot) / nsBlock);
+    DnsGrid = (int)ceil((double)(Dim*nstot) / nsBlock);
 
     // Define C, rho0 depending on what is given
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
@@ -448,8 +472,8 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
     mID.resize(newns);
 
-    gridW.resize(newns * gridPerPartic);
-    gridInds.resize(newns * gridPerPartic);
+    // gridW.resize(newns * gridPerPartic);
+    // gridInds.resize(newns * gridPerPartic);
 
     nBonds.resize(newns);
     bondedTo.resize(newns*MAXBONDS);
@@ -469,18 +493,31 @@ void PS_Box::allocDeviceParticleArrays(int newns) {
     _d_x = (float*) thrust::raw_pointer_cast(d_x.data());
     
     d_v.resize(newns*Dim);
+    _d_v = (float*) thrust::raw_pointer_cast(d_v.data());
+
     d_f.resize(newns*Dim);
+    _d_f = (float*) thrust::raw_pointer_cast(d_f.data());
 
     d_intSpecies.resize(newns);
+    _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
 
     d_mID.resize(newns);
+    _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
 
     d_gridW.resize(newns * gridPerPartic);
+    _d_gridW = (float*) thrust::raw_pointer_cast(d_gridW.data());
+
     d_gridInds.resize(newns * gridPerPartic);
+    _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
 
     d_nBonds.resize(newns);
+    _d_nBonds = (int*) thrust::raw_pointer_cast(d_nBonds.data());
+
     d_bondedTo.resize(newns*MAXBONDS);
+    _d_bondedTo = (int*) thrust::raw_pointer_cast(d_bondedTo.data());
+
     d_bondType.resize(newns*MAXBONDS);
+    _d_bondType = (int*) thrust::raw_pointer_cast(d_bondType.data());
 
     d_nAngles.resize(newns);
     std::cout << "done!" << std::endl;

@@ -21,8 +21,8 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     if ( inp == "all" || inp == "All" ) {
         name = "all";
         nsites = mybox->nstot;
-        siteList.resize(nsites);
-        d_siteList.resize(nsites);
+
+        this->allocateGroupMemory(nsites);
 
         for ( int i=0 ; i<mybox->nstot; i++ ) {
             siteList[i] = i;
@@ -33,7 +33,6 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 
     // Make the group for particles of integer type 'typ'
     if ( inp == "type" || inp == "Type" ) {
-        // name = "type" + std::to_string(typ+1);
         name = mybox->species[typ].returnSpecies();
 
         inputCommand = inputCommand + std::string(" ") + std::to_string(typ+1);
@@ -44,9 +43,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
             if ( mybox->intSpecies[i] == typ ) nsites++;
         }
 
-        // Allocate needed memory
-        siteList.resize(nsites);
-        d_siteList.resize(nsites);
+        this->allocateGroupMemory(nsites);
 
         // Store the particle list
         int listInd = 0;
@@ -67,8 +64,42 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     // Copy site list to device
     d_siteList = siteList;
 
+    // Set group grid, block size
+    Block = mybox->blockSize;
+    Grid = (int)ceil((double)(nsites) / Block);
 }
 
+
+// Fills the density field for this group
+void PS_Group::makeDensityField() {
+    
+    d_fillDensityGrid<<<Grid, Block>>>(_d_rho, _d_siteList, mybox->_d_gridInds, mybox->_d_gridW, mybox->gridPerPartic, nsites);
+}
+
+
+// Sets the field variables to zero to start each time step
+void PS_Group::zeroFields() {
+
+    // this routine is in device_utils.cu
+    d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(_d_rho, 0.0, mybox->M);
+}
+
+
+// Allocates memory for arrays in this group.
+void PS_Group::allocateGroupMemory(int ns) {
+    // Allocate needed memory for lists
+    siteList.resize(nsites);
+    d_siteList.resize(nsites);
+
+    // Allocate memory for fields
+    rho.resize(mybox->M);
+    d_rho.resize(mybox->M);
+
+    // Points for regular data types
+    _d_siteList = (int*) thrust::raw_pointer_cast(d_siteList.data());
+    _d_rho = (float*) thrust::raw_pointer_cast(d_rho.data());
+
+}
 
 // Return the name of this group
 std::string PS_Group::returnName() {
