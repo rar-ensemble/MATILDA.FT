@@ -1,6 +1,8 @@
 // Copyright (c) 2024 University of Pennsylvania
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
+#include <curand_kernel.h>
+#include <curand.h>
 
 // Assigns a device float array value of 'val'
 __global__ void d_assignFloatVal(
@@ -47,4 +49,13 @@ __global__ void d_fillDensityGrid(
         atomicAdd(&rho[gind], W3);
     }// i=0:gridPerPartic
 
+}
+
+__global__ void d_initDeviceRNG(unsigned int seed, curandState* states, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;//check index for >= ns
+
+    if (idx >= N)//this probably will not compile
+        return;
+
+    curand_init(seed, idx, 0, &states[idx]);
 }

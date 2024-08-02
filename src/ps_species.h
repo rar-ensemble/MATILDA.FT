@@ -14,6 +14,7 @@ class PS_Species {
         PS_Box* mybox;
 
     public:
+
         PS_Species();
         virtual ~PS_Species();
         PS_Species(std::istringstream&, PS_Box*); // constructor to parse input command

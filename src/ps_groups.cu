@@ -105,3 +105,10 @@ void PS_Group::allocateGroupMemory(int ns) {
 std::string PS_Group::returnName() {
     return  name;
 }
+
+int PS_Group::isGroup(std::string testName) {
+    if ( name == testName ) 
+        return 1;
+    else 
+        return 0;
+}

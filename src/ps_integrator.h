@@ -9,24 +9,32 @@
 // groups.                                  //
 //////////////////////////////////////////////
 
+#include <string>
 #include "include_libs.h"
 
 #ifndef _INTEGRATOR
 #define _INTEGRATOR
 
+class PS_Group; 
+class PS_Box;
+
 class Integrator {
 protected:
-    int group_index;            // index of group to be integrated
-    std::string group_name;     // name of the group to be integrated
+    int group_index;  // index of group to be integrated
+    std::string groupName;// name of the group to be integrated
     std::string command_line;
 
 public:
     std::string name;      // name of the integrator to be used
-    Integrator(std::istringstream& iss);
+    PS_Box* mybox;
+    Integrator(std::istringstream&, PS_Box*);
     virtual ~Integrator();    // destructor
     virtual void Integrate_1(void); // Calls the pre-force integrator
-    virtual void Integrate_2(void); // Calls the pre-force integrator
+    virtual void Integrate_2(void); // Calls the post-force integrator
+    float delt;                     // Size of time step
+
     std::string printCommand(){return command_line;}
+    static int using_GJF;
 };
 
 #endif

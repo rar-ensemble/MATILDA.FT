@@ -27,7 +27,8 @@ class PS_Box : public Box {
 
         int nstot;          // Total number of particles/atoms
         int nBondsTot;      // Total number of bonds
-        int nAnglesTot;     // Total number of bonds
+        int nAnglesTot;     // Total number of angles
+        int nTypes;         // Total number of particle types
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
         int fieldFreq;      // Frequency to write density field data
@@ -38,6 +39,8 @@ class PS_Box : public Box {
         int nsGrid;         // GPU grid number for 'all' particle operations
         int DnsGrid;        // GPU grid number for Dim*all particle ops
         int nsBlock;        // GPU block number for 'all' particle operations
+        curandState* d_states; // State var. for particle-level RNG
+        int RANDSEED;       // Seed for CUDA RNG
 
         float* _d_dxf;      // float version of grid spacing
         
@@ -86,6 +89,14 @@ class PS_Box : public Box {
         // Variables named for G&A
 
         std::vector<PS_Species> species;    // vector of species IDs
+        thrust::host_vector<float> speciesMass;
+        thrust::device_vector<float> d_speciesMass;
+        float* _d_speciesMass;
+
+        thrust::host_vector<float> speciesMobility;
+        thrust::device_vector<float> d_speciesMobility;
+        float* _d_speciesMobility;
+
         std::vector<PS_Group> psGroup;        // Vector of particle groups
                 
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
@@ -94,6 +105,7 @@ class PS_Box : public Box {
 
              
         int findSpeciesInteger(std::string);
+        int findGroupInteger(std::string);
 
         void NVT(int) override;
         std::ofstream OTP;
@@ -106,6 +118,7 @@ class PS_Box : public Box {
         int converged(int dm) {return 0; }; // No implemented for PS methods
         void writeDataConfig(std::string);  // Writes LAMMPS data file format
         void createDefaultGroups();         // Makes default groups
+        void finishSpeciesArrays();          // Allocates and populates any needed static arrays
 
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer

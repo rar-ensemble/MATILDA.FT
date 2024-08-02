@@ -43,6 +43,7 @@ class PS_Group {
         void zeroFields();
         void allocateGroupMemory(int);
         void makeDensityField();
+        int isGroup(std::string);
         std::string returnName();
         virtual ~PS_Group();
 };

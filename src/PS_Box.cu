@@ -12,7 +12,7 @@ void random_unit_vec(double*, int);
 
 __global__ void d_calcGridWeights(float*, int*, const float*, const int*, 
 const float*, const int, const int, const int, const int);
-
+__global__ void d_initDeviceRNG(unsigned int, curandState*, int);
 
 
 // Executes the commands for a given time step
@@ -213,8 +213,9 @@ void PS_Box::readInput(std::ifstream& inp) {
             }
 
 
-            else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
-                iss >> idum;
+            else if (firstWord == "randSeed" || firstWord == "RAND_SEED" || firstWord == "RANDSEED") {
+                iss >> idum;        // Set CPU RNG to have seed = RANDSEED
+                RANDSEED = idum;    // Set GPU RNG to have seed = RANDSEED
             }
 
             else if (firstWord == "rho0") {
@@ -305,11 +306,40 @@ void PS_Box::readInput(std::ifstream& inp) {
     
     createDefaultGroups();
 
+    finishSpeciesArrays();
+
     simTime = time(0);
 
 }// End of readInput()
 
 
+
+
+
+// Allocates arrays based on the number of species/types
+// in the box
+void PS_Box::finishSpeciesArrays() {
+    nTypes = species.size();
+
+    speciesMass.resize(nTypes);
+    speciesMobility.resize(nTypes);
+    for ( int i=0 ; i<nTypes; i++ ) {
+        speciesMass[i] = species[i].mass;
+        speciesMobility[i] = species[i].mobility;
+    }
+
+    d_speciesMass.resize(nTypes);
+    d_speciesMobility.resize(nTypes);
+
+    d_speciesMass = speciesMass;
+    d_speciesMobility = speciesMobility;
+
+    _d_speciesMass = thrust::raw_pointer_cast(d_speciesMass.data());
+    _d_speciesMobility = thrust::raw_pointer_cast(d_speciesMobility.data());
+}
+
+
+// Creates groups for each particle type and 'all'
 void PS_Box::createDefaultGroups() {
     psGroup.push_back(PS_Group("all", -1, this));
 
@@ -351,6 +381,20 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
     int id = -1;
     for ( int i=0 ; i<species.size() ; i++ ) {
         if ( species[i].isSpecies( testLabel) ) {
+            id = i;
+            break;
+        }
+    }
+    if ( id < 0 ) die("Species label not found!");
+
+    return id;
+}
+
+// Finds the index in the group vector with the label 'testLabel'
+int PS_Box::findGroupInteger(std::string testLabel) {
+    int id = -1;
+    for ( int i=0 ; i<psGroup.size() ; i++ ) {
+        if ( psGroup[i].isGroup( testLabel) ) {
             id = i;
             break;
         }
@@ -489,6 +533,14 @@ void PS_Box::allocHostParticleArrays(int newns) {
 // ONLY AFFECTS DEVICE ARRAYS
 void PS_Box::allocDeviceParticleArrays(int newns) {
     std::cout << "Reallocating for " << newns << " sites on the device..." ;
+
+    if ( d_states != NULL ) {
+        cudaFree(d_states);
+    }
+
+    cudaMalloc(&d_states, newns * Dim * sizeof(curandState));
+    d_initDeviceRNG<<<nsGrid, nsBlock>>>(RANDSEED, d_states, nstot);
+
     d_x.resize(newns*Dim);
     _d_x = (float*) thrust::raw_pointer_cast(d_x.data());
     
