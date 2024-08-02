@@ -14,6 +14,7 @@ __global__ void d_calcGridWeights(float*, int*, const float*, const int*,
 const float*, const int, const int, const int, const int);
 __global__ void d_initDeviceRNG(unsigned int, curandState*, int);
 
+Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 
 // Executes the commands for a given time step
 // Updates all fields, then recomputes all molecule densities
@@ -166,6 +167,10 @@ void PS_Box::readInput(std::ifstream& inp) {
                 }
             }
 
+            else if ( firstWord == "integrator" ) {
+                integrators.push_back( IntegratorFactory(iss, this) );
+            }
+
             else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { 
                 iss >> logFreq; 
             }
@@ -242,6 +247,19 @@ void PS_Box::readInput(std::ifstream& inp) {
 
     }// while (!inp.eof()), finished reading up to 'endBox' or end of file
 
+
+    finishInitialization();
+    simTime = time(0);
+
+}// End of readInput()
+
+
+
+
+
+// After box is created by input file, this completes the initialization
+void PS_Box::finishInitialization() {
+
     if ( nstot == 0 ) {
         die("Box created with no particles?!?");
     }
@@ -272,6 +290,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     nsGrid = (int)ceil((double)(nstot) / nsBlock);
     DnsGrid = (int)ceil((double)(Dim*nstot) / nsBlock);
 
+
     // Define C, rho0 depending on what is given
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
 
@@ -301,24 +320,23 @@ void PS_Box::readInput(std::ifstream& inp) {
     writeDataConfig("init.input.data");
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
+    // Finish memory allocation on host
     allocHostParticleArrays(nstot);
+
+    // Allocate device memory and copy device vars
     allocDeviceParticleArrays(nstot);
     
     createDefaultGroups();
 
-    finishSpeciesArrays();
-
-    simTime = time(0);
-
-}// End of readInput()
 
 
+    // Assign groups to integrators
+    for ( int i=0 ; i<integrators.size(); i++ ) {
+        integrators[i]->findGroup();
+    }
 
 
-
-// Allocates arrays based on the number of species/types
-// in the box
-void PS_Box::finishSpeciesArrays() {
+    // Complete initialization of species variables
     nTypes = species.size();
 
     speciesMass.resize(nTypes);

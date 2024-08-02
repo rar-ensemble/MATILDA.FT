@@ -11,6 +11,7 @@
 
 #include "ps_species.h"
 #include "ps_groups.h"
+#include "ps_integrator.h"
 
 class PS_Box : public Box {
     protected:
@@ -98,7 +99,11 @@ class PS_Box : public Box {
         float* _d_speciesMobility;
 
         std::vector<PS_Group> psGroup;        // Vector of particle groups
-                
+        
+        std::vector<Integrator*> integrators;    // Time integration schemes
+
+
+
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
         void allocDeviceParticleArrays(int);    // Uses 'resize' to allocate device particle arrays
         void sendAllHostToDevice(void);         // Sends all particle-sized arrays from host to dev
@@ -118,7 +123,8 @@ class PS_Box : public Box {
         int converged(int dm) {return 0; }; // No implemented for PS methods
         void writeDataConfig(std::string);  // Writes LAMMPS data file format
         void createDefaultGroups();         // Makes default groups
-        void finishSpeciesArrays();          // Allocates and populates any needed static arrays
+        
+        void finishInitialization();          // Finishes initializing box after reading input
 
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer

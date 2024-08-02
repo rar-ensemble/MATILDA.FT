@@ -54,12 +54,12 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
             }
         }
 
-        std::cout << "Group based on type " << typ+1 << " has " << nsites << " members, is named " << name << "." << std::endl;
+        //std::cout << "Group based on type " << typ+1 << " has " << nsites << " members, is named " << name << "." << std::endl;
 
     }// type-based group
 
 
-    std::cout << "Group constructor for typ = " << typ << ", command: " << inputCommand << std::endl;
+    // std::cout << "Group constructor for typ = " << typ << ", command: " << inputCommand << std::endl;
 
     // Copy site list to device
     d_siteList = siteList;

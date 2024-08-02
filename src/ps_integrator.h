@@ -35,6 +35,7 @@ public:
 
     std::string printCommand(){return command_line;}
     static int using_GJF;
+    void findGroup();
 };
 
 #endif

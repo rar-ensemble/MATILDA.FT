@@ -15,12 +15,12 @@ static void die(T msg){
 
 /// Macro to read required parameters and report values or errors
 
-#define readRequiredParameter(ss,parameter) std::cout <<"Read parameter: " << #parameter; readParameter(ss, parameter);
+#define readRequiredParameter(ss,parameter) readParameter(ss,parameter); //std::cout <<"Read parameter: " << #parameter; readParameter(ss, parameter);
 
 template <typename T> 
 static void readParameter(std::istringstream& ss, T& parameter){
     if(ss >> parameter){
-        std::cout <<": " << parameter << std::endl;
+        //std::cout <<": " << parameter << std::endl;
     }
     else{
         std::cout << " Invalid Value! Exiting..." << std::endl;
