@@ -12,6 +12,9 @@ void random_unit_vec(double*, int);
 
 __global__ void d_calcGridWeights(float*, int*, const float*, const int*, 
 const float*, const int, const int, const int, const int);
+__global__ void d_bonds(float*, const int*, const int*, const int*,
+const float*, const float*, const int*, const float*, const float*,
+const float*, const int, const int, const int);
 __global__ void d_initDeviceRNG(unsigned int, curandState*, int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
@@ -21,15 +24,18 @@ Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 // then populating species densities
 void PS_Box::doTimeStep(int step) {
 
-    // First integration step, when needed
+
+    // First integration step, when needed (e.g., velo Verlet)
+    for ( int i=0 ; i<integrators.size(); i++ ) {
+        integrators[i]->Integrate_1();
+    }
 
 
-    // Forces
-    // 1. update grid weights, fill grid. 
+    // Update grid weights
     d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, 
         _d_dxf, nstot, pmeorder, M, Dim );
 
-    // update the fields
+    // update the density fields
     for ( int i=0 ; i<psGroup.size(); i++ ) {
         // zero density, grid force fields
         psGroup[i].zeroFields();
@@ -41,14 +47,13 @@ void PS_Box::doTimeStep(int step) {
     // Zero particle forces
     d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
 
-    // 3. bonded forces; 
-    // 4. NB forces; 
-    // 5. Extras
-
+    forces();
 
 
     // Second integration step
-
+    for ( int i=0 ; i<integrators.size(); i++ ) {
+        integrators[i]->Integrate_2();
+    }
 
 
     // Write log data
@@ -67,6 +72,15 @@ void PS_Box::NVT(int maxSteps) {
     }
 }
 
+
+void PS_Box::forces() {
+    
+    // 3. bonded forces; 
+
+    // 4. NB forces; 
+    // 5. Extras
+
+}
 
 
 // Write Hamiltonian terms to output file
@@ -138,6 +152,30 @@ void PS_Box::readInput(std::ifstream& inp) {
             }
 
             if ( firstWord == "blocksize" || firstWord == "blockSize" ) { iss >> blockSize ; }
+
+
+            else if ( firstWord == "bond" ) {
+                int btype;
+                iss >> btype;
+                if ( btype > bondK.size() ) {
+                    bondK.resize(btype);
+                    bondReq.resize(btype);
+                    bondStyle.resize(btype);
+                }
+
+                std::string style;
+                iss >> style;
+
+                iss >> bondK[btype-1];
+                iss >> bondReq[btype-1];
+
+                if ( style == "harmonic" ) {
+                    bondStyle[btype-1] = 0;
+                }
+                else if ( style == "fene" || style == "FENE" ) {
+                    bondStyle[btype-1] = 1;
+                }
+            }
 
             // Commands are alphabetical from here on
             else if ( firstWord == "boxLengths" ) {

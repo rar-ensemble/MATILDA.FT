@@ -83,6 +83,19 @@ class PS_Box : public Box {
         thrust::device_vector<int> d_bondType;// [MAXBONDS*nstot] device, bond types for particles
         int* _d_bondType;                         // pointer to d_nBonds.data()
 
+        int nBondTypes;
+        thrust::host_vector<float> bondReq;     // [nBondTypes] equil dist for bonds
+        thrust::device_vector<float> d_bondReq; // [nBondTypes] equil dist for bonds
+        float* _d_bondReq;                      // [nBondTypes] equil dist for bonds
+
+        thrust::host_vector<float> bondK;       // [nBondTypes] force const for bonds
+        thrust::device_vector<float> d_bondK;   // [nBondTypes] force const for bonds
+        float* _d_bondK;                        // [nBondTypes] force const for bonds
+
+        thrust::host_vector<int> bondStyle;     // [nBondTypes] bond type (0=harmonic, 1=FENE)  
+        thrust::device_vector<int> d_bondStyle; // [nBondTypes] bond type (0=harmonic, 1=FENE)  
+        int* _d_bondStyle;
+
         thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
         thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
 
@@ -113,6 +126,8 @@ class PS_Box : public Box {
         int findGroupInteger(std::string);
 
         void NVT(int) override;
+        void forces(void);
+
         std::ofstream OTP;
         void readInput(std::ifstream&);     // Reads the input file
         void doTimeStep(int);               // Performs one time step of a sim
