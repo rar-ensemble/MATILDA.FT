@@ -12,6 +12,7 @@
 #include "ps_species.h"
 #include "ps_groups.h"
 #include "ps_integrator.h"
+#include "ps_potential.h"
 
 class PS_Box : public Box {
     protected:
@@ -111,10 +112,10 @@ class PS_Box : public Box {
         thrust::device_vector<float> d_speciesMobility;
         float* _d_speciesMobility;
 
-        std::vector<PS_Group> psGroup;        // Vector of particle groups
+        std::vector<PS_Group> psGroup;          // Vector of particle groups
         
-        std::vector<Integrator*> integrators;    // Time integration schemes
-
+        std::vector<Integrator*> integrators;   // Time integration schemes
+        std::vector<PS_Potential*> potentials;   // 
 
 
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
