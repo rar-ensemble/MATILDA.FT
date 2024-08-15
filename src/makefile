@@ -49,7 +49,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 # tensor_potential.cu tensor_potential_MaierSaupe.cu device_ms_utils.cu \
 
 
-#SRCS_C = gsd.c
+SRCS_C = gsd.c
 #SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
 
 OBJFOLDER := objects
