@@ -43,6 +43,7 @@ class Box {
         int logFreq;                        // Frequency to print energies
         int densityFieldFreq;               // Frequency to write configs
         int maxSteps;                       // Max number of steps to run
+        int totSteps;                       // Total elapsed iterations
         long int simTime;                   // Total simulation time
         long int ftTimer;                   // Time spent in FFT routine
         int blockSize;                      // GPU block size
@@ -74,6 +75,7 @@ class Box {
         virtual void writeData(int) = 0;
 
         virtual void doTimeStep(int) = 0;
+
 };
 
 #endif // BOX

@@ -2,7 +2,6 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
-
 // Evaluates bonding forces.
 // Currently harmonic and FENE bonds supported
 __global__ void d_bonds( 
@@ -41,8 +40,7 @@ __global__ void d_bonds(
 	for (i = 0; i < d_n_bonds[ind]; i++) {
 		id2 = d_bonded_to[ind * MAXBONDS + i];
 		btyp = d_bond_type[ind * MAXBONDS + i];
-		
-		
+				
 		mdr2 = 0.0f;
 		for (j = 0; j < Dim; j++) {
 			dr[j] = x1[j] - d_x[id2 * Dim + j];

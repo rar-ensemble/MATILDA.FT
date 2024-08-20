@@ -179,3 +179,4 @@ Box* BoxFactory(std::istringstream &iss) {
     }
     return 0;
 }
+

@@ -59,3 +59,26 @@ __global__ void d_initDeviceRNG(unsigned int seed, curandState* states, int N) {
 
     curand_init(seed, idx, 0, &states[idx]);
 }
+
+// computes dr = ri - rj corrected for PBCs
+__device__ float d_pbc_dr2f(
+    float* dr,                          // [Dim] vector from i to j
+    const float* ri,                    // [Dim] position for i
+    const float* rj,                    // [Dim] position for i
+    const float* bx, const float* bxh,  // [Dim] box dimensions
+    const int dim                       // system dimensionality
+    ) {
+
+    float mdr2 = 0.0;
+    for ( int n=0 ; n<dim ; n++ ) {
+        dr[n] = ri[n] - rj[n];
+
+        if ( dr[n] > bxh[n] ) dr[n] -= bx[n];
+        else if ( dr[n] < -bxh[n] ) dr[n] += bx[n];
+
+        mdr2 += dr[n] * dr[n];
+    }
+
+    return mdr2;
+
+}

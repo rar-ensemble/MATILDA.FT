@@ -29,7 +29,9 @@ class PS_Box : public Box {
 
         int nstot;          // Total number of particles/atoms
         int nBondsTot;      // Total number of bonds
+        int nBondTypes;     // number of bond types
         int nAnglesTot;     // Total number of angles
+        int nAngleTypes;    // number of angle types
         int nTypes;         // Total number of particle types
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
@@ -43,6 +45,16 @@ class PS_Box : public Box {
         int nsBlock;        // GPU block number for 'all' particle operations
         curandState* d_states; // State var. for particle-level RNG
         int RANDSEED;       // Seed for CUDA RNG
+        int doCharges;      // Flag for whether charge species exist or not
+        int n_P_comps;      // Number of independent pressure components (3 or 6)
+        int nMolecules;     // Number of molecules in the box, not sure needed/used
+
+        // Data for gsd file storage
+        std::string gsd_name; 
+        std::vector<unsigned int> list_of_bond_type;
+        std::vector<unsigned int> list_of_bond_partners;
+        std::vector<unsigned int> list_of_angle_type;
+        std::vector<unsigned int> list_of_angle_partners;
 
         float* _d_dxf;      // float version of grid spacing
         
@@ -84,7 +96,6 @@ class PS_Box : public Box {
         thrust::device_vector<int> d_bondType;// [MAXBONDS*nstot] device, bond types for particles
         int* _d_bondType;                         // pointer to d_nBonds.data()
 
-        int nBondTypes;
         thrust::host_vector<float> bondReq;     // [nBondTypes] equil dist for bonds
         thrust::device_vector<float> d_bondReq; // [nBondTypes] equil dist for bonds
         float* _d_bondReq;                      // [nBondTypes] equil dist for bonds
@@ -100,7 +111,12 @@ class PS_Box : public Box {
         thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
         thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
 
+        thrust::host_vector<int> angleGroup;    // [nstot*MAXANGLES*3] list of the three particles in each angle
+        thrust::device_vector<int> d_angleGroup;// [nstot*MAXANGLES*3] list of the three particles in each angle
 
+        thrust::host_vector<int> angleType;     // [MAXANGLES*nstot] bond types for each particles
+        thrust::device_vector<int> d_angleType; // [MAXANGLES*nstot] device, bond types for particles
+        
         // Variables named for G&A
 
         std::vector<PS_Species> species;    // vector of species IDs
@@ -122,6 +138,8 @@ class PS_Box : public Box {
         void allocDeviceParticleArrays(int);    // Uses 'resize' to allocate device particle arrays
         void sendAllHostToDevice(void);         // Sends all particle-sized arrays from host to dev
 
+        void writeGSDtraj(void);
+        void readGSDtraj(const char*, int, int);
              
         int findSpeciesInteger(std::string);
         int findGroupInteger(std::string);
@@ -139,7 +157,7 @@ class PS_Box : public Box {
         int converged(int dm) {return 0; }; // No implemented for PS methods
         void writeDataConfig(std::string);  // Writes LAMMPS data file format
         void createDefaultGroups();         // Makes default groups
-        
+
         void finishInitialization();          // Finishes initializing box after reading input
 
 
