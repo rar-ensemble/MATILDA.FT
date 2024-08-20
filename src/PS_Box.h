@@ -78,11 +78,13 @@ class PS_Box : public Box {
         thrust::device_vector<int> d_mID;           // [nstot] device molecule index
         int* _d_mID;                                // pointer to d_mID.data()
 
+
         thrust::device_vector<float> d_gridW;   // [nstot*gridPerPartic] particle-to-grid weights
         float* _d_gridW;                        // Pointer to d_gridW.data()
 
         thrust::device_vector<int> d_gridInds;  // [nstot*gridPerPartic] particle-to-grid indices
         int* _d_gridInds;                        // Pointer to d_gridInds.data()
+
 
         thrust::host_vector<int> nBonds;        // [nstot] number of bonds 
         thrust::device_vector<int> d_nBonds;    // [nstot] device number of bonds 
@@ -104,9 +106,11 @@ class PS_Box : public Box {
         thrust::device_vector<float> d_bondK;   // [nBondTypes] force const for bonds
         float* _d_bondK;                        // [nBondTypes] force const for bonds
 
-        thrust::host_vector<int> bondStyle;     // [nBondTypes] bond type (0=harmonic, 1=FENE)  
-        thrust::device_vector<int> d_bondStyle; // [nBondTypes] bond type (0=harmonic, 1=FENE)  
+        thrust::host_vector<int> bondStyle;     // [nBondTypes] bond type (1=harmonic, 2=FENE)  
+        thrust::device_vector<int> d_bondStyle; // [nBondTypes] bond type (1=harmonic, 2=FENE)  
         int* _d_bondStyle;
+
+
 
         thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
         thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
@@ -117,7 +121,18 @@ class PS_Box : public Box {
         thrust::host_vector<int> angleType;     // [MAXANGLES*nstot] bond types for each particles
         thrust::device_vector<int> d_angleType; // [MAXANGLES*nstot] device, bond types for particles
         
+        thrust::host_vector<float> angleTheq;     // [nAngleTypes] equil angle
+        thrust::device_vector<float> d_angleTheq; // [nAngleTypes] 
+        
+        thrust::host_vector<float> angleK;       // [nAngleTypes] force const for angles
+        thrust::device_vector<float> d_angleK;   // [nAngleTypes] force const for angles
+        
+        thrust::host_vector<int> angleStyle;     // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
+        thrust::device_vector<int> d_angleStyle; // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
+
+
         // Variables named for G&A
+
 
         std::vector<PS_Species> species;    // vector of species IDs
         thrust::host_vector<float> speciesMass;
