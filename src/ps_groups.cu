@@ -88,8 +88,8 @@ void PS_Group::zeroFields() {
 // Allocates memory for arrays in this group.
 void PS_Group::allocateGroupMemory(int ns) {
     // Allocate needed memory for lists
-    siteList.resize(nsites);
-    d_siteList.resize(nsites);
+    siteList.resize(ns);
+    d_siteList.resize(ns);
 
     // Allocate memory for fields
     rho.resize(mybox->M);
@@ -100,6 +100,39 @@ void PS_Group::allocateGroupMemory(int ns) {
     _d_rho = (float*) thrust::raw_pointer_cast(d_rho.data());
 
 }
+
+
+// Copies density field to host, calls
+// subroutine to write thrust float vector
+void PS_Group::writeDensityField() {
+    std::string fileName = std::string("density-") + name + std::string(".dat");
+    
+    std::cout << "  file name: " << fileName << std::endl;
+    float *Gabe;
+    Gabe = (float*) malloc(mybox->M * sizeof(float));
+
+    cudaMemcpy(Gabe, _d_rho, mybox->M, cudaMemcpyDeviceToHost);
+    for ( int i=0 ; i<mybox->M; i++ ) {
+        rho[i] = Gabe[i];
+        std::cout << "i: " << i << " drho: " << d_rho[i] << std::endl;
+    }
+
+    
+
+    std::cout << "memcopy worked?" << std::endl;
+    std::cout << "  in group::writeDensityField " << rho.size() << " " << d_rho.size() << std::endl;
+
+
+
+    //rho = d_rho;
+    std::cout << "  attempting to write field " << name << std::endl;
+
+    mybox->writeFieldTFloat(fileName.c_str(), rho);
+
+    free(Gabe);
+}
+
+
 
 // Return the name of this group
 std::string PS_Group::returnName() {

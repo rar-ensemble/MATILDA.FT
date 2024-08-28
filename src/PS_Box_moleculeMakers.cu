@@ -23,6 +23,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     // read either phi or nmolecs keyword
     iss >> s1;
+
     if ( s1 == "phi" ) {
         iss >> phi;
     }

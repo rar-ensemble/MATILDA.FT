@@ -9,7 +9,6 @@
 void die(const char*);
 double ran2(void);
 
-
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 
 // Reads all of the commands from the input file from when this
@@ -102,6 +101,10 @@ void PS_Box::readInput(std::ifstream& inp) {
                 readDimension = true;
                 if ( Dim == 2 ) n_P_comps = 3;
                 else n_P_comps = 6;
+            }
+
+            else if ( firstWord == "fieldFreq" || firstWord == "field_freq" ) {
+                iss >> fieldFreq;
             }
 
             else if ( firstWord == "grid" ) {

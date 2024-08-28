@@ -37,6 +37,11 @@ void PS_Box::doTimeStep(int step) {
     d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, 
         _d_dxf, nstot, pmeorder, M, Dim );
 
+
+    ///////////////////////////
+    // UPDATE DENSITY FIELDS //
+    ///////////////////////////
+
     // update the density fields
     for ( int i=0 ; i<psGroup.size(); i++ ) {
         // zero density, grid force fields
@@ -49,6 +54,11 @@ void PS_Box::doTimeStep(int step) {
     // Zero particle forces
     d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
 
+
+
+    ////////////////////
+    // COMPUTE FORCES //
+    ////////////////////
     forces();
 
 
@@ -63,6 +73,12 @@ void PS_Box::doTimeStep(int step) {
         writeData(step);
     }
 
+
+    // Write field data
+    if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
+        writeFields();
+    }
+
 } // doTimeStep
 
 
@@ -74,15 +90,23 @@ void PS_Box::NVT(int maxSteps) {
 
         totSteps++;
     }
+
+    writeData(maxSteps);
+    writeFields();
+
 }
 
 
+// Calls all of the force functions
+// Assumes forces have been zeroed and 
+// initialized before entering this routine.
 void PS_Box::forces() {
     
-    // 3. bonded forces; 
+    // 1. bonded forces; 
 
-    // 4. NB forces; 
-    // 5. Extras
+    // 2. NB forces; 
+    
+    // 3. Extras
 
 }
 
@@ -231,7 +255,37 @@ void PS_Box::createDefaultGroups() {
 }
 
 
+// Currently loops over groups and writes field-based densities
 void PS_Box::writeFields() {
+    std::cout << "  here: ps_box:writefields" << std::endl;
+    for (int i=0 ; i<psGroup.size(); i++ ) {
+        psGroup[i].writeDensityField();
+    }    
+}
+
+void PS_Box::writeFieldTFloat(const char* name, thrust::host_vector<float> dat) {
+    int i, j, * nn;
+    nn = new int[Dim];
+    FILE* otp;
+    float* r = new float [Dim];
+
+
+    otp = fopen(name, "w");
+
+    for (i = 0; i < M; i++) {
+        get_rf(i, r);
+        unstack2(i, nn);
+
+        for (j = 0; j < Dim; j++)
+            fprintf(otp, "%f ", r[j]);
+
+        fprintf(otp, "%1.8e \n", dat[i]);
+
+        if (Dim == 2 && nn[0] == Nx[0] - 1)
+            fprintf(otp, "\n");
+    }
+
+    fclose(otp);
 }
 
 void PS_Box::writeTime() {

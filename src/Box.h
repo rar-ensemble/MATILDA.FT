@@ -62,6 +62,8 @@ class Box {
         virtual void initializeSim() = 0;               // Subroutine to initial densities/fields prior to a sim
         double get_kD(int, double*);        // Subroutine to compute wavevector corresponding to grid index
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
+        void get_rf(int, float*);           // Subroutine to compute position corresponding to grid index
+        
         void unstack2(int, int*);
         int returnDimension(void);
         std::string printCommand();

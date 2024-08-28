@@ -157,6 +157,21 @@ void Box::get_r(int id, double *r) {
     delete n;
 }
 
+// For given id \in [0,M), defines position vector for that grid point
+void Box::get_rf(int id, float *r) {
+    
+    int i, *n;
+    n = new int[Dim];
+
+    this->unstack2(id, n);
+   
+    for (i = 0; i < Dim; i++) {
+        r[i] = float(n[i]) * dx[i];
+    }
+
+    delete n;
+}
+
 
 std::string Box::printCommand() {
     return input_command;

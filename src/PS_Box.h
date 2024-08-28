@@ -166,14 +166,18 @@ class PS_Box : public Box {
         void readInput(std::ifstream&);     // Reads the input file
         void doTimeStep(int);               // Performs one time step of a sim
         void initializeSim() override;      // Initializes files prior to beginning simulation
-        void writeData(int) override;
-        void writeFields() override;        // Currently does nothing?
+        void writeData(int) override;       
+
+        void writeFields() override;        // Loops over groups, writes to data file
         void writeTime() override;          // Writes subroutine run times
         int converged(int dm) {return 0; }; // No implemented for PS methods
         void writeDataConfig(std::string);  // Writes LAMMPS data file format
         void createDefaultGroups();         // Makes default groups
 
         void finishInitialization();          // Finishes initializing box after reading input
+
+        // Writes thrust::host_vector array
+        void writeFieldTFloat(const char*, thrust::host_vector<float>);        
 
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
