@@ -64,7 +64,7 @@ __global__ void d_initDeviceRNG(unsigned int seed, curandState* states, int N) {
 __device__ float d_pbc_dr2f(
     float* dr,                          // [Dim] vector from i to j
     const float* ri,                    // [Dim] position for i
-    const float* rj,                    // [Dim] position for i
+    const float* rj,                    // [Dim] position for j
     const float* bx, const float* bxh,  // [Dim] box dimensions
     const int dim                       // system dimensionality
     ) {

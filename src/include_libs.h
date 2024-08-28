@@ -28,4 +28,6 @@
 #include <thrust/complex.h>
 #include "global_templated_functions.h"
 
+void check_cudaError(const char*);
+
 #endif
