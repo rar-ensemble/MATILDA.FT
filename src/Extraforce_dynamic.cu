@@ -1991,6 +1991,11 @@ __global__ void d_update_neighbours(
     int dyy = d_Nxx[1];
     int dzz = d_Nxx[2];
 
+    if (xi == dxx){xi = dxx - 1;}
+    if (yi == dyy){yi = dyy - 1;}
+    if (zi == dzz){zi = dzz - 1;}
+
+
     int nxi, nyi, nzi, nid, counter, lnid;
     counter = 0;
 
