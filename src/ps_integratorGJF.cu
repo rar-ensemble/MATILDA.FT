@@ -12,11 +12,14 @@ GJF::GJF(std::istringstream& iss, PS_Box* box) : Integrator(iss, box) {
 
 	int nDOF = mybox->nstot * mybox->returnDimension();
 
-	d_xOld.resize(nDOF);
-	_d_xOld = (float*) thrust::raw_pointer_cast(d_xOld.data());
+	cudaMalloc(&d_xOld, nDOF * sizeof(float));
+	cudaMalloc(&d_noiseOld, nDOF * sizeof(float));
 
-	d_noiseOld.resize(nDOF);
-	_d_noiseOld = (float*) thrust::raw_pointer_cast(d_noiseOld.data());
+	// d_xOld.resize(nDOF);
+	// _d_xOld = (float*) thrust::raw_pointer_cast(d_xOld.data());
+
+	// d_noiseOld.resize(nDOF);
+	// _d_noiseOld = (float*) thrust::raw_pointer_cast(d_noiseOld.data());
 
 }
 
@@ -25,9 +28,9 @@ void GJF::Integrate_2(){
 	int grid = mybox->psGroup[group_index].Grid;
 	int block = mybox->psGroup[group_index].Block;
 
-    d_GJF_integrator<<<grid, block>>>(mybox->_d_x, _d_xOld, _d_noiseOld, mybox->_d_f, 
+    d_GJF_integrator<<<grid, block>>>(mybox->_d_x, d_xOld, d_noiseOld, mybox->_d_f, 
 		mybox->_d_speciesMass, mybox->_d_speciesMobility, mybox->_d_intSpecies,
-		delt, sqrtf(2.0*delt), mybox->_d_L, mybox->psGroup[group_index]._d_siteList,
+		delt, sqrtf(2.0*delt), mybox->_d_L, mybox->psGroup[group_index].d_siteList,
 		mybox->psGroup[group_index].nsites, mybox->returnDimension(), mybox->d_states);
 
 }

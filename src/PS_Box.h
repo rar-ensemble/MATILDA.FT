@@ -56,7 +56,7 @@ class PS_Box : public Box {
         std::vector<unsigned int> list_of_angle_type;
         std::vector<unsigned int> list_of_angle_partners;
 
-        float* _d_dxf;      // float version of grid spacing
+        float* d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
         thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions
@@ -178,7 +178,7 @@ class PS_Box : public Box {
 
         // Writes thrust::host_vector array
         void writeFieldTFloat(const char*, thrust::host_vector<float>);        
-
+        void writeFieldFloat(const char*, const float*);
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
 

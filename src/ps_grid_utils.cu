@@ -113,7 +113,6 @@ __global__ void d_calcGridWeights(
         spline_get_weights(gdx, d_dx[j], W[j], pmeorder);
     }
 
-
     // 
     if (Dim == 2) {
         int order_shift = pmeorder / 2;
@@ -122,15 +121,15 @@ __global__ void d_calcGridWeights(
 
             nn[0] = g_ind[0] + ix - order_shift;
 
-            if (nn[0] < 0) nn[0] += d_Nx[0];
-            else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+            while (nn[0] < 0) nn[0] += d_Nx[0];
+            while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
 
             for (int iy = 0; iy < pmeorder + 1; iy++) {
 
                 nn[1] = g_ind[1] + iy - order_shift;
 
-                if (nn[1] < 0) nn[1] += d_Nx[1];
-                else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+                while (nn[1] < 0) nn[1] += d_Nx[1];
+                while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
 
                 Mindex = nn[1] * d_Nx[0] + nn[0];
 
@@ -152,22 +151,22 @@ __global__ void d_calcGridWeights(
 
             nn[0] = g_ind[0] + ix - order_shift;
 
-            if (nn[0] < 0) nn[0] += d_Nx[0];
-            else if (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+            while (nn[0] < 0) nn[0] += d_Nx[0];
+            while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
 
             for (int iy = 0; iy < pmeorder + 1; iy++) {
 
                 nn[1] = g_ind[1] + iy - order_shift;
 
-                if (nn[1] < 0) nn[1] += d_Nx[1];
-                else if (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+                while (nn[1] < 0) nn[1] += d_Nx[1];
+                while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
 
                 for (int iz = 0; iz < pmeorder + 1; iz++) {
 
                     nn[2] = g_ind[2] + iz - order_shift;
 
-                    if (nn[2] < 0) nn[2] += d_Nx[2];
-                    else if (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
+                    while (nn[2] < 0) nn[2] += d_Nx[2];
+                    while (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
 
                     Mindex = nn[0] + (nn[1] + nn[2] * d_Nx[1]) * d_Nx[0];
 

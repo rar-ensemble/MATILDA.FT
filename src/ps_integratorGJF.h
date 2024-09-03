@@ -23,11 +23,11 @@ public:
     ~GJF();
     void Integrate_2() override;
 
-	thrust::device_vector<float> d_xOld; 		// [nsites*Dim] dev vector to store prev positions
-	float* _d_xOld;								// nsites taken from the group integrated
+	//thrust::device_vector<float> d_xOld; 		// [nsites*Dim] dev vector to store prev positions
+	float* d_xOld;								// nsites taken from the group integrated
 
-	thrust::device_vector<float> d_noiseOld;	// [nsites*Dim] stores previous noise
-	float* _d_noiseOld;
+	//thrust::device_vector<float> d_noiseOld;	// [nsites*Dim] stores previous noise
+	float* d_noiseOld;
 };
 
 #endif

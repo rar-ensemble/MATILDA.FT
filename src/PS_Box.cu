@@ -35,7 +35,7 @@ void PS_Box::doTimeStep(int step) {
 
     // Update grid weights
     d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, 
-        _d_dxf, nstot, pmeorder, M, Dim );
+        d_dxf, nstot, pmeorder, M, Dim );
 
 
     ///////////////////////////
@@ -263,6 +263,8 @@ void PS_Box::writeFields() {
     }    
 }
 
+
+// Write field of thrust vectors
 void PS_Box::writeFieldTFloat(const char* name, thrust::host_vector<float> dat) {
     int i, j, * nn;
     nn = new int[Dim];
@@ -287,6 +289,33 @@ void PS_Box::writeFieldTFloat(const char* name, thrust::host_vector<float> dat) 
 
     fclose(otp);
 }
+
+// write field of array vectors
+void PS_Box::writeFieldFloat(const char* name, const float* dat) {
+    int i, j, * nn;
+    nn = new int[Dim];
+    FILE* otp;
+    float* r = new float [Dim];
+
+
+    otp = fopen(name, "w");
+
+    for (i = 0; i < M; i++) {
+        get_rf(i, r);
+        unstack2(i, nn);
+
+        for (j = 0; j < Dim; j++)
+            fprintf(otp, "%f ", r[j]);
+
+        fprintf(otp, "%1.8e \n", dat[i]);
+
+        if (Dim == 2 && nn[0] == Nx[0] - 1)
+            fprintf(otp, "\n");
+    }
+
+    fclose(otp);
+}
+
 
 void PS_Box::writeTime() {
 
@@ -535,7 +564,7 @@ void PS_Box::sendAllHostToDevice(void) {
     d_f = f;
 
     for ( int j=0 ; j<Dim ; j++ ) {
-        _d_dxf[j] = (float)d_dx[j];
+        d_dxf[j] = (float)d_dx[j];
     }
 
     d_intSpecies = intSpecies;

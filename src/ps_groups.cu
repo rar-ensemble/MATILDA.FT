@@ -73,7 +73,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 // Fills the density field for this group
 void PS_Group::makeDensityField() {
     
-    d_fillDensityGrid<<<Grid, Block>>>(_d_rho, _d_siteList, mybox->_d_gridInds, mybox->_d_gridW, mybox->gridPerPartic, nsites);
+    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->_d_gridInds, mybox->_d_gridW, mybox->gridPerPartic, nsites);
     check_cudaError("Group makeDensityField()");
 }
 
@@ -82,24 +82,20 @@ void PS_Group::makeDensityField() {
 void PS_Group::zeroFields() {
 
     // this routine is in device_utils.cu
-    d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(_d_rho, 0.0, mybox->M);
+    d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(d_rho, 0.0, mybox->M);
 }
 
 
 // Allocates memory for arrays in this group.
 void PS_Group::allocateGroupMemory(int ns) {
     // Allocate needed memory for lists
-    siteList.resize(ns);
-    d_siteList.resize(ns);
+    siteList = (int*) calloc(ns, sizeof(int));
+    cudaMalloc(&d_siteList, ns * sizeof(int));
 
     // Allocate memory for fields
-    rho.resize(mybox->M);
-    d_rho.resize(mybox->M);
-
-    // Points for regular data types
-    _d_siteList = (int*) thrust::raw_pointer_cast(d_siteList.data());
-    _d_rho = (float*) thrust::raw_pointer_cast(d_rho.data());
-
+    rho = (float*) calloc(mybox->M, sizeof(float));
+    cudaMalloc(&d_rho, mybox->M * sizeof(float));
+    
 }
 
 
@@ -109,26 +105,13 @@ void PS_Group::writeDensityField() {
     std::string fileName = std::string("density-") + name + std::string(".dat");
     
     std::cout << "  file name: " << fileName << std::endl;
-    // float *Gabe;
-    // Gabe = (float*) malloc(mybox->M * sizeof(float));
 
-    // cudaMemcpy(Gabe, _d_rho, mybox->M, cudaMemcpyDeviceToHost);
-    // for ( int i=0 ; i<mybox->M; i++ ) {
-    //     rho[i] = Gabe[i];
-    //     std::cout << "i: " << i << " drho: " << d_rho[i] << std::endl;
-    // }
+    // rho = d_rho;
+    cudaMemcpy(rho, d_rho, mybox->M, cudaMemcpyDeviceToHost);
 
-    
-
-    // std::cout << "memcopy worked?" << std::endl;
-    // std::cout << "  in group::writeDensityField " << rho.size() << " " << d_rho.size() << std::endl;
-
-
-
-    rho = d_rho;
     std::cout << "  attempting to write field " << name << std::endl;
 
-    mybox->writeFieldTFloat(fileName.c_str(), rho);
+    mybox->writeFieldFloat(fileName.c_str(), rho);
 
     //free(Gabe);
 }
