@@ -37,13 +37,19 @@ void PS_Box::writeGSDtraj() {
             1, 1, 0, &frame
         );
         
+        unsigned int gsdDim = 3;
         gsd_write_chunk(
                 &gsd_file, "configuration/dimensions", gsd_type::GSD_TYPE_UINT8,
-                1, 1, 0, &Dim
+                1, 1, 0, &gsdDim
                 );
 
 
-        std::vector<float> box = {L[0], L[1], L[2], 0, 0, 0};
+        std::vector<float> box(6,0);
+        for ( int j=0 ; j<Dim ; j++ ) {
+            box[j] = L[j];
+        }
+        if ( Dim == 2 ) box[2] = 5.0;
+        
         gsd_write_chunk(
                 &gsd_file, "configuration/box", gsd_type::GSD_TYPE_FLOAT,
                 6, 1, 0, box.data() );
@@ -110,18 +116,19 @@ void PS_Box::writeGSDtraj() {
     }
 
     // Transfer coordinates from device to host
-    x = d_x;
+    //x = d_x;
 
     // Make a copy of positions that can be shifted by Lh
     float* h_ns_float;
-    h_ns_float = (float*) malloc(nstot*Dim*sizeof(float));
+    h_ns_float = (float*) malloc(nstot*3*sizeof(float));
     if ( h_ns_float == NULL ) die("failed to allocate h_ns_float");
 
     for (i = 0; i < nstot; i++) {
         for (int j = 0; j < Dim; j++) {
-            h_ns_float[i * Dim + j] = x[i * Dim + j];
-            h_ns_float[i * Dim + j] -= Lh[j];
+            h_ns_float[i * 3 + j] = x[i * Dim + j] - Lh[j];
         }
+        if ( Dim == 2 ) h_ns_float[i*3+2] = 0.0;
+
     }
 
     gsd_write_chunk(&gsd_file, "particles/position", gsd_type::GSD_TYPE_FLOAT, nstot, 3, 0, h_ns_float);
@@ -552,4 +559,32 @@ void PS_Box::readGSDtraj(const char* file_name, int frame_num, int process){
 
     gsd_close(&gsd_file);
     free(h_ns_float);
+}
+
+
+
+
+void PS_Box::GSDinit() {
+    // For dynamic bonds, may make sense to "reserve" for MAXBONDS*nstot instead of
+    // using resize, which initializes values. Another routine that updates bond 
+    // lists could be called if bond number is dynamic.
+    list_of_bond_type.resize(nBondsTot,0);
+    list_of_bond_partners.resize(nBondsTot*2,0);
+
+    int bcount = 0;
+    for ( int i=0 ; i<nstot; i++ ) {
+        for ( int j=0 ; j<nBonds[i]; j++ ) {
+            
+            if ( bondedTo[i*MAXBONDS + j] > i ) {
+                list_of_bond_partners[bcount*2 + 0] = i;
+                list_of_bond_partners[bcount*2 + 1] = bondedTo[i*MAXBONDS + j];
+                list_of_bond_type[bcount] = bondType[i*MAXBONDS + j];
+
+                bcount++;
+            }
+        }
+    }
+
+    list_of_angle_type.resize(nAnglesTot,0);
+    list_of_angle_partners.resize(nAnglesTot*3,0);
 }

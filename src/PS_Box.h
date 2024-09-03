@@ -51,10 +51,11 @@ class PS_Box : public Box {
 
         // Data for gsd file storage
         std::string gsd_name; 
-        std::vector<unsigned int> list_of_bond_type;
-        std::vector<unsigned int> list_of_bond_partners;
-        std::vector<unsigned int> list_of_angle_type;
-        std::vector<unsigned int> list_of_angle_partners;
+        std::vector<unsigned int> list_of_bond_type;        // [nBondsTot] bond storage for gsd file
+        std::vector<unsigned int> list_of_bond_partners;    // [nBondsTot*2] bond storage for gsd file
+        
+        std::vector<unsigned int> list_of_angle_type;       // [nAnglesTot] angle storage for gsd file
+        std::vector<unsigned int> list_of_angle_partners;   // [nAnglesTot*3] angle storage for gsd file
 
         float* d_dxf;      // float version of grid spacing
         
@@ -153,9 +154,16 @@ class PS_Box : public Box {
         void allocDeviceParticleArrays(int);    // Uses 'resize' to allocate device particle arrays
         void sendAllHostToDevice(void);         // Sends all particle-sized arrays from host to dev
 
+
+
+
+
+        void GSDinit(void);
         void writeGSDtraj(void);
         void readGSDtraj(const char*, int, int);
              
+
+
         int findSpeciesInteger(std::string);
         int findGroupInteger(std::string);
 
