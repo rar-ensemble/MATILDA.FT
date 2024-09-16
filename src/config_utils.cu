@@ -1095,11 +1095,11 @@ void read_resume( const char *nm ) {
   char tt[120];
 
   (void)!fgets(tt, 100, inp);
-  (void)!fscanf(inp, "%d", &global_step);
+  (void)!fscanf(inp, "%d\n", &global_step);
   (void)!fgets(tt, 100, inp);
   (void)!fgets(tt, 100, inp);
   int ns_tmp;
-  (void)!fscanf(inp, "%d", &ns_tmp);
+  (void)!fscanf(inp, "%d\n", &ns_tmp);
   if (ns != ns_tmp)
 	  die("number of sites %d in resume file doens't match input!");
 
