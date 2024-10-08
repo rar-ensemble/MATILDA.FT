@@ -46,6 +46,10 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     std::vector<std::string> speciesBlocks(numBlocks);
     std::vector<int> intSpeciesBlocks(numBlocks);
 
+    std::vector<float> Rmin(Dim,0.0);
+    std::vector<float> Rmax(Dim);
+    for ( int j=0 ; j<Dim ; j++ ) Rmax[j] = L[j];
+
     // Store the basic block info
     for (int j=0 ; j<numBlocks; j++ ) {
         iss >> Nblocks[j];
@@ -64,6 +68,19 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
         else if ( s1 == "bondType" || s1 == "bondtype" ) {
             die("bond types not set up in ps_box make linear");
             // make sure to decide on how to handle junction cases, document it
+        }
+        else if ( s1 == "xrange" ) {
+            iss >> Rmin[0];
+            iss >> Rmax[0];
+        }
+        else if ( s1 == "yrange" ) {
+            iss >> Rmin[1];
+            iss >> Rmax[1];
+        }
+        else if ( s1 == "zrange" ) {
+            if ( Dim != 3 ) { die("z-range defined for a non-3D simulation!"); }
+            iss >> Rmin[2];
+            iss >> Rmax[2];
         }
     }
 
@@ -109,7 +126,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 // If so, place randomly in the box
                 if ( j==0 && s==0 ) {
                     for ( int a=0 ; a<Dim ; a++ ) {
-                        x[ind*Dim+a] = ran2() * L[a];
+                        x[ind*Dim+a] = ran2() * (Rmax[a] - Rmin[a]) + Rmin[a];
                     }
                 }
 

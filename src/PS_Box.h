@@ -40,14 +40,15 @@ class PS_Box : public Box {
         int gridPerPartic;  // Number of grid points each particle interacts
         int MAXBONDS;       // Max number of bonds per particle
         int MAXANGLES;      // Max number of angles per particle
+        int NSEXTRA;        // Extra memory allocated to store particles
         int nsGrid;         // GPU grid number for 'all' particle operations
         int DnsGrid;        // GPU grid number for Dim*all particle ops
         int nsBlock;        // GPU block number for 'all' particle operations
-        curandState* d_states; // State var. for particle-level RNG
         int RANDSEED;       // Seed for CUDA RNG
         int doCharges;      // Flag for whether charge species exist or not
         int n_P_comps;      // Number of independent pressure components (3 or 6)
         int nMolecules;     // Number of molecules in the box, not sure needed/used
+        curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
 
         // Data for gsd file storage
         std::string gsd_name; 
@@ -60,8 +61,8 @@ class PS_Box : public Box {
         float* d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
-        thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions
-        float* _d_x;                        // Pointer to d_x.data() 
+        //thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions
+        float* d_x;                        // Pointer to d_x.data() 
         
         thrust::host_vector<float> v;       // [nstot*Dim] particle velocities
         thrust::device_vector<float> d_v;   // [nstot*Dim] devoce particle velocities

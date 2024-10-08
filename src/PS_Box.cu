@@ -33,9 +33,9 @@ void PS_Box::doTimeStep(int step) {
 
 
     // Update grid weights
-    d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, _d_x, _d_Nx, 
-        d_dxf, nstot, pmeorder, M, Dim );
-
+    // d_calcGridWeights<<<nsGrid, nsBlock>>>(_d_gridW, _d_gridInds, d_x, _d_Nx, 
+    //     d_dxf, nstot, pmeorder, M, Dim );
+    // check_cudaError("Weights calculated in PS_Box");
 
     ///////////////////////////
     // UPDATE DENSITY FIELDS //
@@ -72,10 +72,10 @@ void PS_Box::doTimeStep(int step) {
         writeData(step);
     }
 
-    // // write to GSD traj file
-    // if ( gsdFreq > 0 && step % gsdFreq == 0 ) { 
-    //     writeGSDtraj();
-    // }
+    // write to GSD traj file
+    if ( gsdFreq > 0 && step % gsdFreq == 0 ) { 
+        writeGSDtraj();
+    }
 
     // Write field data
     if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
@@ -95,7 +95,7 @@ void PS_Box::NVT(int maxSteps) {
     }
     std::cout << "NVT Finished, writing final output" << std::endl;
     writeData(maxSteps);
-    writeFields();
+    // writeFields();
     writeGSDtraj();
 
 }
@@ -139,7 +139,10 @@ void PS_Box::writeFields() {
     std::cout << "  here: ps_box:writefields" << std::endl;
     for (int i=0 ; i<psGroup.size(); i++ ) {
         psGroup[i].writeDensityField();
+        
+        check_cudaError("writeFields in ps_box");
     }    
+    std::cout << "  Field written\n" << std::endl;
 }
 
 
@@ -171,28 +174,31 @@ void PS_Box::writeFieldTFloat(const char* name, thrust::host_vector<float> dat) 
 
 // write field of array vectors
 void PS_Box::writeFieldFloat(const char* name, const float* dat) {
-    int i, j, * nn;
-    nn = new int[Dim];
-    FILE* otp;
-    float* r = new float [Dim];
+    // int i, j, * nn;
+    // nn = new int[Dim];
+    // FILE* otp;
+    // float* r = new float [Dim];
 
+    // otp = fopen(name, "w");
+    // if ( otp == NULL ) { die("Failed to open output file in writeFieldFloat!"); }
 
-    otp = fopen(name, "w");
+    // for (i = 0; i < M; i++) {
+    //     get_rf(i, r);
+    //     unstack2(i, nn);
 
-    for (i = 0; i < M; i++) {
-        get_rf(i, r);
-        unstack2(i, nn);
+    //     for (j = 0; j < Dim; j++)
+    //         fprintf(otp, "%f ", r[j]);
 
-        for (j = 0; j < Dim; j++)
-            fprintf(otp, "%f ", r[j]);
+    //     fprintf(otp, "%1.8e \n", dat[i]);
 
-        fprintf(otp, "%1.8e \n", dat[i]);
+    //     if (Dim == 2 && nn[0] == Nx[0] - 1)
+    //         fprintf(otp, "\n");
+    // }
 
-        if (Dim == 2 && nn[0] == Nx[0] - 1)
-            fprintf(otp, "\n");
-    }
+    // fclose(otp);
 
-    fclose(otp);
+    // delete nn;
+    // delete r;
 }
 
 
@@ -349,7 +355,19 @@ void PS_Box::writeDataConfig(std::string filename) {
 // initialization when info needs to go to device for running simulations, though
 // could be used any time.
 void PS_Box::sendAllHostToDevice(void) {
-    d_x = x;
+    
+    float *xtmp;
+    xtmp = (float*) calloc( x.size(), sizeof(float));
+
+    for ( int i=0; i<x.size(); i++ ) {
+        xtmp[i] = x[i];
+    }
+
+    cudaMemcpy(d_x, xtmp, x.size() * sizeof(float), cudaMemcpyHostToDevice);
+
+    
+    //d_x = x;
+    
     d_v = v;
     d_f = f;
 
@@ -374,6 +392,8 @@ void PS_Box::sendAllHostToDevice(void) {
     d_angleTheq = angleTheq;
     d_angleK = angleK;
     d_angleStyle = angleStyle;
+
+    free(xtmp);
 
 }
 

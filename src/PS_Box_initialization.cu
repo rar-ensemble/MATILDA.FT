@@ -31,6 +31,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     M = 1;
     V = 1.0;
     blockSize = 512;
+    NSEXTRA = 0;
     MAXBONDS = 2;
     MAXANGLES = 3;
     Nr = 100;
@@ -160,6 +161,10 @@ void PS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "Nr" ) {
                 iss >> Nr;
+            }
+
+            else if ( firstWord == "NSEXTRA" || firstWord == "nsextra" ) {
+                iss >> NSEXTRA;
             }
 
             else if ( firstWord == "Nx") {
@@ -302,7 +307,7 @@ void PS_Box::finishInitialization() {
     allocHostParticleArrays(nstot);
 
     // Allocate device memory and copy device vars
-    allocDeviceParticleArrays(nstot);
+    allocDeviceParticleArrays(nstot + NSEXTRA);
     
     createDefaultGroups();
 
@@ -366,9 +371,6 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
     mID.resize(newns);
 
-    // gridW.resize(newns * gridPerPartic);
-    // gridInds.resize(newns * gridPerPartic);
-
     nBonds.resize(newns);
     bondedTo.resize(newns*MAXBONDS);
     bondType.resize(newns*MAXBONDS);
@@ -384,44 +386,45 @@ void PS_Box::allocHostParticleArrays(int newns) {
 // Reallocates all of the 'particle-size' arrays to the new value of nstot, 'newns'.
 // This can also be used for the intial allocation 
 // ONLY AFFECTS DEVICE ARRAYS
-void PS_Box::allocDeviceParticleArrays(int newns) {
-    std::cout << "Reallocating for " << newns << " sites on the device..." ;
+void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
+    std::cout << "Reallocating for " << nsAlloc << " sites on the device..." ;
 
     if ( d_states != NULL ) {
         cudaFree(d_states);
     }
 
-    cudaMalloc(&d_states, newns * Dim * sizeof(curandState));
+    cudaMalloc(&d_states, nsAlloc * Dim * sizeof(curandState));
     d_initDeviceRNG<<<nsGrid, nsBlock>>>(RANDSEED, d_states, nstot);
 
-    d_x.resize(newns*Dim);
-    _d_x = (float*) thrust::raw_pointer_cast(d_x.data());
+    //d_x.resize(newns*Dim);
+    cudaMalloc(&d_x, nsAlloc * Dim * sizeof(float));
+    //_d_x = (float*) thrust::raw_pointer_cast(d_x.data());
     
-    d_v.resize(newns*Dim);
+    d_v.resize(nsAlloc*Dim);
     _d_v = (float*) thrust::raw_pointer_cast(d_v.data());
 
-    d_f.resize(newns*Dim);
+    d_f.resize(nsAlloc*Dim);
     _d_f = (float*) thrust::raw_pointer_cast(d_f.data());
 
-    d_intSpecies.resize(newns);
+    d_intSpecies.resize(nsAlloc);
     _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
 
-    d_mID.resize(newns);
+    d_mID.resize(nsAlloc);
     _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
 
-    d_gridW.resize(newns * gridPerPartic);
+    d_gridW.resize(nsAlloc * gridPerPartic);
     _d_gridW = (float*) thrust::raw_pointer_cast(d_gridW.data());
 
-    d_gridInds.resize(newns * gridPerPartic);
+    d_gridInds.resize(nsAlloc * gridPerPartic);
     _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
 
-    d_nBonds.resize(newns);
+    d_nBonds.resize(nsAlloc);
     _d_nBonds = (int*) thrust::raw_pointer_cast(d_nBonds.data());
 
-    d_bondedTo.resize(newns*MAXBONDS);
+    d_bondedTo.resize(nsAlloc*MAXBONDS);
     _d_bondedTo = (int*) thrust::raw_pointer_cast(d_bondedTo.data());
 
-    d_bondType.resize(newns*MAXBONDS);
+    d_bondType.resize(nsAlloc*MAXBONDS);
     _d_bondType = (int*) thrust::raw_pointer_cast(d_bondType.data());
 
 
@@ -436,9 +439,9 @@ void PS_Box::allocDeviceParticleArrays(int newns) {
     _d_bondReq = (float*) thrust::raw_pointer_cast(d_bondReq.data());
 
     
-    d_nAngles.resize(newns);
-    d_angleGroup.resize(newns*MAXANGLES*3);
-    d_angleType.resize(newns*MAXANGLES);
+    d_nAngles.resize(nsAlloc);
+    d_angleGroup.resize(nsAlloc*MAXANGLES*3);
+    d_angleType.resize(nsAlloc*MAXANGLES);
 
     std::cout << "done!" << std::endl;
 }
