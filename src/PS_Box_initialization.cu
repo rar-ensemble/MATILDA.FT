@@ -43,6 +43,8 @@ void PS_Box::readInput(std::ifstream& inp) {
     gsdFreq = 0;
     fieldFreq = 0;
     gsd_name = "traj.gsd";
+    trajFileName = "traj.lammpstrj";
+    trajFreq = 0;
     doCharges = 0;
 
     std::string line, firstWord;
@@ -201,6 +203,19 @@ void PS_Box::readInput(std::ifstream& inp) {
                 species.push_back(PS_Species(iss, this));
             }
 
+            else if ( firstWord == "trajFileName" ) {
+                iss >> trajFileName;
+            }
+
+            else if ( firstWord == "trajFreq" || firstWord == "traj_freq" ) {
+                iss >> trajFreq;
+            }
+
+
+
+
+
+            
             else {
                 std::string s1 = "Invalid keyword " + firstWord + " in FTS_Box::readInput()";
                 die(s1.c_str());
@@ -322,25 +337,45 @@ void PS_Box::finishInitialization() {
     // Complete initialization of species variables
     nTypes = species.size();
 
-    speciesMass.resize(nTypes);
-    speciesMobility.resize(nTypes);
+    speciesMass = (float*) calloc(nTypes, sizeof(float));
+    speciesMobility = (float*) calloc(nTypes, sizeof(float));
+
+    // speciesMass.resize(nTypes);
+    // speciesMobility.resize(nTypes);
     for ( int i=0 ; i<nTypes; i++ ) {
         speciesMass[i] = species[i].mass;
         speciesMobility[i] = species[i].mobility;
+        std::cout << "  type index: " << i << " mass: " << speciesMass[i] << 
+            " mobility: " << speciesMobility[i] << std::endl;
     }
 
-    d_speciesMass.resize(nTypes);
-    d_speciesMobility.resize(nTypes);
+    cudaMalloc(&d_speciesMass, nTypes*sizeof(float));
+    cudaMalloc(&d_speciesMobility, nTypes*sizeof(float));
 
-    d_speciesMass = speciesMass;
-    d_speciesMobility = speciesMobility;
+    cudaMemcpy(d_speciesMass, speciesMass, nTypes * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_speciesMobility, speciesMobility, nTypes * sizeof(float), cudaMemcpyHostToDevice);
 
-    _d_speciesMass = thrust::raw_pointer_cast(d_speciesMass.data());
-    _d_speciesMobility = thrust::raw_pointer_cast(d_speciesMobility.data());
+    // d_speciesMass.resize(nTypes);
+    // d_speciesMobility.resize(nTypes);
 
-    GSDinit();
-    writeGSDtraj();
+    // d_speciesMass = speciesMass;
+    // d_speciesMobility = speciesMobility;
+
+    // Send all data to the device
+    std::cout << "sending data to device..." ; fflush(stdout);
+    sendAllHostToDevice();
+    std::cout << "done!" << std::endl;
+
+
+    for ( int i=0 ; i<integrators.size() ; i++ ) {
+        integrators[i]->finishInitialization();
+    }
+
+    // GSDinit();
+    // writeGSDtraj();
     // die("initialization finished, GSD written?");
+
+
 
 }
 

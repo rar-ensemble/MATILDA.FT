@@ -29,14 +29,6 @@ class PS_Group {
         int *siteList, *d_siteList;         // [nsites] list of sites in this group
         float *rho, *d_rho;                 // [M] density field for this group
 
-        // thrust::host_vector<int> siteList;  // List of sites in this group
-        // thrust::device_vector<int> d_siteList;  // Device list of sites in this group
-        // int* _d_siteList;
-
-        // thrust::host_vector<float> rho;     // [M] density field for this group
-        // thrust::device_vector<float> d_rho; // [M] device density field for this group
-        // float* _d_rho;
-
         int Grid, Block;    // GPU config variables for this group
 
         PS_Box* mybox;

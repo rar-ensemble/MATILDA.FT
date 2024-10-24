@@ -15,12 +15,6 @@ GJF::GJF(std::istringstream& iss, PS_Box* box) : Integrator(iss, box) {
 	cudaMalloc(&d_xOld, nDOF * sizeof(float));
 	cudaMalloc(&d_noiseOld, nDOF * sizeof(float));
 
-	// d_xOld.resize(nDOF);
-	// _d_xOld = (float*) thrust::raw_pointer_cast(d_xOld.data());
-
-	// d_noiseOld.resize(nDOF);
-	// _d_noiseOld = (float*) thrust::raw_pointer_cast(d_noiseOld.data());
-
 }
 
 void GJF::Integrate_2(){
@@ -29,13 +23,25 @@ void GJF::Integrate_2(){
 	int block = mybox->psGroup[group_index].Block;
 
     d_GJF_integrator<<<grid, block>>>(mybox->d_x, d_xOld, d_noiseOld, mybox->_d_f, 
-		mybox->_d_speciesMass, mybox->_d_speciesMobility, mybox->_d_intSpecies,
+		mybox->d_speciesMass, mybox->d_speciesMobility, mybox->_d_intSpecies,
 		delt, sqrtf(2.0*delt), mybox->_d_L, mybox->psGroup[group_index].d_siteList,
 		mybox->psGroup[group_index].nsites, mybox->returnDimension(), mybox->d_states);
 
 }
 
+// Initialization to be done after positions sent to 
+// the device in main init routines
+void GJF::finishInitialization() {
+	
+	int nDOF = mybox->nstot * mybox->returnDimension();
+	
+	// Initialize 'old' positions current positions
+	cudaMemcpy(d_xOld, mybox->d_x, nDOF*sizeof(float), cudaMemcpyHostToDevice);
 
+	// Zero out the old noise values
+	d_assignFloatVal<<<mybox->DnsGrid, mybox->nsBlock>>>(d_noiseOld, 0.0f, nDOF);
+
+}
 
 // device routine that applies the Stormer-Verlet Gronbech-Jensen and 
 // Farago integration scheme from Comp PHys Comm V185 (2014) p524, Eqn 11.
@@ -63,9 +69,8 @@ __global__ void d_GJF_integrator(
 		return;
 		
 	int ind = d_index[list_ind];
-
+		
 	curandState l_state;
-
 	l_state = d_states[ind];
 
 	int itype = typ[ind];
@@ -93,18 +98,18 @@ __global__ void d_GJF_integrator(
 
 		
 		x[aind] = 2.0f * b * x[aind] - a * xo[aind]
-			+ b * delt2 / mass[itype] * f[aind]
-			+ b * delt / ( 2.0f * mass[itype] ) * (new_noise + old_noise[aind]);
+			 + b * delt2 / mass[itype] * f[aind]
+			 + b * delt / ( 2.0f * mass[itype] ) * (new_noise + old_noise[aind]);
 
-
+			 
 		xo[aind] = xtmp;
 		old_noise[aind] = new_noise;
 
 
-		if (x[ind * Dim + j] > L[j])
-			x[ind * Dim + j] -= L[j];
-		else if (x[ind * Dim + j] < 0.0f)
-			x[ind * Dim + j] += L[j];
+		if (x[aind] > L[j])
+			x[aind] -= L[j];
+		else if (x[aind] < 0.0f)
+			x[aind] += L[j];
 
 	}
 

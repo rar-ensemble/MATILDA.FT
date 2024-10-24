@@ -62,7 +62,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     // std::cout << "Group constructor for typ = " << typ << ", command: " << inputCommand << std::endl;
 
     // Copy site list to device
-    d_siteList = siteList;
+    cudaMemcpy(d_siteList, siteList, nsites*sizeof(int), cudaMemcpyHostToDevice);
 
     // Set group grid, block size
     Block = mybox->blockSize;
@@ -113,8 +113,7 @@ void PS_Group::writeDensityField() {
 
 
     // rho = d_rho;
-    // cudaMemcpy(rho, d_rho, mybox->M, cudaMemcpyDeviceToHost);
-    cudaMemcpy(rho, d_rho, 5, cudaMemcpyDeviceToHost);
+    cudaMemcpy(rho, d_rho, mybox->M, cudaMemcpyDeviceToHost);
     check_cudaError("PS_Group::writeDensityFields memory copy");
 
     std::cout << "  attempting to write field " << name << std::endl;

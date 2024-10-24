@@ -11,11 +11,11 @@
 // #include "integrator_EM.h"
 
 
-void Integrator::Integrate_1(){
-}
+void Integrator::Integrate_1(){}
 
-void Integrator::Integrate_2(){
-}
+void Integrator::Integrate_2(){}
+
+void Integrator::finishInitialization() {}
 
 Integrator::Integrator(std::istringstream& iss, PS_Box* box) : mybox(box) {
     command_line = iss.str();

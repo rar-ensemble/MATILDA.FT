@@ -16,7 +16,6 @@
 
 class PS_Box : public Box {
     protected:
-        std::string ftsStyle;              // "scft" or "cl", maybe also "hpf" in future?
     public:
         ~PS_Box();
         PS_Box(std::istringstream&);
@@ -35,6 +34,7 @@ class PS_Box : public Box {
         int nTypes;         // Total number of particle types
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
+        int trajFreq;       // Frequency to write to lammpstrj file
         int fieldFreq;      // Frequency to write density field data
         int pmeorder;       // Order of the PME interpolation
         int gridPerPartic;  // Number of grid points each particle interacts
@@ -50,8 +50,9 @@ class PS_Box : public Box {
         int nMolecules;     // Number of molecules in the box, not sure needed/used
         curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
 
-        // Data for gsd file storage
-        std::string gsd_name; 
+        // Data for gsd, lammpstrj file storage
+        std::string gsd_name, trajFileName;
+
         std::vector<unsigned int> list_of_bond_type;        // [nBondsTot] bond storage for gsd file
         std::vector<unsigned int> list_of_bond_partners;    // [nBondsTot*2] bond storage for gsd file
         
@@ -61,9 +62,16 @@ class PS_Box : public Box {
         float* d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
-        //thrust::device_vector<float> d_x;   // [nstot*Dim] device particle positions
-        float* d_x;                        // Pointer to d_x.data() 
+        float *d_x;                        // [nstot*Dim] device particle positions  
         
+
+        std::vector<PS_Species> species;            // vector of species IDs
+        float *speciesMass, *d_speciesMass;          // [nTypes] masses of species
+        float *speciesMobility, *d_speciesMobility;  // [nTypes] mobility (diffusivity) of species
+        
+
+
+
         thrust::host_vector<float> v;       // [nstot*Dim] particle velocities
         thrust::device_vector<float> d_v;   // [nstot*Dim] devoce particle velocities
         float* _d_v;                        // Pointer to d_v.data() 
@@ -136,15 +144,6 @@ class PS_Box : public Box {
         // Variables named for G&A
 
 
-        std::vector<PS_Species> species;    // vector of species IDs
-        thrust::host_vector<float> speciesMass;
-        thrust::device_vector<float> d_speciesMass;
-        float* _d_speciesMass;
-
-        thrust::host_vector<float> speciesMobility;
-        thrust::device_vector<float> d_speciesMobility;
-        float* _d_speciesMobility;
-
         std::vector<PS_Group> psGroup;          // Vector of particle groups
         
         std::vector<Integrator*> integrators;   // Time integration schemes
@@ -161,6 +160,7 @@ class PS_Box : public Box {
 
         void GSDinit(void);
         void writeGSDtraj(void);
+        void writeLammpsTraj(int);
         void readGSDtraj(const char*, int, int);
              
 

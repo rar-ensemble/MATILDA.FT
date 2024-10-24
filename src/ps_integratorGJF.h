@@ -22,6 +22,7 @@ public:
     GJF(std::istringstream&, PS_Box*);
     ~GJF();
     void Integrate_2() override;
+	void finishInitialization() override;
 
 	//thrust::device_vector<float> d_xOld; 		// [nsites*Dim] dev vector to store prev positions
 	float* d_xOld;								// nsites taken from the group integrated
