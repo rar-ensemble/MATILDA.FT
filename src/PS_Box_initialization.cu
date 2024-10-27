@@ -355,11 +355,6 @@ void PS_Box::finishInitialization() {
     cudaMemcpy(d_speciesMass, speciesMass, nTypes * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_speciesMobility, speciesMobility, nTypes * sizeof(float), cudaMemcpyHostToDevice);
 
-    // d_speciesMass.resize(nTypes);
-    // d_speciesMobility.resize(nTypes);
-
-    // d_speciesMass = speciesMass;
-    // d_speciesMobility = speciesMobility;
 
     // Send all data to the device
     std::cout << "sending data to device..." ; fflush(stdout);
@@ -371,8 +366,8 @@ void PS_Box::finishInitialization() {
         integrators[i]->finishInitialization();
     }
 
-    // GSDinit();
-    // writeGSDtraj();
+    GSDinit();
+    writeGSDtraj();
     // die("initialization finished, GSD written?");
 
 

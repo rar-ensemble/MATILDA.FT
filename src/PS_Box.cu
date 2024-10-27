@@ -25,12 +25,7 @@ __global__ void d_testIntegrator(float*, const int, const int, curandState*);
 // Updates all fields, then recomputes all molecule densities
 // then populating species densities
 void PS_Box::doTimeStep(int step) {
-    // float *hx;
-    // hx = (float*) calloc(nstot*Dim, sizeof(float));
-    // cudaMemcpy(hx, d_x, nstot*Dim*sizeof(float), cudaMemcpyDeviceToHost);
-    // for ( int i=0 ; i<5 ; i++ ) {
-    //     std::cout << "i=" << i << " pos: " << hx[i*Dim+0] << " " << hx[i*Dim+1] << std::endl;
-    // }
+
 
     // First integration step, when needed (e.g., velo Verlet)
     for ( int i=0 ; i<integrators.size(); i++ ) {
@@ -61,38 +56,23 @@ void PS_Box::doTimeStep(int step) {
 
     // Zero particle forces
     // std::cout << "zero forces..." ; fflush(stdout);
-    // d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
     // std::cout << "done!" << std::endl;
 
 
     ////////////////////
     // COMPUTE FORCES //
     ////////////////////
-    // forces();
+    forces();
 
-    // cudaMemcpy(hx, d_x, nstot*Dim*sizeof(float), cudaMemcpyDeviceToHost);
-    // for ( int i=0 ; i<5 ; i++ ) {
-    //     std::cout << "i=" << i << " pos: " << hx[i*Dim+0] << " " << hx[i*Dim+1] << std::endl;
-    // }
 
     // Second integration step
     for ( int i=0 ; i<integrators.size(); i++ ) {
         // std::cout << "integrate 2..." ; fflush(stdout);
-        // int grid = psGroup[0].Grid;
-	    // int block =psGroup[0].Block;
-        // d_testIntegrator<<<grid, block>>>(d_x, nstot, Dim, d_states);
-
         integrators[i]->Integrate_2();
         // std::cout << "done!" << std::endl;
     }
 
-    // cudaMemcpy(hx, d_x, nstot*Dim*sizeof(float), cudaMemcpyDeviceToHost);
-    // for ( int i=0 ; i<5 ; i++ ) {
-    //     std::cout << "i=" << i << " pos: " << hx[i*Dim+0] << " " << hx[i*Dim+1] << std::endl;
-    // }
-
-    // free(hx);
-    // die("test fin");
 
     ///////////////
     // I/O steps //
@@ -100,22 +80,22 @@ void PS_Box::doTimeStep(int step) {
 
     // Write log data
     if ( step % logFreq == 0 ) {
-        std::cout << "log..." ; fflush(stdout);
+        // std::cout << "log..." ; fflush(stdout);
         writeData(step);
-        std::cout << "done!" << std::endl;
+        // std::cout << "done!" << std::endl;
     }
 
     // write to GSD traj file
-    // if ( gsdFreq > 0 && step % gsdFreq == 0 ) { 
-    //     std::cout << "gsd..." ; fflush(stdout);
-    //     writeGSDtraj();
-    //     std::cout << "done!" << std::endl;
-    // }
+    if ( gsdFreq > 0 && step % gsdFreq == 0 ) { 
+        // std::cout << "gsd..." ; fflush(stdout);
+        writeGSDtraj();
+        // std::cout << "done!" << std::endl;
+    }
 
     if ( trajFreq > 0 && step % trajFreq == 0 ) {
-        std::cout << "lammpstrj..." ; fflush(stdout);
+        // std::cout << "lammpstrj..." ; fflush(stdout);
         writeLammpsTraj(step);
-        std::cout << "done!" << std::endl;
+        // std::cout << "done!" << std::endl;
     }
 
     // Write field data
@@ -137,7 +117,7 @@ void PS_Box::NVT(int maxSteps) {
     std::cout << "NVT Finished, writing final output" << std::endl;
     writeData(maxSteps);
     // writeFields();
-    // writeGSDtraj();
+    writeGSDtraj(); 
 
 }
 
@@ -165,6 +145,7 @@ void PS_Box::writeData(int step) {
     std::string outline;
 
     OTP << step ;
+    std::cout << "step: " << step ;
 
     OTP << std::endl;
     std::cout << std::endl;
@@ -400,6 +381,8 @@ void PS_Box::writeLammpsTraj(int step) {
     for ( int i=0 ; i<nstot ; i++ ) {
         for ( int j=0 ; j<Dim ; j++ ) {
             x[i*Dim+j] = dtmp[i*Dim+j];
+            if (x[i*Dim+j] > L[j]) x[i*Dim+j] -= L[j];
+            else if ( x[i*Dim+j] < 0.0f ) x[i*Dim+j] += L[j];
         }
     }
 
@@ -466,6 +449,8 @@ void PS_Box::sendAllHostToDevice(void) {
     }
     cudaMemcpy(d_dxf, dxf, Dim*sizeof(float), cudaMemcpyHostToDevice);
     
+    cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Lh, Lh, Dim*sizeof(float), cudaMemcpyHostToDevice);
     
     d_intSpecies = intSpecies;
     

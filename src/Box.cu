@@ -27,13 +27,13 @@ void Box::setDimension(int d) {
     d_dx.resize(Dim);
     _d_dx = (double*) thrust::raw_pointer_cast(d_dx.data());
 
-    L.resize(Dim);
-    d_L.resize(Dim);
-    _d_L = (float*) thrust::raw_pointer_cast(d_L.data());
 
-    Lh.resize(Dim);
-    d_Lh.resize(Dim);
-    _d_Lh = (float*) thrust::raw_pointer_cast(d_Lh.data());
+    L = (float*) malloc(Dim*sizeof(float));
+    Lh = (float*)malloc(Dim*sizeof(float));
+
+    cudaMalloc(&d_L, Dim*sizeof(float));
+    cudaMalloc(&d_Lh, Dim*sizeof(float));
+
 }
 
 int Box::returnDimension() {

@@ -120,7 +120,7 @@ void PS_Box::writeGSDtraj() {
 
 
     // Make a copy of positions that can be shifted by Lh
-    std::cout << "allocating..." ; fflush(stdout);
+    // std::cout << "allocating..." ; fflush(stdout);
     float* h_ns_float;
     h_ns_float = (float*) malloc(nstot*3*sizeof(float));
     if ( h_ns_float == NULL ) die("failed to allocate h_ns_float");
@@ -128,7 +128,7 @@ void PS_Box::writeGSDtraj() {
     float* xtmp;
     xtmp = (float*) malloc( nstot*Dim*sizeof(float));
 
-    std::cout << "copying..." ; fflush(stdout);
+    // std::cout << "copying..." ; fflush(stdout);
     cudaMemcpy(xtmp, d_x, nstot*Dim*sizeof(float), cudaMemcpyDeviceToHost);
 
     for (i = 0; i < nstot; i++) {
@@ -140,17 +140,17 @@ void PS_Box::writeGSDtraj() {
 
     }
 
-    std::cout << "writing..." ; fflush(stdout);
+    // std::cout << "writing..." ; fflush(stdout);
     gsd_write_chunk(&gsd_file, "particles/position", gsd_type::GSD_TYPE_FLOAT, nstot, 3, 0, h_ns_float);
 
     if ( doCharges ) die("Charges not set up yet in write gsd routine");
         // gsd_write_chunk(&gsd_file, "particles/charge", gsd_type::GSD_TYPE_FLOAT, ns, 1, 0, charges);
 
-    std::cout << "closing..." ; fflush(stdout);
+    // std::cout << "closing..." ; fflush(stdout);
     gsd_end_frame(&gsd_file);
     gsd_close(&gsd_file);
 
-    std::cout << "freeing..." ; fflush(stdout);
+    // std::cout << "freeing..." ; fflush(stdout);
     free(h_ns_float);
     free(xtmp);
 
