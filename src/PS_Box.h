@@ -48,7 +48,10 @@ class PS_Box : public Box {
         int doCharges;      // Flag for whether charge species exist or not
         int n_P_comps;      // Number of independent pressure components (3 or 6)
         int nMolecules;     // Number of molecules in the box, not sure needed/used
+        
         curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
+        
+        float Ubond, Uangle;// Stores bond and angle energy
 
         // Data for gsd, lammpstrj file storage
         std::string gsd_name, trajFileName;
@@ -62,23 +65,23 @@ class PS_Box : public Box {
         float* d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
-        float *d_x;                        // [nstot*Dim] device particle positions  
-        
+        float *d_x;                         // [nstot*Dim] device particle positions  
+
+        float *f, *d_f;                     // [nstot*Dim]
+        float *v, *d_v;                     // [nstot*Dim]
+        // thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
+        // thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
+        // float* _d_f;           
 
         std::vector<PS_Species> species;            // vector of species IDs
         float *speciesMass, *d_speciesMass;          // [nTypes] masses of species
         float *speciesMobility, *d_speciesMobility;  // [nTypes] mobility (diffusivity) of species
         
+        int *nBonds, *d_nBonds;         // [nstot] device number of bonds 
+        int *bondedTo, *d_bondedTo;     // [MAXBONDS*nstot] device bond partner list
+        int *bondType, *d_bondType;     // [MAXBONDS*nstot] device bond types for particles
+        int bondTime;                   // Stores time spent in bond function
 
-
-
-        thrust::host_vector<float> v;       // [nstot*Dim] particle velocities
-        thrust::device_vector<float> d_v;   // [nstot*Dim] devoce particle velocities
-        float* _d_v;                        // Pointer to d_v.data() 
-        
-        thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
-        thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
-        float* _d_f;                        // Pointer to d_f.data() 
 
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
         thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
@@ -96,29 +99,16 @@ class PS_Box : public Box {
         int* _d_gridInds;                        // Pointer to d_gridInds.data()
 
 
-        thrust::host_vector<int> nBonds;        // [nstot] number of bonds 
-        thrust::device_vector<int> d_nBonds;    // [nstot] device number of bonds 
-        int* _d_nBonds;                         // pointer to d_nBonds.data()
-
-        thrust::host_vector<int> bondedTo;    // [MAXBONDS*nstot] bond partner list
-        thrust::device_vector<int> d_bondedTo;// [MAXBONDS*nstot] device bond partner list
-        int* _d_bondedTo;                         // pointer to d_nBonds.data()
-
-        thrust::host_vector<int> bondType;    // [MAXBONDS*nstot] bond types for each particles
-        thrust::device_vector<int> d_bondType;// [MAXBONDS*nstot] device, bond types for particles
-        int* _d_bondType;                         // pointer to d_nBonds.data()
+                      // pointer to d_nBonds.data()
 
         thrust::host_vector<float> bondReq;     // [nBondTypes] equil dist for bonds
-        thrust::device_vector<float> d_bondReq; // [nBondTypes] equil dist for bonds
-        float* _d_bondReq;                      // [nBondTypes] equil dist for bonds
+        float* d_bondReq;                      // [nBondTypes] equil dist for bonds
 
         thrust::host_vector<float> bondK;       // [nBondTypes] force const for bonds
-        thrust::device_vector<float> d_bondK;   // [nBondTypes] force const for bonds
-        float* _d_bondK;                        // [nBondTypes] force const for bonds
+        float* d_bondK;                        // [nBondTypes] force const for bonds
 
         thrust::host_vector<int> bondStyle;     // [nBondTypes] bond type (1=harmonic, 2=FENE)  
-        thrust::device_vector<int> d_bondStyle; // [nBondTypes] bond type (1=harmonic, 2=FENE)  
-        int* _d_bondStyle;
+        int* d_bondStyle;
 
 
 
@@ -170,6 +160,7 @@ class PS_Box : public Box {
 
         void NVT(int) override;
         void forces(void);
+        void computeThermoProps(void);
 
         std::ofstream OTP;
         void readInput(std::ifstream&);     // Reads the input file

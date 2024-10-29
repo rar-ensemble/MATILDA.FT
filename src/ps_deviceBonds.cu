@@ -82,11 +82,23 @@ __global__ void d_bonds(
 // these will be summed on the host
 // NOTE: this double-counts the energy and virial, which will
 // need to be corrected on the host.
-
-__global__ void d_bondStressEnergy(int* d_n_bonds, int* d_bonded_to,
-	int* d_bond_type, float* d_bond_req, float* d_bond_k,
-	float* d_x, float* d_e, float* d_vir, float* L, float* Lh,
-	int ns, int MAX_BONDS, int n_P_comps, int Dim, int* d_bond_style) {
+__global__ void d_bondStressEnergy(
+	float* d_e, 			// [ns] energy of each particle
+	float* d_vir, 			// [ns*n_P_comps] pressure tensor terms
+	const float* d_x, 		// [ns*Dim] particle positions
+	const int* d_n_bonds,   // [ns] number of bonds on each partic
+	const int* d_bonded_to,	// [ns*MAXBONDS] id of bond partner
+	const int* d_bond_type, // [ns*MAXBONDS] index of bond type
+	const float* d_bond_req,// [nBondTypes] r_eq of bond
+	const float* d_bond_k,	// [nBondTypes] force const of bond
+	const int* d_bond_style,// [nBondTypes] bond style (harmonic, FENE, etc)
+	const float *L, 		// [Dim] box dimensions
+	const float *Lh, 		// [Dim] half-box dimensions
+	const int ns, 			// number of particles
+	const int MAX_BONDS, 	// MAX number of bonds per particle
+	const int n_P_comps,	// number of pressure tensor components
+	const int Dim			// System dimensionality
+	) {
 
 
 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -138,34 +150,34 @@ __global__ void d_bondStressEnergy(int* d_n_bonds, int* d_bonded_to,
 					// printf("Did not implement the virial yet nor f = infinity!!!!!!!\n");
 				}
 			}
-		}
+		} // if ( mdr2 > 1.0E-5 )
 		else
 			mf = 0.0f;
 
-		if (bs == 0){
-			d_vir[ind * n_P_comps + 0] += -mf * dr[0] * dr[0];
-			d_vir[ind * n_P_comps + 1] += -mf * dr[1] * dr[1];
-			if ( Dim == 2 )
-				d_vir[ind * n_P_comps + 2] += -mf * dr[0] * dr[1];
-			else if (Dim == 3) {
-				d_vir[ind * n_P_comps + 2] += -mf * dr[2] * dr[2];
-				d_vir[ind * n_P_comps + 3] += -mf * dr[0] * dr[1];
-				d_vir[ind * n_P_comps + 4] += -mf * dr[0] * dr[2];
-				d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
-			}
+
+		// Store pressure tensor stuffs
+		d_vir[ind * n_P_comps + 0] += -mf * dr[0] * dr[0];
+		d_vir[ind * n_P_comps + 1] += -mf * dr[1] * dr[1];
+		if ( Dim == 2 )
+			d_vir[ind * n_P_comps + 2] += -mf * dr[0] * dr[1];
+		else if (Dim == 3) {
+			d_vir[ind * n_P_comps + 2] += -mf * dr[2] * dr[2];
+			d_vir[ind * n_P_comps + 3] += -mf * dr[0] * dr[1];
+			d_vir[ind * n_P_comps + 4] += -mf * dr[0] * dr[2];
+			d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
 		}
 
-		else if(bs == 1){
-			d_vir[ind * n_P_comps + 0] += -mf * dr[0] * dr[0];
-			d_vir[ind * n_P_comps + 1] += -mf * dr[1] * dr[1];
-			if ( Dim == 2 )
-				d_vir[ind * n_P_comps + 2] += -mf * dr[0] * dr[1];
-			else if (Dim == 3) {
-				d_vir[ind * n_P_comps + 2] += -mf * dr[2] * dr[2];
-				d_vir[ind * n_P_comps + 3] += -mf * dr[0] * dr[1];
-				d_vir[ind * n_P_comps + 4] += -mf * dr[0] * dr[2];
-				d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
-			}
-		}
+		// else if(bs == 1){
+		// 	d_vir[ind * n_P_comps + 0] += -mf * dr[0] * dr[0];
+		// 	d_vir[ind * n_P_comps + 1] += -mf * dr[1] * dr[1];
+		// 	if ( Dim == 2 )
+		// 		d_vir[ind * n_P_comps + 2] += -mf * dr[0] * dr[1];
+		// 	else if (Dim == 3) {
+		// 		d_vir[ind * n_P_comps + 2] += -mf * dr[2] * dr[2];
+		// 		d_vir[ind * n_P_comps + 3] += -mf * dr[0] * dr[1];
+		// 		d_vir[ind * n_P_comps + 4] += -mf * dr[0] * dr[2];
+		// 		d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
+		// 	}
+		// }
 	}
 }

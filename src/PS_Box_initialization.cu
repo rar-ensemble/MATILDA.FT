@@ -90,6 +90,7 @@ void PS_Box::readInput(std::ifstream& inp) {
                 else if ( style == "fene" || style == "FENE" ) {
                     bondStyle[btype-1] = 1;
                 }
+                else { die("Bond type not supported!"); }
                 nBondTypes = bondK.size();
             }
 
@@ -392,18 +393,27 @@ void PS_Box::createDefaultGroups() {
 // This can also be used for the intial allocation 
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
-    std::cout << "Reallocating for " << newns << " sites on the host..." ;
+    std::cout << "(Re)allocating for " << newns << " sites on the host..." ;
     x.resize(newns*Dim);
-    v.resize(newns*Dim);
-    f.resize(newns*Dim);
+   
+   
+    // free if already allocated
+    v = (float*) realloc(v, newns * Dim * sizeof(float)); 
+    f = (float*) realloc(f, newns * Dim * sizeof(float)); 
+
+    // // free if already allocated
+    // if ( f != NULL )  { f = (float*) realloc(f, newns * Dim * sizeof(float)); 
+    // std::cout << "freed and reup" << std::endl; }
+    // else { f = (float*) realloc(f, newns * Dim * sizeof(float)); }
+
+    nBonds = (int* ) realloc(nBonds, newns * sizeof(int));
+    bondedTo = (int* ) realloc(bondedTo, newns*MAXBONDS * sizeof(int));
+    bondType = (int* ) realloc(bondType, newns*MAXBONDS * sizeof(int));
+    
 
     intSpecies.resize(newns);
-
     mID.resize(newns);
 
-    nBonds.resize(newns);
-    bondedTo.resize(newns*MAXBONDS);
-    bondType.resize(newns*MAXBONDS);
 
     nAngles.resize(newns);
     angleGroup.resize(newns*MAXANGLES*3);
@@ -414,7 +424,8 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
 
 // Reallocates all of the 'particle-size' arrays to the new value of nstot, 'newns'.
-// This can also be used for the intial allocation 
+// NOTE: This can also be used for the intial allocation 
+// NOTE: Data stored in these arrays will be lost
 // ONLY AFFECTS DEVICE ARRAYS
 void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     std::cout << "Reallocating for " << nsAlloc << " sites on the device..." ;
@@ -426,15 +437,16 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     cudaMalloc(&d_states, nsAlloc * Dim * sizeof(curandState));
     d_initDeviceRNG<<<nsGrid, nsBlock>>>(RANDSEED, d_states, nstot);
 
-    //d_x.resize(newns*Dim);
     cudaMalloc(&d_x, nsAlloc * Dim * sizeof(float));
-    //_d_x = (float*) thrust::raw_pointer_cast(d_x.data());
-    
-    d_v.resize(nsAlloc*Dim);
-    _d_v = (float*) thrust::raw_pointer_cast(d_v.data());
+    cudaMalloc(&d_v, nsAlloc * Dim * sizeof(float));
+    cudaMalloc(&d_f, nsAlloc*Dim*sizeof(float));
 
-    d_f.resize(nsAlloc*Dim);
-    _d_f = (float*) thrust::raw_pointer_cast(d_f.data());
+    cudaMalloc(&d_nBonds, nsAlloc*sizeof(int));
+    cudaMalloc(&d_bondedTo, nsAlloc*MAXBONDS*sizeof(int));
+    cudaMalloc(&d_bondType, nsAlloc*MAXBONDS*sizeof(int));
+
+
+
 
     d_intSpecies.resize(nsAlloc);
     _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
@@ -448,25 +460,19 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     d_gridInds.resize(nsAlloc * gridPerPartic);
     _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
 
-    d_nBonds.resize(nsAlloc);
-    _d_nBonds = (int*) thrust::raw_pointer_cast(d_nBonds.data());
 
-    d_bondedTo.resize(nsAlloc*MAXBONDS);
-    _d_bondedTo = (int*) thrust::raw_pointer_cast(d_bondedTo.data());
+    cudaMalloc(&d_bondStyle,nBondTypes * sizeof(int));
+    cudaMalloc(&d_bondReq,  nBondTypes * sizeof(int));
+    cudaMalloc(&d_bondK,    nBondTypes * sizeof(int));
 
-    d_bondType.resize(nsAlloc*MAXBONDS);
-    _d_bondType = (int*) thrust::raw_pointer_cast(d_bondType.data());
+    // d_bondStyle.resize(nBondTypes);
+    // _d_bondStyle = (int*) thrust::raw_pointer_cast(d_bondStyle.data());
 
+    // d_bondK.resize(nBondTypes);
+    // _d_bondK = (float*) thrust::raw_pointer_cast(d_bondK.data());
 
-
-    d_bondStyle.resize(nBondTypes);
-    _d_bondStyle = (int*) thrust::raw_pointer_cast(d_bondStyle.data());
-
-    d_bondK.resize(nBondTypes);
-    _d_bondK = (float*) thrust::raw_pointer_cast(d_bondK.data());
-
-    d_bondReq.resize(nBondTypes);
-    _d_bondReq = (float*) thrust::raw_pointer_cast(d_bondReq.data());
+    // d_bondReq.resize(nBondTypes);
+    // _d_bondReq = (float*) thrust::raw_pointer_cast(d_bondReq.data());
 
     
     d_nAngles.resize(nsAlloc);

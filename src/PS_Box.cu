@@ -17,6 +17,10 @@ const float*, const int, const int, const int, const int);
 __global__ void d_bonds(float*, const int*, const int*, const int*,
 const float*, const float*, const int*, const float*, const float*,
 const float*, const int, const int, const int);
+__global__ void d_bondStressEnergy(float*, float*, const float*, 
+const int*, const int*, const int*,
+const float*, const float*, const int*, const float*, const float*,
+const int, const int, const int, const int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 __global__ void d_testIntegrator(float*, const int, const int, curandState*);
@@ -56,7 +60,7 @@ void PS_Box::doTimeStep(int step) {
 
     // Zero particle forces
     // std::cout << "zero forces..." ; fflush(stdout);
-    d_assignFloatVal<<<DnsGrid, nsBlock>>>(_d_f, 0.0, Dim*nstot);
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nstot);
     // std::cout << "done!" << std::endl;
 
 
@@ -128,6 +132,8 @@ void PS_Box::NVT(int maxSteps) {
 void PS_Box::forces() {
     
     // 1. bonded forces; 
+    d_bonds<<<nsGrid, nsBlock>>>(d_f, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
+        d_bondStyle, d_x, d_L, d_Lh, nstot, MAXBONDS, Dim);
 
     // 2. NB forces; 
     
@@ -136,16 +142,41 @@ void PS_Box::forces() {
 }
 
 
+// Computes the total potential energy of the system
+void PS_Box::computeThermoProps() {
+    thrust::device_vector<float> d_e(nstot);
+    float *_d_e = (float*) thrust::raw_pointer_cast(d_e.data());
+
+
+    thrust::device_vector<float> d_particlePTens(nstot*n_P_comps);
+    float *_d_vir = (float*) thrust::raw_pointer_cast(d_particlePTens.data());
+
+    // Computes the energy and virial for each particle
+    d_bondStressEnergy<<<nsGrid, nsBlock>>>(_d_e, _d_vir,
+        d_x, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
+        d_bondStyle, d_L, d_Lh, nstot, MAXBONDS, n_P_comps, Dim);
+
+    // Sums over the particle energies. 
+    // Prefactor 0.5 corrects for double-counting
+    Ubond = 0.5 * thrust::reduce(d_e.begin(), d_e.end(), 0.0f, thrust::plus<float>());
+
+}
+
 // Write Hamiltonian terms to output file
 void PS_Box::writeData(int step) {
 
-    // computeHamiltonian();
+    computeThermoProps();
 
     OTP.open("ps_data.dat", std::ios_base::app);
     std::string outline;
 
     OTP << step ;
     std::cout << "step: " << step ;
+
+    if ( Ubond > 0.0 ) {
+        OTP << " " << Ubond ;
+        std::cout << " Ubond: " << Ubond;
+    }
 
     OTP << std::endl;
     std::cout << std::endl;
@@ -436,11 +467,9 @@ void PS_Box::sendAllHostToDevice(void) {
         xtmp[i] = x[i];
     }
 
-    //d_x = x;
+    // Copy positions to device
     cudaMemcpy(d_x, xtmp, nstot*Dim * sizeof(float), cudaMemcpyHostToDevice);
     
-    // d_v = v;
-    // d_f = f;
 
     float dxf[3];
     if ( Dim > 3 ) die("Dim greater than 3?!??");
@@ -454,6 +483,15 @@ void PS_Box::sendAllHostToDevice(void) {
     
     d_intSpecies = intSpecies;
     
+    cudaMemcpy(d_nBonds, nBonds, nstot * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+
+
+    sendThrustVectorToDeviceArray(bondReq, d_bondReq, nBondTypes);
+    sendThrustVectorToDeviceArray(bondK, d_bondK, nBondTypes);
+    sendThrustVectorToDeviceArray(bondStyle, d_bondStyle, nBondTypes);
+
     // d_nBonds = nBonds;
     // d_bondedTo = bondedTo;
     // d_bondType = bondType;
