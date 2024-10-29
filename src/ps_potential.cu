@@ -3,7 +3,6 @@
 
 
 #include "ps_potential.h"
-#include "global_templated_functions.h"
 
 
 

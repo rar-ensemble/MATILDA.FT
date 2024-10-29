@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <sstream>
-
+#include <thrust/host_vector.h>
 #ifndef HERE
 #define HERE
 template<typename T>
@@ -29,5 +29,16 @@ static void readParameter(std::istringstream& ss, T& parameter){
 };
 
 
+// Sends host vector h with 'size' elements to device array d
+template <typename T>
+static void sendThrustVectorToDeviceArray(thrust::host_vector<T> h, T* d, int size) {
+    T* temp;
+    temp = (T*) malloc( size * sizeof(T) );
+    for ( int i=0 ; i<size ; i++ ) {
+        temp[i] = h[i];
+    }
+    cudaMemcpy(d, temp, size * sizeof(T), cudaMemcpyHostToDevice);
+    free(temp);
+};
 
 #endif
