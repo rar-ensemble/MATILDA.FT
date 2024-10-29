@@ -54,7 +54,7 @@ class PS_Box : public Box {
         float Ubond, Uangle;// Stores bond and angle energy
 
         // Data for gsd, lammpstrj file storage
-        std::string gsd_name, trajFileName;
+        std::string gsd_name, trajFileName, datFileName;
 
         std::vector<unsigned int> list_of_bond_type;        // [nBondsTot] bond storage for gsd file
         std::vector<unsigned int> list_of_bond_partners;    // [nBondsTot*2] bond storage for gsd file

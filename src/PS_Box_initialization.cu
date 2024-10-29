@@ -44,6 +44,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     fieldFreq = 0;
     gsd_name = "traj.gsd";
     trajFileName = "traj.lammpstrj";
+    datFileName = "ps_data.dat";
     trajFreq = 0;
     doCharges = 0;
 
@@ -106,6 +107,9 @@ void PS_Box::readInput(std::ifstream& inp) {
                 }
             }
 
+            else if ( firstWord == "datFileName" || firstWord == "dat_file_name" ) {
+                iss >> datFileName;
+            }
 
             else if ( firstWord == "Dim" ) {
                 iss >> Dim;
@@ -260,6 +264,14 @@ void PS_Box::finishInitialization() {
     if ( nstot == 0 ) {
         die("Box created with no particles?!?");
     }
+
+    // Initialzie the data file, write its header
+    OTP.open(datFileName);
+    OTP << "# step" ;
+    if ( nBondTypes > 0 ) OTP << " bond" ;
+    
+    OTP << std::endl;
+    OTP.close();
 
     // After input read, make the FFT plan
     // This currently assumes complex-double to complex-double transforms

@@ -167,7 +167,7 @@ void PS_Box::writeData(int step) {
 
     computeThermoProps();
 
-    OTP.open("ps_data.dat", std::ios_base::app);
+    OTP.open(datFileName, std::ios_base::app);
     std::string outline;
 
     OTP << step ;
