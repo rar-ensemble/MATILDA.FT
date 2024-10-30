@@ -84,28 +84,26 @@ class PS_Box : public Box {
 
 
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
-        thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
-        int* _d_intSpecies;                         // pointer to d_intSpecies.data()
+        //thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
+        int* d_intSpecies;                         // pointer to d_intSpecies.data()
 
         thrust::host_vector<int> mID;               // [nstot] molecule index
-        thrust::device_vector<int> d_mID;           // [nstot] device molecule index
-        int* _d_mID;                                // pointer to d_mID.data()
+        // thrust::device_vector<int> d_mID;           // [nstot] device molecule index
+        int* d_mID;                                // pointer to d_mID.data()
 
 
-        thrust::device_vector<float> d_gridW;   // [nstot*gridPerPartic] particle-to-grid weights
-        float* _d_gridW;                        // Pointer to d_gridW.data()
+        // thrust::device_vector<float> d_gridW;   // [nstot*gridPerPartic] particle-to-grid weights
+        float* d_gridW;                        // Pointer to d_gridW.data()
 
-        thrust::device_vector<int> d_gridInds;  // [nstot*gridPerPartic] particle-to-grid indices
-        int* _d_gridInds;                        // Pointer to d_gridInds.data()
+        // thrust::device_vector<int> d_gridInds;  // [nstot*gridPerPartic] particle-to-grid indices
+        int* d_gridInds;                        // Pointer to d_gridInds.data()
 
-
-                      // pointer to d_nBonds.data()
 
         thrust::host_vector<float> bondReq;     // [nBondTypes] equil dist for bonds
-        float* d_bondReq;                      // [nBondTypes] equil dist for bonds
+        float* d_bondReq;                       // [nBondTypes] equil dist for bonds
 
         thrust::host_vector<float> bondK;       // [nBondTypes] force const for bonds
-        float* d_bondK;                        // [nBondTypes] force const for bonds
+        float* d_bondK;                         // [nBondTypes] force const for bonds
 
         thrust::host_vector<int> bondStyle;     // [nBondTypes] bond type (1=harmonic, 2=FENE)  
         int* d_bondStyle;

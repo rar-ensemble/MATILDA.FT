@@ -37,6 +37,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     Nr = 100;
     rho0 = C = -1.0;
     nstot = nBondsTot = nAnglesTot = nBondTypes = nAngleTypes = 0;
+    idum = RANDSEED = time(0);
 
     // Some default values
     logFreq = 100;
@@ -459,18 +460,22 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
 
 
 
+    cudaMalloc(&d_intSpecies, nsAlloc * sizeof(int));
+    // d_intSpecies.resize(nsAlloc);
+    // _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
 
-    d_intSpecies.resize(nsAlloc);
-    _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
+    cudaMalloc(&d_mID, nsAlloc * sizeof(int));
+    // d_mID.resize(nsAlloc);
+    // _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
 
-    d_mID.resize(nsAlloc);
-    _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
+    cudaMalloc(&d_gridW,    nsAlloc*gridPerPartic * sizeof(float));
+    cudaMalloc(&d_gridInds, nsAlloc*gridPerPartic * sizeof(int));
 
-    d_gridW.resize(nsAlloc * gridPerPartic);
-    _d_gridW = (float*) thrust::raw_pointer_cast(d_gridW.data());
+    // d_gridW.resize(nsAlloc * gridPerPartic);
+    // _d_gridW = (float*) thrust::raw_pointer_cast(d_gridW.data());
 
-    d_gridInds.resize(nsAlloc * gridPerPartic);
-    _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
+    // d_gridInds.resize(nsAlloc * gridPerPartic);
+    // _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
 
 
     cudaMalloc(&d_bondStyle,nBondTypes * sizeof(int));
@@ -492,4 +497,63 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     d_angleType.resize(nsAlloc*MAXANGLES);
 
     std::cout << "done!" << std::endl;
+}
+
+
+// Sends all particle-size arrays from host to device. Intended to be used after
+// initialization when info needs to go to device for running simulations, though
+// could be used any time.
+void PS_Box::sendAllHostToDevice(void) {
+    
+    float *xtmp;
+    xtmp = (float*) calloc( nstot*Dim, sizeof(float));
+
+    for ( int i=0; i<nstot*Dim; i++ ) {
+        xtmp[i] = x[i];
+    }
+
+    // Copy positions to device
+    cudaMemcpy(d_x, xtmp, nstot*Dim * sizeof(float), cudaMemcpyHostToDevice);
+    
+
+    float dxf[3];
+    if ( Dim > 3 ) die("Dim greater than 3?!??");
+    for ( int j=0 ; j<Dim ; j++ ) {
+        dxf[j] = (float)dx[j];
+    }
+    cudaMemcpy(d_dxf, dxf, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    
+    cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Lh, Lh, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    
+    sendThrustVectorToDeviceArray(intSpecies, d_intSpecies, nstot);
+    sendThrustVectorToDeviceArray(mID, d_mID, nstot);
+    
+    cudaMemcpy(d_nBonds, nBonds, nstot * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+
+
+    sendThrustVectorToDeviceArray(bondReq, d_bondReq, nBondTypes);
+    sendThrustVectorToDeviceArray(bondK, d_bondK, nBondTypes);
+    sendThrustVectorToDeviceArray(bondStyle, d_bondStyle, nBondTypes);
+
+    // d_nBonds = nBonds;
+    // d_bondedTo = bondedTo;
+    // d_bondType = bondType;
+
+    // d_bondStyle = bondStyle;
+    // d_bondK = bondK;
+    // d_bondReq = bondReq;
+
+    // d_nAngles = nAngles;
+    // d_angleGroup = angleGroup;
+    // d_angleType = angleType;
+
+    // d_angleTheq = angleTheq;
+    // d_angleK = angleK;
+    // d_angleStyle = angleStyle;
+
+    free(xtmp);
+
 }

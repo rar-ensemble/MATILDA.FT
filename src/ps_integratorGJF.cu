@@ -23,7 +23,7 @@ void GJF::Integrate_2(){
 	int block = mybox->psGroup[group_index].Block;
 
     d_GJF_integrator<<<grid, block>>>(mybox->d_x, d_xOld, d_noiseOld, mybox->d_f, 
-		mybox->d_speciesMass, mybox->d_speciesMobility, mybox->_d_intSpecies,
+		mybox->d_speciesMass, mybox->d_speciesMobility, mybox->d_intSpecies,
 		delt, sqrtf(2.0*delt), mybox->d_L, mybox->psGroup[group_index].d_siteList,
 		mybox->psGroup[group_index].nsites, mybox->returnDimension(), mybox->d_states);
 

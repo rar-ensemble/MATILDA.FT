@@ -73,7 +73,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 // Fills the density field for this group
 void PS_Group::makeDensityField() {
     
-    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->_d_gridInds, mybox->_d_gridW, mybox->gridPerPartic, nsites);
+    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_gridInds, mybox->d_gridW, mybox->gridPerPartic, nsites);
     check_cudaError("Group ps_group::makeDensityField()");
 }
 

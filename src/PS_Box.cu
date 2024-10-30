@@ -455,63 +455,6 @@ void PS_Box::writeLammpsTraj(int step) {
 
 
 
-// Sends all particle-size arrays from host to device. Intended to be used after
-// initialization when info needs to go to device for running simulations, though
-// could be used any time.
-void PS_Box::sendAllHostToDevice(void) {
-    
-    float *xtmp;
-    xtmp = (float*) calloc( nstot*Dim, sizeof(float));
-
-    for ( int i=0; i<nstot*Dim; i++ ) {
-        xtmp[i] = x[i];
-    }
-
-    // Copy positions to device
-    cudaMemcpy(d_x, xtmp, nstot*Dim * sizeof(float), cudaMemcpyHostToDevice);
-    
-
-    float dxf[3];
-    if ( Dim > 3 ) die("Dim greater than 3?!??");
-    for ( int j=0 ; j<Dim ; j++ ) {
-        dxf[j] = (float)dx[j];
-    }
-    cudaMemcpy(d_dxf, dxf, Dim*sizeof(float), cudaMemcpyHostToDevice);
-    
-    cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Lh, Lh, Dim*sizeof(float), cudaMemcpyHostToDevice);
-    
-    d_intSpecies = intSpecies;
-    
-    cudaMemcpy(d_nBonds, nBonds, nstot * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
-
-
-    sendThrustVectorToDeviceArray(bondReq, d_bondReq, nBondTypes);
-    sendThrustVectorToDeviceArray(bondK, d_bondK, nBondTypes);
-    sendThrustVectorToDeviceArray(bondStyle, d_bondStyle, nBondTypes);
-
-    // d_nBonds = nBonds;
-    // d_bondedTo = bondedTo;
-    // d_bondType = bondType;
-
-    // d_bondStyle = bondStyle;
-    // d_bondK = bondK;
-    // d_bondReq = bondReq;
-
-    // d_nAngles = nAngles;
-    // d_angleGroup = angleGroup;
-    // d_angleType = angleType;
-
-    // d_angleTheq = angleTheq;
-    // d_angleK = angleK;
-    // d_angleStyle = angleStyle;
-
-    free(xtmp);
-
-}
-
 
 
 
