@@ -51,10 +51,11 @@ __global__ void d_fillDensityGrid(
 
 }
 
+// Initializes the CUDA rng
 __global__ void d_initDeviceRNG(unsigned int seed, curandState* states, int N) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;//check index for >= ns
 
-    if (idx >= N)//this probably will not compile
+    if (idx >= N)
         return;
 
     curand_init(seed, idx, 0, &states[idx]);

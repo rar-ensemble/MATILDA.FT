@@ -237,7 +237,7 @@ void PS_Box::readInput(std::ifstream& inp) {
         }
 
     }// while (!inp.eof()), finished reading up to 'endBox' or end of file
-
+    check_cudaError("end of parsing input");
 
     finishInitialization();
     simTime = time(0);
@@ -337,6 +337,7 @@ void PS_Box::finishInitialization() {
 
     // Allocate device memory and copy device vars
     allocDeviceParticleArrays(nstot + NSEXTRA);
+    check_cudaError("allocating device particle arrays");
     
     createDefaultGroups();
 
@@ -369,12 +370,13 @@ void PS_Box::finishInitialization() {
     cudaMemcpy(d_speciesMass, speciesMass, nTypes * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_speciesMobility, speciesMobility, nTypes * sizeof(float), cudaMemcpyHostToDevice);
 
+    check_cudaError("copying species data to device");
 
     // Send all data to the device
     std::cout << "sending data to device..." ; fflush(stdout);
     sendAllHostToDevice();
     std::cout << "done!" << std::endl;
-
+    check_cudaError("Sending data to device");
 
     for ( int i=0 ; i<integrators.size() ; i++ ) {
         integrators[i]->finishInitialization();
@@ -450,6 +452,8 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     cudaMalloc(&d_states, nsAlloc * Dim * sizeof(curandState));
     d_initDeviceRNG<<<nsGrid, nsBlock>>>(RANDSEED, d_states, nstot);
 
+    cudaMalloc(&d_dxf, Dim * sizeof(float));
+
     cudaMalloc(&d_x, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_v, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_f, nsAlloc*Dim*sizeof(float));
@@ -514,7 +518,7 @@ void PS_Box::sendAllHostToDevice(void) {
 
     // Copy positions to device
     cudaMemcpy(d_x, xtmp, nstot*Dim * sizeof(float), cudaMemcpyHostToDevice);
-    
+    check_cudaError("positions sent to device");
 
     float dxf[3];
     if ( Dim > 3 ) die("Dim greater than 3?!??");
@@ -522,13 +526,16 @@ void PS_Box::sendAllHostToDevice(void) {
         dxf[j] = (float)dx[j];
     }
     cudaMemcpy(d_dxf, dxf, Dim*sizeof(float), cudaMemcpyHostToDevice);
-    
+    check_cudaError("dx box information sent to device");
+
     cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Lh, Lh, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    check_cudaError("box information sent to device");
     
     sendThrustVectorToDeviceArray(intSpecies, d_intSpecies, nstot);
     sendThrustVectorToDeviceArray(mID, d_mID, nstot);
-    
+    check_cudaError("mID and intspecies sent using template");
+
     cudaMemcpy(d_nBonds, nBonds, nstot * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
@@ -537,6 +544,8 @@ void PS_Box::sendAllHostToDevice(void) {
     sendThrustVectorToDeviceArray(bondReq, d_bondReq, nBondTypes);
     sendThrustVectorToDeviceArray(bondK, d_bondK, nBondTypes);
     sendThrustVectorToDeviceArray(bondStyle, d_bondStyle, nBondTypes);
+
+    check_cudaError("template sent bond info to device");
 
     // d_nBonds = nBonds;
     // d_bondedTo = bondedTo;
