@@ -3,15 +3,14 @@
 
 
 #include "ps_potential.h"
-
-
+#include "ps_potentialGaussian.h"
+#include "PS_Box.h"
 
 
 // Allocates memory for:
 // potential, forces, virial contribution
 // in both r- and k-space
-void PS_Potential::Initialize_Potential() {
-    
+void PS_Potential::initializePotential() {
 
 
 }
@@ -53,6 +52,31 @@ PS_Potential::PS_Potential() {
 
 PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
     input_command = iss.str();
+
+        int M = mybox->M;
+    int Dim = mybox->returnDimension();
+    int nPC = mybox->n_P_comps;
+
+    // Host real-space variables
+    ur = (float*) malloc( M * sizeof(float));
+    fA = (float*) malloc( M*Dim * sizeof(float));
+    fB = (float*) malloc( M*Dim * sizeof(float));
+
+    // Host k-space variables
+    uk = (std::complex<float>*) malloc(M * sizeof(std::complex<float>));
+    fk = (std::complex<float>*) malloc( M*Dim * sizeof(std::complex<float>));
+    virk = (std::complex<float>*) malloc( M*nPC * sizeof(std::complex<float>));
+
+    // Device real-space variables
+    cudaMalloc(&d_ur, M * sizeof(float));
+    cudaMalloc(&d_fA, M*Dim * sizeof(float));
+    cudaMalloc(&d_fB, M*Dim * sizeof(float));
+
+    // Device k-space variables
+    cudaMalloc(&d_uk, M * sizeof(cuComplex));
+    cudaMalloc(&d_fA, M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_fA, M*Dim * sizeof(cuComplex));
+    
     return;
 }
 
@@ -88,16 +112,17 @@ void PS_Potential::ramp_check_input(std::istringstream& iss){
 }
 
 
-// Potential* PotentialFactory(istringstream &iss){
-// 	string s1;
-// 	iss >> s1;
-//     transform(s1.begin(), s1.end(), s1.begin(), ::tolower);
+PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
+ 	std::string s1;
+ 	iss >> s1;
+    
+    // std::transform(s1.begin(), s1.end(), s1.begin(), ::tolower);
 // 	if (s1 == "erf"){
 // 		return new Erf(iss);
 // 	}
-// 	if (s1 == "gaussian"){
-// 		return new Gaussian(iss);
-// 	}
+ 	if (s1 == "gaussian"){
+ 		return new NBGauss(iss, box);
+ 	}
 // 	if (s1 == "gaussian_erf"){
 // 		return new GaussianErf(iss);
 // 	}
@@ -111,6 +136,6 @@ void PS_Potential::ramp_check_input(std::istringstream& iss){
 // 		return new Charges(iss);
 // 	}
 	
-// 	die("Unsupported potential");
-// 	return 0;
-// }
+ 	die("Unsupported potential");
+ 	return 0;
+ }

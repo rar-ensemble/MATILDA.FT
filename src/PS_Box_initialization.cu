@@ -18,6 +18,7 @@ double ran2(void);
 __global__ void d_initDeviceRNG(unsigned int, curandState*, int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
+PS_Potential* PSPotentialFactory(std::istringstream&, PS_Box*);
 
 // Reads all of the commands from the input file from when this
 // box is created (using the 'box' command) until the 'endBox' 
@@ -195,6 +196,10 @@ void PS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "pmeorder" ) {
                 iss >> pmeorder;
+            }
+
+            else if ( firstWord == "potential" ) {
+                potentials.push_back( PSPotentialFactory(iss, this) );
             }
 
 

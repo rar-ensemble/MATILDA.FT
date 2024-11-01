@@ -6,10 +6,6 @@
 #include "ps_integratorGJF.h"
 #include "PS_Box.h"
 
-// #include "integrator_VV.h"
-// #include "integrator_GJF.h"
-// #include "integrator_EM.h"
-
 
 void Integrator::Integrate_1(){}
 
