@@ -48,6 +48,8 @@ class PS_Box : public Box {
         int doCharges;      // Flag for whether charge species exist or not
         int n_P_comps;      // Number of independent pressure components (3 or 6)
         int nMolecules;     // Number of molecules in the box, not sure needed/used
+
+        bool verbose;       // Flag to print tons of info to screen. Useful for debugging.
         
         curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
         
@@ -92,11 +94,8 @@ class PS_Box : public Box {
         int* d_mID;                                // pointer to d_mID.data()
 
 
-        // thrust::device_vector<float> d_gridW;   // [nstot*gridPerPartic] particle-to-grid weights
-        float* d_gridW;                        // Pointer to d_gridW.data()
-
-        // thrust::device_vector<int> d_gridInds;  // [nstot*gridPerPartic] particle-to-grid indices
-        int* d_gridInds;                        // Pointer to d_gridInds.data()
+        float* d_gridW;               // [nstot*gridPerPartic] particle-to-grid weights
+        int* d_gridInds;              // [nstot*gridPerPartic] particle-to-grid indices
 
 
         thrust::host_vector<float> bondReq;     // [nBondTypes] equil dist for bonds
@@ -155,6 +154,7 @@ class PS_Box : public Box {
 
         int findSpeciesInteger(std::string);
         int findGroupInteger(std::string);
+        float sumDeviceArray(float*, int, int);
 
         void NVT(int) override;
         void forces(void);

@@ -100,6 +100,7 @@ __global__ void d_calcGridWeights(
         grid_per_partic *= (pmeorder + 1);
     }
 
+    int INDMAX = ns * grid_per_partic;
 
     for (int j = 0; j < Dim; j++) {
         if (pmeorder % 2 == 0) {
@@ -119,26 +120,35 @@ __global__ void d_calcGridWeights(
 
         for (int ix = 0; ix < pmeorder + 1; ix++) {
 
-            nn[0] = g_ind[0] + ix - order_shift;
+            nn[0] = (g_ind[0] + ix - order_shift + d_Nx[0]) % d_Nx[0];
 
-            while (nn[0] < 0) nn[0] += d_Nx[0];
-            while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+            // nn[0] = g_ind[0] + ix - order_shift;
+
+            // while (nn[0] < 0) nn[0] += d_Nx[0];
+            // while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
 
             for (int iy = 0; iy < pmeorder + 1; iy++) {
 
-                nn[1] = g_ind[1] + iy - order_shift;
+                nn[1] = (g_ind[1] + iy - order_shift + d_Nx[1]) % d_Nx[1];
 
-                while (nn[1] < 0) nn[1] += d_Nx[1];
-                while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+                // nn[1] = g_ind[1] + iy - order_shift;
+
+                // while (nn[1] < 0) nn[1] += d_Nx[1];
+                // while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
 
                 Mindex = nn[1] * d_Nx[0] + nn[0];
 
                 W3 = W[0][ix] * W[1][iy] / gvol;
+                
+                int NSIND = id * grid_per_partic + grid_ct;
 
-                d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
-                d_grid_W[id * grid_per_partic + grid_ct] = W3;
+                if ( NSIND < INDMAX ) {
+                    d_grid_inds[NSIND] = Mindex;
+                    d_grid_W[NSIND] = W3;
 
-                grid_ct++;
+                    grid_ct++;  
+                }
+                
 
             }// iy = 0:pmeorder+1
         }// ix=0:pmeorder+1
@@ -149,33 +159,42 @@ __global__ void d_calcGridWeights(
 
         for (int ix = 0; ix < pmeorder + 1; ix++) {
 
-            nn[0] = g_ind[0] + ix - order_shift;
+            nn[0] = (g_ind[0] + ix - order_shift + d_Nx[0]) % d_Nx[0];
+            // nn[0] = g_ind[0] + ix - order_shift;
 
-            while (nn[0] < 0) nn[0] += d_Nx[0];
-            while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
+            // while (nn[0] < 0) nn[0] += d_Nx[0];
+            // while (nn[0] >= d_Nx[0]) nn[0] -= d_Nx[0];
 
             for (int iy = 0; iy < pmeorder + 1; iy++) {
 
-                nn[1] = g_ind[1] + iy - order_shift;
+                nn[1] = (g_ind[1] + iy - order_shift + d_Nx[1]) % d_Nx[1];
 
-                while (nn[1] < 0) nn[1] += d_Nx[1];
-                while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
+                // nn[1] = g_ind[1] + iy - order_shift;
+
+                // while (nn[1] < 0) nn[1] += d_Nx[1];
+                // while (nn[1] >= d_Nx[1]) nn[1] -= d_Nx[1];
 
                 for (int iz = 0; iz < pmeorder + 1; iz++) {
 
-                    nn[2] = g_ind[2] + iz - order_shift;
+                    nn[2] = (g_ind[2] + iz - order_shift + d_Nx[2]) % d_Nx[2];
 
-                    while (nn[2] < 0) nn[2] += d_Nx[2];
-                    while (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
+                    // nn[2] = g_ind[2] + iz - order_shift;
+
+                    // while (nn[2] < 0) nn[2] += d_Nx[2];
+                    // while (nn[2] >= d_Nx[2]) nn[2] -= d_Nx[2];
 
                     Mindex = nn[0] + (nn[1] + nn[2] * d_Nx[1]) * d_Nx[0];
 
                     W3 = W[0][ix] * W[1][iy] * W[2][iz] / gvol;
 
-                    d_grid_inds[id * grid_per_partic + grid_ct] = Mindex;
-                    d_grid_W[id * grid_per_partic + grid_ct] = W3;
+                    int NSIND = id * grid_per_partic + grid_ct;
+                    if ( NSIND < INDMAX ) {
+                        d_grid_inds[NSIND] = Mindex;
+                        d_grid_W[NSIND] = W3;
 
-                    grid_ct++;
+                        grid_ct++;
+                    }
+                    
                 }// iz=0:pmeorder+1
             }// iy=0:pmeorder+1
         }// ix=0:pmeorder+1

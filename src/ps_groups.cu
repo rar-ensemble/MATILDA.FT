@@ -73,7 +73,8 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 // Fills the density field for this group
 void PS_Group::makeDensityField() {
     
-    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_gridInds, mybox->d_gridW, mybox->gridPerPartic, nsites);
+    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_gridInds, 
+        mybox->d_gridW, mybox->gridPerPartic, nsites);
     check_cudaError("Group ps_group::makeDensityField()");
 }
 
@@ -108,15 +109,15 @@ void PS_Group::allocateGroupMemory(int ns) {
 void PS_Group::writeDensityField() {
     std::string fileName = std::string("density-") + name + std::string(".dat");
     
-    std::cout << "  file name: " << fileName << std::endl;
-    std::cout << "  DEBUGGING: M=" << mybox->M << std::endl;
+    // std::cout << "  file name: " << fileName << std::endl;
+    // std::cout << "  DEBUGGING: M=" << mybox->M << std::endl;
 
 
     // rho = d_rho;
-    cudaMemcpy(rho, d_rho, mybox->M, cudaMemcpyDeviceToHost);
+    cudaMemcpy(rho, d_rho, mybox->M*sizeof(float), cudaMemcpyDeviceToHost);
     check_cudaError("PS_Group::writeDensityFields memory copy");
 
-    std::cout << "  attempting to write field " << name << std::endl;
+    // std::cout << "  attempting to write field " << name << std::endl;
 
     mybox->writeFieldFloat(fileName.c_str(), rho);
 

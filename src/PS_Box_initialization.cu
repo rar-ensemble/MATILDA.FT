@@ -38,6 +38,8 @@ void PS_Box::readInput(std::ifstream& inp) {
     rho0 = C = -1.0;
     nstot = nBondsTot = nAnglesTot = nBondTypes = nAngleTypes = 0;
     idum = RANDSEED = time(0);
+    pmeorder = 1;
+    verbose = false;
 
     // Some default values
     logFreq = 100;
@@ -217,7 +219,9 @@ void PS_Box::readInput(std::ifstream& inp) {
                 iss >> trajFreq;
             }
 
-
+            else if ( firstWord == "verbose" ) {
+                iss >> verbose;
+            }
 
 
 
@@ -293,6 +297,8 @@ void PS_Box::finishInitialization() {
 
         gridPerPartic *= (pmeorder+1);
     }
+
+    std::cout << "Computed gridPerPartic = " << gridPerPartic << std::endl;
 
     // gpuGrid, block sizes
     M_Block = blockSize;
@@ -386,7 +392,11 @@ void PS_Box::finishInitialization() {
     writeGSDtraj();
     // die("initialization finished, GSD written?");
 
-
+    if ( verbose ) {
+        std::cout << "\n" ;
+        std::cout << "WARNING: VERBOSE MODE ENABLED" << std::endl;
+        std:: cout << "This will slow the code down but can be helpful for debugging.\n" << std::endl;
+    }
 
 }
 
@@ -472,14 +482,9 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     // d_mID.resize(nsAlloc);
     // _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
 
+    std::cout << "Allocating grid info arrays with " << nsAlloc*gridPerPartic << " entries" << std::endl;
     cudaMalloc(&d_gridW,    nsAlloc*gridPerPartic * sizeof(float));
     cudaMalloc(&d_gridInds, nsAlloc*gridPerPartic * sizeof(int));
-
-    // d_gridW.resize(nsAlloc * gridPerPartic);
-    // _d_gridW = (float*) thrust::raw_pointer_cast(d_gridW.data());
-
-    // d_gridInds.resize(nsAlloc * gridPerPartic);
-    // _d_gridInds = (int*) thrust::raw_pointer_cast(d_gridInds.data());
 
 
     cudaMalloc(&d_bondStyle,nBondTypes * sizeof(int));
@@ -530,6 +535,7 @@ void PS_Box::sendAllHostToDevice(void) {
 
     cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_Lh, Lh, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    d_Nx = Nx;
     check_cudaError("box information sent to device");
     
     sendThrustVectorToDeviceArray(intSpecies, d_intSpecies, nstot);

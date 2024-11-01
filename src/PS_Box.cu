@@ -22,6 +22,8 @@ const int*, const int*, const int*,
 const float*, const float*, const int*, const float*, const float*,
 const int, const int, const int, const int);
 
+__global__ void sumArrayKernel(float*, float*, int);
+
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 
 // Executes the commands for a given time step
@@ -29,43 +31,68 @@ Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 // then populating species densities
 void PS_Box::doTimeStep(int step) {
 
-    std::cout << "in time step..." << std::endl;
+    if ( verbose ) std::cout << "in time step " << step << "..." << std::endl;
     // First integration step, when needed (e.g., velo Verlet)
     for ( int i=0 ; i<integrators.size(); i++ ) {
-        // std::cout << "Integrate 1..." ; fflush(stdout);
+        if ( verbose ) { std::cout << "Integrate 1..." ; fflush(stdout); }
         integrators[i]->Integrate_1();
-        // std::cout << "done!" << std::endl;
+        if ( verbose ) { std::cout << "done!" << std::endl; }
         check_cudaError("Integration step 1");
     }
 
-
-    std::cout << "calcing weights..." << std::endl;
+    
     // Update grid weights
+    if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
+        "calcing weights..." << std::endl; }
     d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx, 
         d_dxf, nstot, pmeorder, M, Dim );
     check_cudaError("Weights calculated in PS_Box");
+
+// // DEBUGGING STUFF
+// int *gridInds;
+// float *gridW;
+// gridInds = (int*) malloc(nstot*gridPerPartic * sizeof(int));
+// gridW = (float*) malloc(nstot*gridPerPartic * sizeof(float));
+
+// cudaMemcpy(gridInds, d_gridInds, nstot*gridPerPartic*sizeof(int), cudaMemcpyDeviceToHost);
+// cudaMemcpy(gridW, d_gridW, nstot*gridPerPartic*sizeof(float), cudaMemcpyDeviceToHost);
+// for ( int i=0 ; i<5 ; i++ ) {
+//     std::cout << "i: " << i << " " ;
+//     for ( int j=0 ; j<gridPerPartic; j++ ) {
+//         std::cout << gridInds[i*gridPerPartic+j] << " " << gridW[i*gridPerPartic+j] << " " ;
+//     }
+//     std::cout << std::endl;
+// }
+// die("fin");
+
+
 
     ///////////////////////////
     // UPDATE DENSITY FIELDS //
     ///////////////////////////
 
     // update the density fields
-    // for ( int i=0 ; i<psGroup.size(); i++ ) {
-    //     // zero density, grid force fields
-    //     psGroup[i].zeroFields();
+    for ( int i=0 ; i<psGroup.size(); i++ ) {
+        // zero density, grid force fields
+        psGroup[i].zeroFields();
 
-    //     // Fill density field
-    //     psGroup[i].makeDensityField();
-    // }
+        // Fill density field
+        psGroup[i].makeDensityField();
+    }
+
+
 
     // Zero particle forces
-    std::cout << "zero forces..." ; fflush(stdout);
+    if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
+        "zero forces..." ; fflush(stdout); }
+    
     d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nstot);
+    
     check_cudaError("Particle forces zeroed");
+    if ( verbose ) std::cout << "done!" << std::endl;
 
-    // std::cout << "done!" << std::endl;
 
-
+    
     ////////////////////
     // COMPUTE FORCES //
     ////////////////////
@@ -74,9 +101,9 @@ void PS_Box::doTimeStep(int step) {
 
     // Second integration step
     for ( int i=0 ; i<integrators.size(); i++ ) {
-        std::cout << "integrate 2..." ; fflush(stdout);
+        if ( verbose ) { cudaDeviceSynchronize(); std::cout << "integrate 2..." ; fflush(stdout); }
         integrators[i]->Integrate_2();
-        std::cout << "done!" << std::endl;
+        if ( verbose ) { cudaDeviceSynchronize(); std::cout << "done!" << std::endl; }
     }
 
 
@@ -86,28 +113,28 @@ void PS_Box::doTimeStep(int step) {
 
     // Write log data
     if ( step % logFreq == 0 ) {
-        std::cout << "log..." ; fflush(stdout);
+        if ( verbose ) { std::cout << "log..." ; fflush(stdout); }
         writeData(step);
-        std::cout << "done!" << std::endl;
+        if ( verbose ) std::cout << "done!" << std::endl;
     }
 
     // write to GSD traj file
     if ( gsdFreq > 0 && step % gsdFreq == 0 ) { 
-        std::cout << "gsd..." ; fflush(stdout);
+        if ( verbose ) { std::cout << "gsd..." ; fflush(stdout); }
         writeGSDtraj();
-        std::cout << "done!" << std::endl;
+        if ( verbose ) std::cout << "done!" << std::endl;
     }
 
     if ( trajFreq > 0 && step % trajFreq == 0 ) {
-        std::cout << "lammpstrj..." ; fflush(stdout);
+        if ( verbose ) { std::cout << "lammpstrj..." ; fflush(stdout); }
         writeLammpsTraj(step);
-        std::cout << "done!" << std::endl;
+        if ( verbose ) { cudaDeviceSynchronize(); std::cout << "done!" << std::endl; }
     }
 
     // Write field data
-    // if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
-    //     writeFields();
-    // }
+    if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
+        writeFields();
+    }
 
 } // doTimeStep
 
@@ -122,7 +149,7 @@ void PS_Box::NVT(int maxSteps) {
     }
     std::cout << "NVT Finished, writing final output" << std::endl;
     writeData(maxSteps);
-    // writeFields();
+    writeFields();
     writeGSDtraj(); 
 
 }
@@ -134,11 +161,17 @@ void PS_Box::NVT(int maxSteps) {
 void PS_Box::forces() {
     
     // 1. bonded forces; 
-    std::cout << "Into bonds..." << std::endl;
+    if ( verbose ) { std::cout << "Into bonds..." ; fflush(stdout); }
+    
     d_bonds<<<nsGrid, nsBlock>>>(d_f, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
         d_bondStyle, d_x, d_L, d_Lh, nstot, MAXBONDS, Dim);
-    std::cout << "bonds done, " << std::endl;
+    
+    if ( verbose ) std::cout << "bonds done, " << std::endl;
 
+    
+    
+    
+    
     // 2. NB forces; 
     
     // 3. Extras
@@ -148,27 +181,23 @@ void PS_Box::forces() {
 
 // Computes the total potential energy of the system
 void PS_Box::computeThermoProps() {
-    std::cout << "here 1" << std::endl;
-    
     float *d_e;
     cudaMalloc(&d_e, nstot * sizeof(float));
     
-std::cout << "here 2" << std::endl;
-    // thrust::device_vector<float> d_particlePTens(nstot*n_P_comps);
-    float *d_vir;
-    cudaMalloc(&d_vir, nstot*n_P_comps * sizeof(float));//
-//     = (float*) thrust::raw_pointer_cast(d_particlePTens.data());
-std::cout << "here 3" << std::endl;
+    float *d_bondVir;
+    cudaMalloc(&d_bondVir, nstot*n_P_comps * sizeof(float));
     
     // Computes the energy and virial for each particle
-    d_bondStressEnergy<<<nsGrid, nsBlock>>>(_d_e, _d_vir,
+    d_bondStressEnergy<<<nsGrid, nsBlock>>>(d_e, d_bondVir,
         d_x, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
         d_bondStyle, d_L, d_Lh, nstot, MAXBONDS, n_P_comps, Dim);
 
-std::cout << "here 4" << std::endl;
     // Sums over the particle energies. 
     // Prefactor 0.5 corrects for double-counting
-    // Ubond = 0.5 * thrust::reduce(d_e.begin(), d_e.end(), 0.0f, thrust::plus<float>());
+    Ubond = 0.5 * sumDeviceArray(d_e, blockSize, nstot);
+
+    cudaFree(d_e);
+    cudaFree(d_bondVir);
 
 }
 
@@ -199,13 +228,14 @@ void PS_Box::writeData(int step) {
 
 // Currently loops over groups and writes field-based densities
 void PS_Box::writeFields() {
-    std::cout << "  here: ps_box:writefields" << std::endl;
+    if ( verbose ) std::cout << "  here: ps_box:writefields" << std::endl;
     for (int i=0 ; i<psGroup.size(); i++ ) {
         psGroup[i].writeDensityField();
         
         check_cudaError("writeFields in ps_box");
+        // std::cout << "Integral of field: " << sumDeviceArray(psGroup[i].d_rho, blockSize, M) * gvol << std::endl;
     }    
-    std::cout << "  Field written\n" << std::endl;
+    if ( verbose ) std::cout << "  Field written\n" << std::endl;
 }
 
 
@@ -462,4 +492,42 @@ void PS_Box::writeLammpsTraj(int step) {
     free(dtmp);
 }
 
+// Performs data reduction on device array d_dat
+// Initially generated by Claude.ai
+float PS_Box::sumDeviceArray(
+    float *d_dat,   // [N] array to be summed
+    int blockSize,  // blockSize for CUDA calls
+    int N           // array size
+    ) {
 
+    float *d_output;
+    int numBlocks = (N + blockSize - 1) / blockSize;
+    float *h_output;// = new float[numBlocks];
+    h_output = (float*) malloc(numBlocks * sizeof(float));
+
+    // Allocate device memory
+    cudaMalloc(&d_output, numBlocks * sizeof(float));
+    
+    // Launch kernel
+    sumArrayKernel<<<numBlocks, blockSize, blockSize * sizeof(float)>>>(
+        d_dat, d_output, N);
+
+   
+    check_cudaError("sumDevArray");
+    cudaDeviceSynchronize();
+
+    // Copy partial results back to host
+    cudaMemcpy(h_output, d_output, numBlocks * sizeof(float), cudaMemcpyDeviceToHost);
+    
+    // Sum up partial results on CPU
+    float totalSum = 0;
+    for(int i = 0; i < numBlocks; i++) {
+        totalSum += h_output[i];
+    }
+    
+    // Cleanup
+    cudaFree(d_output);
+    free(h_output);
+    
+    return totalSum;
+}
