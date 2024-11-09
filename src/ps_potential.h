@@ -38,7 +38,7 @@ public:
     PS_Potential(std::istringstream&, PS_Box*);
     virtual ~PS_Potential();
 
-    void initializePotential();
+    virtual void initializePotential();
     void CalcForces();
     float CalcEnergy();
 };

@@ -284,12 +284,12 @@ void PS_Box::finishInitialization() {
     OTP.close();
 
     // After input read, make the FFT plan
-    // This currently assumes complex-double to complex-double transforms
-    // change Z2Z to C2C to switch to cpx-float
+    // This currently assumes complex-float to complex-float transforms
+    // Would probably be better to do R2C and C2R at some point
     if ( this->Dim == 2 ) 
-        cufftPlan2d(&fftplan, Nx[1], Nx[0], CUFFT_Z2Z);
+        cufftPlan2d(&fftplanSingle, Nx[1], Nx[0], CUFFT_C2C);
     if ( this->Dim == 3 ) 
-        cufftPlan3d(&fftplan, Nx[2], Nx[1], Nx[0], CUFFT_Z2Z);
+        cufftPlan3d(&fftplanSingle, Nx[2], Nx[1], Nx[0], CUFFT_C2C);
 
     // Define gvol, dx, gridPerPartic
     gvol = 1.0;
@@ -347,7 +347,7 @@ void PS_Box::finishInitialization() {
     allocHostParticleArrays(nstot);
 
     // Allocate device memory and copy device vars
-    allocDeviceParticleArrays(nstot + NSEXTRA);
+    allocDeviceArrays(nstot + NSEXTRA);
     check_cudaError("allocating device particle arrays");
     
     createDefaultGroups();
@@ -375,6 +375,12 @@ void PS_Box::finishInitialization() {
             " mobility: " << speciesMobility[i] << std::endl;
     }
 
+    // temp storage arrays
+    gabe = (float*) calloc(M, sizeof(float));
+    alex = (float*) calloc(M, sizeof(float));
+    cpxGabe = (std::complex<float>*) calloc(M, sizeof(complex<float>));
+    cpxAlex = (std::complex<float>*) calloc(M, sizeof(complex<float>));
+
     cudaMalloc(&d_speciesMass, nTypes*sizeof(float));
     cudaMalloc(&d_speciesMobility, nTypes*sizeof(float));
 
@@ -391,6 +397,10 @@ void PS_Box::finishInitialization() {
 
     for ( int i=0 ; i<integrators.size() ; i++ ) {
         integrators[i]->finishInitialization();
+    }
+
+    for ( int i=0 ; i<potentials.size() ; i++ ) {
+        potentials[i]->initializePotential();
     }
 
     GSDinit();
@@ -457,7 +467,7 @@ void PS_Box::allocHostParticleArrays(int newns) {
 // NOTE: This can also be used for the intial allocation 
 // NOTE: Data stored in these arrays will be lost
 // ONLY AFFECTS DEVICE ARRAYS
-void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
+void PS_Box::allocDeviceArrays(const int nsAlloc) {
     std::cout << "Reallocating for " << nsAlloc << " sites on the device..." ;
 
     if ( d_states != NULL ) {
@@ -477,15 +487,8 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     cudaMalloc(&d_bondedTo, nsAlloc*MAXBONDS*sizeof(int));
     cudaMalloc(&d_bondType, nsAlloc*MAXBONDS*sizeof(int));
 
-
-
     cudaMalloc(&d_intSpecies, nsAlloc * sizeof(int));
-    // d_intSpecies.resize(nsAlloc);
-    // _d_intSpecies = (int*) thrust::raw_pointer_cast(d_intSpecies.data());
-
     cudaMalloc(&d_mID, nsAlloc * sizeof(int));
-    // d_mID.resize(nsAlloc);
-    // _d_mID = (int*) thrust::raw_pointer_cast(d_mID.data());
 
     std::cout << "Allocating grid info arrays with " << nsAlloc*gridPerPartic << " entries" << std::endl;
     cudaMalloc(&d_gridW,    nsAlloc*gridPerPartic * sizeof(float));
@@ -496,19 +499,16 @@ void PS_Box::allocDeviceParticleArrays(int nsAlloc) {
     cudaMalloc(&d_bondReq,  nBondTypes * sizeof(int));
     cudaMalloc(&d_bondK,    nBondTypes * sizeof(int));
 
-    // d_bondStyle.resize(nBondTypes);
-    // _d_bondStyle = (int*) thrust::raw_pointer_cast(d_bondStyle.data());
-
-    // d_bondK.resize(nBondTypes);
-    // _d_bondK = (float*) thrust::raw_pointer_cast(d_bondK.data());
-
-    // d_bondReq.resize(nBondTypes);
-    // _d_bondReq = (float*) thrust::raw_pointer_cast(d_bondReq.data());
-
-    
     d_nAngles.resize(nsAlloc);
     d_angleGroup.resize(nsAlloc*MAXANGLES*3);
     d_angleType.resize(nsAlloc*MAXANGLES);
+
+    // Grid-based arrays
+    cudaMalloc(&d_Gabe, M * sizeof(float));
+    cudaMalloc(&d_Alex, M * sizeof(float));
+    cudaMalloc(&d_cpxGabe, M * sizeof(cuComplex));
+    cudaMalloc(&d_cpxAlex, M * sizeof(cuComplex));
+    
 
     std::cout << "done!" << std::endl;
 }

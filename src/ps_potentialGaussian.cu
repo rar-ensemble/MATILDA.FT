@@ -3,15 +3,16 @@
 
 
 #include "ps_potentialGaussian.h"
+#include "PS_Box.h"
+
+__global__ void d_cpxToFloat(float*, const cuComplex*, const int);
 
 NBGauss::NBGauss() {}
 NBGauss::~NBGauss() {}
 
-
 // Constructor called by the "factor" routine in ps_potential.cu
 NBGauss::NBGauss(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
-    std::cout << "Making Gaussian potential..." << std::endl;
-
+    
     iss >> grpI;
     iss >> grpJ;
 
@@ -22,3 +23,40 @@ NBGauss::NBGauss(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) 
     sig2 = sigma*sigma;
 }
 
+void NBGauss::initializePotential() {
+    std::cout << "Initializing Gaussian potential..." << std::endl;
+
+    std::complex<float> I(0.0, 1.0);
+    float kv[3], k2;
+    int Dim = mybox->returnDimension();
+    int M = mybox->M;
+
+    // uk: std::complex<float> [M]
+    // fk: std::complex<float> [Dim*M]
+    for ( int i=0 ; i<M ; i++ ) {
+        k2 = mybox->get_kD(i, kv);
+        uk[i] = Ao * exp(-k2 * sig2 / 2.0f);
+        
+        for (int j = 0; j < Dim; j++) {
+            fk[i * Dim + j] = I * kv[j] * uk[i];
+        }
+    }
+
+    // Send these to device, inv transform to get ur, f(r)
+    cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    
+
+    // Compute inverse fft of d_uk, store in temp variable
+    mybox->cufftWrapperSingle(d_uk, mybox->d_cpxAlex, 1);
+
+    // d_ur = Real(d_cpxAlex)
+    d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(d_ur, mybox->d_cpxAlex, M);
+
+    // Fill host array
+    cudaMemcpy(ur, d_ur, M*sizeof(float), cudaMemcpyDeviceToHost);
+
+    mybox->writeFieldFloat("gaussianPotential.dat", ur);
+    die("field written?");
+
+}

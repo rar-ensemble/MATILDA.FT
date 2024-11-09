@@ -8,7 +8,6 @@
 
 #include "include_libs.h"
 #include "constants.h"
-#include "fft_wrapper.h"
 
 class Box {
     protected:
@@ -16,8 +15,6 @@ class Box {
         std::string input_command;          // Command to create this box
         int nTotalBoxes;                    // Number of simulation boxes
 
-        void init_fft_plan(cufftType);
-        void execute_fft(FFT_COMPLEX * , FFT_COMPLEX *, int );
     public:
         thrust::host_vector<int> Nx;        // Grid dimensions
         thrust::device_vector<int> d_Nx;    
@@ -41,11 +38,13 @@ class Box {
         long int ftTimer;                   // Time spent in FFT routine
         int blockSize;                      // GPU block size
 
-        cufftHandle fftplan;                // FFT Plan
+        cufftHandle fftplan, fftplanSingle; // FFT Plans
         void cufftWrapperDouble(thrust::device_vector<thrust::complex<double>>,
             thrust::device_vector<thrust::complex<double>>&, const int);
         void convolveTComplexDouble(thrust::device_vector<thrust::complex<double>>,
             thrust::device_vector<thrust::complex<double>>&, thrust::device_vector<thrust::complex<double>>);
+
+        void cufftWrapperSingle(cuComplex*, cuComplex*, const int);
 
         Box();
         Box(std::istringstream&);
@@ -54,6 +53,7 @@ class Box {
         
         virtual void initializeSim() = 0;               // Subroutine to initial densities/fields prior to a sim
         double get_kD(int, double*);        // Subroutine to compute wavevector corresponding to grid index
+        float get_kD(int, float*);        // Subroutine to compute wavevector corresponding to grid index
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
         void get_rf(int, float*);           // Subroutine to compute position corresponding to grid index
         

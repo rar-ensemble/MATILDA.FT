@@ -71,9 +71,7 @@ class PS_Box : public Box {
 
         float *f, *d_f;                     // [nstot*Dim]
         float *v, *d_v;                     // [nstot*Dim]
-        // thrust::host_vector<float> f;       // [nstot*Dim] particle forces 
-        // thrust::device_vector<float> d_f;   // [nstot*Dim] device particle forces
-        // float* _d_f;           
+        
 
         std::vector<PS_Species> species;            // vector of species IDs
         float *speciesMass, *d_speciesMass;          // [nTypes] masses of species
@@ -84,6 +82,9 @@ class PS_Box : public Box {
         int *bondType, *d_bondType;     // [MAXBONDS*nstot] device bond types for particles
         int bondTime;                   // Stores time spent in bond function
 
+        cuComplex *d_cpxGabe, *d_cpxAlex;   // [M] temp storage for device complex arrays
+        float *d_Gabe, *d_Alex;     // [M] temp storage for device float arrays
+        std::complex<float> *cpxGabe, *cpxAlex;         // [M] temp storage
 
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
         //thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
@@ -128,9 +129,6 @@ class PS_Box : public Box {
         thrust::device_vector<int> d_angleStyle; // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
 
 
-        // Variables named for G&A
-
-
         std::vector<PS_Group> psGroup;          // Vector of particle groups
         
         std::vector<Integrator*> integrators;   // Time integration schemes
@@ -138,7 +136,7 @@ class PS_Box : public Box {
 
 
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
-        void allocDeviceParticleArrays(int);    // Uses 'resize' to allocate device particle arrays
+        void allocDeviceArrays(const int);      // allocates device arrays for PS simulation
         void sendAllHostToDevice(void);         // Sends all particle-sized arrays from host to dev
 
 

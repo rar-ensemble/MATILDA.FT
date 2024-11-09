@@ -13,7 +13,7 @@ class NBGauss : public PS_Potential {
         NBGauss();      // Default constructor
         NBGauss(std::istringstream&, PS_Box*);  // Actual used constructor
         ~NBGauss();     // Default destructor
-        void initializePotential(void);
+        void initializePotential(void) override;
         
         float Ao;           // Gaussian potential prefactor
         float sig2;         // Variance for the Gaussian

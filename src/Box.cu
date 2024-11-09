@@ -7,6 +7,7 @@
 #include "PS_Box.h"
 
 void die(const char*);
+__global__ void d_multiplyCuComplexByFloat(cuComplex*, const float, const int);
 
 Box::Box() {}
 Box::~Box() {}
@@ -92,6 +93,28 @@ void Box::cufftWrapperDouble(
     ftTimer += time(0) - startTime;
 }
 
+// Takes cuComplex data structure and either FFT or inverse FFTs it
+void Box::cufftWrapperSingle(
+    cuComplex *in,          // [M] input data
+    cuComplex *out,         // [M] output data
+    const int fftDir)       // fftDir = 1 for forward, -1 for backwards FFT
+    {
+
+    int startTime = time(0);
+	
+
+    if ( fftDir == 1 ) {
+        cufftExecC2C(fftplanSingle, in, out, CUFFT_FORWARD);
+        d_multiplyCuComplexByFloat<<<M_Grid, M_Block>>>(out, 1.0/float(M), M);
+    }
+
+    else if ( fftDir == -1 ) {
+        cufftExecC2C(fftplan, in, out, CUFFT_INVERSE);        
+    }
+
+    ftTimer += time(0) - startTime;
+}
+
 // Receives index id in [0 , M ) and makes array
 // nn[Dim] in [ 0 , Nx[Dim] )
 void Box::unstack2(int id, int* nn) {
@@ -115,6 +138,30 @@ void Box::unstack2(int id, int* nn) {
         die("Bad dimension in unstack2");
         return;
     }
+}
+// For a given id \in [0,M), defines Fourier vector k
+// Returns |k|^2
+float Box::get_kD(int id, float* k) {
+    // id between 0 and M-1 (i value in loop), float k kx,ky,ky (that vector), Dim is dimensionality
+    // declare a vector for this
+    float kmag = 0.0f;
+    int i, *n;
+    n = new int[Dim];
+
+    this->unstack2(id, n);
+
+    for (i = 0; i < Dim; i++) {
+        if (float(n[i]) < float(Nx[i]) / 2.)
+            k[i] = PI2 * float(n[i]) / L[i];
+
+        else
+            k[i] = PI2 * float(n[i] - Nx[i]) / L[i];
+
+        kmag += k[i] * k[i];
+    }
+    delete n;
+    return kmag;
+
 }
 
 // For a given id \in [0,M), defines Fourier vector k

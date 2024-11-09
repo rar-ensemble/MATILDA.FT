@@ -3,9 +3,9 @@
 
 #include <curand_kernel.h>
 #include <curand.h>
-
 #include <cuda_runtime.h>
-
+#include <cufft.h>
+#include <cufftXt.h>
 
 
 // CUDA kernel for parallel reduction
@@ -32,6 +32,48 @@ __global__ void sumArrayKernel(float *input, float *output, int n) {
     if (tid == 0) {
         output[blockIdx.x] = sharedData[0];
     }
+}
+
+
+// Computes f *= val for device float array
+__global__ void d_multiplyByFloat(
+    float* f,         // [N] array to be multiplied
+    const float val,    // value of inp to be multiplied by
+    const int N
+    ) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    f[id] *= val;
+}
+
+
+// Computes f *= val for device cuComplex array
+__global__ void d_multiplyCuComplexByFloat(
+    cuComplex* f,         // [N] array to be multiplied
+    const float val,    // value of inp to be multiplied by
+    const int N
+    ) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    f[id].x *= val;
+    f[id].y *= val;
+}
+
+// Computes out = Real(in)
+__global__ void d_cpxToFloat(
+    float* out,             // [N] array to be filled
+    const cuComplex* in,    // [N] source array
+    const int N             // array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id] = in[id].x;
 }
 
 // Assigns a device float array value of 'val'
