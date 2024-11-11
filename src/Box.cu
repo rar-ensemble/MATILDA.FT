@@ -109,7 +109,6 @@ void Box::cufftWrapperSingle(
     }
 
     else if ( fftDir == -1 ) {
-        std::cout << "Performing inverse FT" << std::endl;
         cufftExecC2C(fftplanSingle, in, out, CUFFT_INVERSE); 
         check_cudaError("inverse FFT");       
     }
