@@ -378,8 +378,8 @@ void PS_Box::finishInitialization() {
     // temp storage arrays
     gabe = (float*) calloc(M, sizeof(float));
     alex = (float*) calloc(M, sizeof(float));
-    cpxGabe = (std::complex<float>*) calloc(M, sizeof(complex<float>));
-    cpxAlex = (std::complex<float>*) calloc(M, sizeof(complex<float>));
+    cpxGabe = (std::complex<float>*) calloc(M, sizeof(std::complex<float>));
+    cpxAlex = (std::complex<float>*) calloc(M, sizeof(std::complex<float>));
 
     cudaMalloc(&d_speciesMass, nTypes*sizeof(float));
     cudaMalloc(&d_speciesMobility, nTypes*sizeof(float));

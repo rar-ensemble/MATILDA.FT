@@ -76,6 +76,45 @@ __global__ void d_cpxToFloat(
     out[id] = in[id].x;
 }
 
+
+// assumes f is a vector function
+// extracts the 'dir' component of the vector into 
+// field variable out in prep for Fourier transform
+__global__ void d_extractCpxDirToCpx(
+    cuComplex* out,     // [N] array to be filled
+    const cuComplex *f, // [Dim*N] extracting directional component from f
+    const int dir,      // \in [0, Dim), direction to be extracted
+    const int Dim,      // System dimensionality
+    const int N         // Array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id].x = f[id*Dim + dir].x;
+    out[id].y = f[id*Dim + dir].y;
+}
+
+
+// Inverse of above routine. Takes 'in' field, which is assumed to be
+// a real-valued component of a vector field, and places it in container
+// 'out', which stores the Dim*N vector field
+__global__ void d_cpxToFloatVecComponent(
+    float* out,             // [Dim*N] storage array
+    const cuComplex* in,    // [N] array containing the vector component
+    const int dir,          // direction to insert to
+    const int Dim,          // dimensionality
+    const int N             // Array dimension
+){
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id*Dim + dir] = in[id].x;
+}
+
+
+
 // Assigns a device float array value of 'val'
 __global__ void d_assignFloatVal(
     float* f,               // [N] array to be modified

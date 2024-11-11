@@ -53,7 +53,7 @@ PS_Potential::PS_Potential() {
 PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
     input_command = iss.str();
 
-        int M = mybox->M;
+    int M = mybox->M;
     int Dim = mybox->returnDimension();
     int nPC = mybox->n_P_comps;
 
@@ -73,9 +73,11 @@ PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
     cudaMalloc(&d_fB, M*Dim * sizeof(float));
 
     // Device k-space variables
-    cudaMalloc(&d_uk, M * sizeof(cuComplex));
-    cudaMalloc(&d_fA, M*Dim * sizeof(cuComplex));
-    cudaMalloc(&d_fA, M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_uk,   M * sizeof(cuComplex));
+    cudaMalloc(&d_fk,   M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_virk, M*nPC * sizeof(cuComplex));
+    cudaMalloc(&d_fA,   M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_fA,   M*Dim * sizeof(cuComplex));
     
     return;
 }

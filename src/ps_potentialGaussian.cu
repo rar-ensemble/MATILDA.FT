@@ -6,6 +6,8 @@
 #include "PS_Box.h"
 
 __global__ void d_cpxToFloat(float*, const cuComplex*, const int);
+__global__ void d_extractCpxDirToCpx(cuComplex*, const cuComplex*, const int, const int, const int);
+__global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, const int, const int);
 
 NBGauss::NBGauss() {}
 NBGauss::~NBGauss() {}
@@ -35,28 +37,58 @@ void NBGauss::initializePotential() {
     // fk: std::complex<float> [Dim*M]
     for ( int i=0 ; i<M ; i++ ) {
         k2 = mybox->get_kD(i, kv);
-        uk[i] = Ao * exp(-k2 * sig2 / 2.0f);
+        uk[i] = Ao * exp(-k2 * sig2 / 2.0f) ;
         
+        // In k-space, f(k) = -I * k * u(k)
         for (int j = 0; j < Dim; j++) {
-            fk[i * Dim + j] = I * kv[j] * uk[i];
+            fk[i * Dim + j] = -I * kv[j] * uk[i];
         }
     }
 
     // Send these to device, inv transform to get ur, f(r)
     cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
     
-
     // Compute inverse fft of d_uk, store in temp variable
-    mybox->cufftWrapperSingle(d_uk, mybox->d_cpxAlex, 1);
+    mybox->cufftWrapperSingle(d_uk, mybox->d_cpxAlex, -1);
+
 
     // d_ur = Real(d_cpxAlex)
     d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(d_ur, mybox->d_cpxAlex, M);
+    check_cudaError("cpxToFloat in Gaussian potential");
 
-    // Fill host array
+    // Same thing for force arrays
+    cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    check_cudaError("sending force array to device in Gauss potential");
+    
+    for ( int j=0 ; j<Dim ; j++ ) {
+        d_extractCpxDirToCpx<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_cpxGabe, d_fk, j, Dim, M);
+        check_cudaError("extracting component");
+
+        mybox->cufftWrapperSingle(mybox->d_cpxGabe, mybox->d_cpxAlex, -1);
+
+        d_cpxToFloatVecComponent<<<mybox->M_Grid, mybox->M_Block>>>(d_fA, mybox->d_cpxAlex, j, Dim, M);
+        check_cudaError("placing component");
+    }
+
+
+    // Copy potential, force functions back to host
     cudaMemcpy(ur, d_ur, M*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(fA, d_fA, M*Dim*sizeof(float), cudaMemcpyDeviceToHost);
 
+    // debug i/o and quit
     mybox->writeFieldFloat("gaussianPotential.dat", ur);
+    float *tp;
+    tp = (float*) calloc(M, sizeof(float));
+    for ( int j=0 ; j<Dim ; j++ ) {
+        for ( int i=0 ; i<M; i++ ) {
+            tp[i] = fA[i*Dim+j];
+        }
+        std::string nm = "gaussianForce" + std::to_string(j) + ".dat";
+
+        mybox->writeFieldFloat(nm.c_str(), tp);
+    }
+
+    free(tp);
     die("field written?");
 
 }

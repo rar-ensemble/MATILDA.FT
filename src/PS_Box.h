@@ -82,16 +82,15 @@ class PS_Box : public Box {
         int *bondType, *d_bondType;     // [MAXBONDS*nstot] device bond types for particles
         int bondTime;                   // Stores time spent in bond function
 
-        cuComplex *d_cpxGabe, *d_cpxAlex;   // [M] temp storage for device complex arrays
-        float *d_Gabe, *d_Alex;     // [M] temp storage for device float arrays
-        std::complex<float> *cpxGabe, *cpxAlex;         // [M] temp storage
+        cuComplex *d_cpxGabe, *d_cpxAlex;       // [M] temp storage for device complex arrays
+        float *d_Gabe, *d_Alex;                 // [M] temp storage for device float arrays
+        std::complex<float> *cpxGabe, *cpxAlex; // [M] temp host storage
+        float *gabe, *alex;                     // [M] temp storage for host
 
         thrust::host_vector<int> intSpecies;        // [nstot] particle type index
-        //thrust::device_vector<int> d_intSpecies;    // [nstot] device particle type index
         int* d_intSpecies;                         // pointer to d_intSpecies.data()
 
         thrust::host_vector<int> mID;               // [nstot] molecule index
-        // thrust::device_vector<int> d_mID;           // [nstot] device molecule index
         int* d_mID;                                // pointer to d_mID.data()
 
 
