@@ -29,5 +29,9 @@
 #include "global_templated_functions.h"
 
 void check_cudaError(const char*);
+__global__ void d_floatToCpx(cuComplex*, const float*, const int);
+__global__ void d_cpxToFloat(float*, const cuComplex*, const int);
+__global__ void d_extractCpxDirToCpx(cuComplex*, const cuComplex*, const int, const int, const int);
+__global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, const int, const int);
 
 #endif

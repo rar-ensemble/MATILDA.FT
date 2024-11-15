@@ -76,6 +76,20 @@ __global__ void d_cpxToFloat(
     out[id] = in[id].x;
 }
 
+// Computes real(out) = in, imag(out) = 0.0
+__global__ void d_floatToCpx(
+    cuComplex *out,         // [N] array to be filled
+    const float *in,        // [N] source data
+    const int N
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id].x = in[id];
+    out[id].y = 0.0f;
+}
+
 
 // assumes f is a vector function
 // extracts the 'dir' component of the vector into 
