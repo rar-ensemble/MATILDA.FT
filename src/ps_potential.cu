@@ -18,7 +18,32 @@ void PS_Potential::initializePotential() {
 
 
 // Calculates forces on rho1, rho2 for this pairstyle
+// This virtual function should be overridden by classes that
+// either don't use a scalar potential (e.g., Maier-Saupe) or
+// use a higher-than-two-body potentials
 void PS_Potential::CalcForces() {
+
+    float *d_rhoI, *d_rhoJ;
+
+    // Pointers to reused box vars
+    cuComplex *d_cpxAlex, *d_cpxGabe;
+    int M = mybox->M;
+    int Grid = mybox->M_Grid;
+    int Block = mybox->M_Block;
+
+
+    ///////////////////////////////////////////////
+    // Forces acting on type I arise from type J //
+    ///////////////////////////////////////////////
+
+    // Pointer to density field for J
+    d_rhoJ = mybox->psGroup[Jind].d_rho;
+
+    // real(Alex) = rhoI, imag(Alex) = 0.0
+    d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoJ, M);
+
+    // Gabe = FFT(Alex)
+    mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
 
 }
 
@@ -59,8 +84,8 @@ PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
 
     // Host real-space variables
     ur = (float*) malloc( M * sizeof(float));
-    fA = (float*) malloc( M*Dim * sizeof(float));
-    fB = (float*) malloc( M*Dim * sizeof(float));
+    fI = (float*) malloc( M*Dim * sizeof(float));
+    fJ = (float*) malloc( M*Dim * sizeof(float));
 
     // Host k-space variables
     uk = (std::complex<float>*) malloc(M * sizeof(std::complex<float>));
@@ -69,15 +94,15 @@ PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
 
     // Device real-space variables
     cudaMalloc(&d_ur, M * sizeof(float));
-    cudaMalloc(&d_fA, M*Dim * sizeof(float));
-    cudaMalloc(&d_fB, M*Dim * sizeof(float));
+    cudaMalloc(&d_fI, M*Dim * sizeof(float));
+    cudaMalloc(&d_fJ, M*Dim * sizeof(float));
 
     // Device k-space variables
     cudaMalloc(&d_uk,   M * sizeof(cuComplex));
     cudaMalloc(&d_fk,   M*Dim * sizeof(cuComplex));
     cudaMalloc(&d_virk, M*nPC * sizeof(cuComplex));
-    cudaMalloc(&d_fA,   M*Dim * sizeof(cuComplex));
-    cudaMalloc(&d_fA,   M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_fI,   M*Dim * sizeof(cuComplex));
+    cudaMalloc(&d_fJ,   M*Dim * sizeof(cuComplex));
     
     return;
 }

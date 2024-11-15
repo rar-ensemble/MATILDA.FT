@@ -21,8 +21,8 @@ public:
     bool allocated = false;
 
     float *ur, *d_ur;   // [M] potential energy func defined on grid
-    float *fA, *d_fA;   // [M*Dim] field of forces acting on A
-    float *fB, *d_fB;   // [M*Dim] field of forces acting on B
+    float *fI, *d_fI;   // [M*Dim] field of forces acting on I
+    float *fJ, *d_fJ;   // [M*Dim] field of forces acting on J
 
     std::complex<float> *uk;    // [M] Fourier trans of ur
     cuComplex *d_uk;
@@ -30,17 +30,21 @@ public:
     std::complex<float> *fk;    // [M*Dim] Fourier trans of grad u(r)
     cuComplex *d_fk;
 
-
     std::complex<float> *virk;       // [M*n_Pcomps] stores k-space virial kernels
     cuComplex *d_virk;
+
+    std::string grpI, grpJ; // Groups on which this potential acts
+    int Iind, Jind;     // Group indices on which this potential acts
 
     PS_Potential();
     PS_Potential(std::istringstream&, PS_Box*);
     virtual ~PS_Potential();
 
     virtual void initializePotential();
-    void CalcForces();
-    float CalcEnergy();
+    
+    // These are virtual so they can be overriden for non-2 body potentials
+    virtual void CalcForces();      
+    virtual float CalcEnergy();
 };
 
 #endif

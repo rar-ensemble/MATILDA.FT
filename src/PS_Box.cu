@@ -334,6 +334,7 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
 int PS_Box::findGroupInteger(std::string testLabel) {
     int id = -1;
     for ( int i=0 ; i<psGroup.size() ; i++ ) {
+        std::cout << "PSBox findGroup: " << testLabel << " " << psGroup[i].returnName() << " " << psGroup[i].isGroup(testLabel) << std::endl;
         if ( psGroup[i].isGroup( testLabel) ) {
             id = i;
             break;

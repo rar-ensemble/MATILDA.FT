@@ -5,9 +5,7 @@
 #include "ps_potentialGaussian.h"
 #include "PS_Box.h"
 
-__global__ void d_cpxToFloat(float*, const cuComplex*, const int);
-__global__ void d_extractCpxDirToCpx(cuComplex*, const cuComplex*, const int, const int, const int);
-__global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, const int, const int);
+
 
 NBGauss::NBGauss() {}
 NBGauss::~NBGauss() {}
@@ -28,6 +26,9 @@ NBGauss::NBGauss(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) 
 void NBGauss::initializePotential() {
     std::cout << "Initializing Gaussian potential..." << std::endl;
 
+    Iind = mybox->findGroupInteger(grpI);
+    Jind = mybox->findGroupInteger(grpJ);
+    
     std::complex<float> I(0.0, 1.0);
     float kv[3], k2;
     int Dim = mybox->returnDimension();

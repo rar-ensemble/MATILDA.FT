@@ -18,8 +18,6 @@ class NBGauss : public PS_Potential {
         float Ao;           // Gaussian potential prefactor
         float sig2;         // Variance for the Gaussian
 
-        std::string grpI, grpJ; // Groups on which this potential acts
-        int Iind, Jind;     // Group indices on which this potential acts
 };
 
 #endif

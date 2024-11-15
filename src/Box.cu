@@ -116,6 +116,8 @@ void Box::cufftWrapperSingle(
     ftTimer += time(0) - startTime;
 }
 
+
+
 // Receives index id in [0 , M ) and makes array
 // nn[Dim] in [ 0 , Nx[Dim] )
 void Box::unstack2(int id, int* nn) {
