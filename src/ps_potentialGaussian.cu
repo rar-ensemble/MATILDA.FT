@@ -28,6 +28,10 @@ void NBGauss::initializePotential() {
 
     Iind = mybox->findGroupInteger(grpI);
     Jind = mybox->findGroupInteger(grpJ);
+
+    // Allocate grid force memory for groups I, J if needed
+    if ( mybox->psGroup[Iind].hasForce() == 0 ) { mybox->psGroup[Iind].enableForce(); }
+    if ( mybox->psGroup[Jind].hasForce() == 0 ) { mybox->psGroup[Jind].enableForce(); }
     
     std::complex<float> I(0.0, 1.0);
     float kv[3], k2;

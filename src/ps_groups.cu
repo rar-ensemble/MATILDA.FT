@@ -15,7 +15,7 @@ PS_Group::PS_Group(std::istringstream& iss, PS_Box* box) : mybox(box) {
 
 PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     inputCommand = std::string("group ") + inp;
-
+    forceFlag = 0;
     
     // Make the group for "all" particles
     if ( inp == "all" || inp == "All" ) {
@@ -84,6 +84,11 @@ void PS_Group::zeroFields() {
 
     // this routine is in device_utils.cu
     d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(d_rho, 0.0, mybox->M);
+
+    if ( forceFlag ) { 
+        d_assignFloatVal<<<mybox->DMGrid, mybox->M_Block>>>(d_gridForce, 0.0, 
+            mybox->returnDimension() * mybox->M);
+    }
 }
 
 
@@ -102,6 +107,20 @@ void PS_Group::allocateGroupMemory(int ns) {
     check_cudaError("group allocation for d_rho");
     
 }
+
+
+// Allocates storage for the grid-based forces for this group
+// Not on by default bc group scan be used for other things
+void PS_Group::enableForce() {
+    if ( mybox->verbose ) { std::cout << "group labeled " << name << " allocating forces " << std::endl; }
+
+    int nalloc = mybox->M * mybox->returnDimension() * sizeof(float);
+    gridForce = (float*) malloc( nalloc );
+    cudaMalloc(&d_gridForce, nalloc);
+    
+    forceFlag = 1;
+}
+
 
 
 // Copies density field to host, calls
@@ -128,6 +147,11 @@ void PS_Group::writeDensityField() {
 // Return the name of this group
 std::string PS_Group::returnName() {
     return  name;
+}
+
+int PS_Group::hasForce() {
+    if ( forceFlag ) return 1;
+    else return 0;
 }
 
 int PS_Group::isGroup(std::string testName) {

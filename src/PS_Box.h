@@ -43,6 +43,7 @@ class PS_Box : public Box {
         int NSEXTRA;        // Extra memory allocated to store particles
         int nsGrid;         // GPU grid number for 'all' particle operations
         int DnsGrid;        // GPU grid number for Dim*all particle ops
+        int DMGrid;         // GPU grid number for Dim*M grid ops
         int nsBlock;        // GPU block number for 'all' particle operations
         int RANDSEED;       // Seed for CUDA RNG
         int doCharges;      // Flag for whether charge species exist or not

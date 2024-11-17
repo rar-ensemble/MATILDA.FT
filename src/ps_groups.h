@@ -22,12 +22,14 @@ class PS_Group {
     private:
         std::string inputCommand;   // Command used to create this group
         std::string name;           // Text name of this group
+        int forceFlag;               // Flag for whether this group has forces or not
 
     public:
         int nsites;                         // Number of particles in this group
 
         int *siteList, *d_siteList;         // [nsites] list of sites in this group
         float *rho, *d_rho;                 // [M] density field for this group
+        float *gridForce, *d_gridForce;     // [Dim*M] grid-based forces for this group
 
         int Grid, Block;    // GPU config variables for this group
 
@@ -41,6 +43,8 @@ class PS_Group {
         void makeDensityField();
         void writeDensityField();
         int isGroup(std::string);
+        int hasForce();
+        void enableForce();
         std::string returnName();
         virtual ~PS_Group();
 };

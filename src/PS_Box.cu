@@ -76,7 +76,7 @@ void PS_Box::doTimeStep(int step) {
         // zero density, grid force fields
         psGroup[i].zeroFields();
 
-        // Fill density field
+        // Fill density fields
         psGroup[i].makeDensityField();
     }
 

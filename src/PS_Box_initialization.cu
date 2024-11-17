@@ -308,10 +308,12 @@ void PS_Box::finishInitialization() {
     // gpuGrid, block sizes
     M_Block = blockSize;
     M_Grid = (int)ceil((double)(M) / M_Block);
+    DMGrid = (int)ceil((double)(Dim*nstot) / M_Block);
 
     nsBlock = blockSize;
     nsGrid = (int)ceil((double)(nstot) / nsBlock);
     DnsGrid = (int)ceil((double)(Dim*nstot) / nsBlock);
+    
 
 
     // Define C, rho0 depending on what is given
