@@ -26,20 +26,13 @@ NBGauss::NBGauss(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) 
 void NBGauss::initializePotential() {
     std::cout << "Initializing Gaussian potential..." << std::endl;
 
-    Iind = mybox->findGroupInteger(grpI);
-    Jind = mybox->findGroupInteger(grpJ);
-
-    // Allocate grid force memory for groups I, J if needed
-    if ( mybox->psGroup[Iind].hasForce() == 0 ) { mybox->psGroup[Iind].enableForce(); }
-    if ( mybox->psGroup[Jind].hasForce() == 0 ) { mybox->psGroup[Jind].enableForce(); }
+    PS_Potential::initializePotential();
     
     std::complex<float> I(0.0, 1.0);
     float kv[3], k2;
     int Dim = mybox->returnDimension();
     int M = mybox->M;
 
-    // uk: std::complex<float> [M]
-    // fk: std::complex<float> [Dim*M]
     for ( int i=0 ; i<M ; i++ ) {
         k2 = mybox->get_kD(i, kv);
         uk[i] = Ao * exp(-k2 * sig2 / 2.0f) ;

@@ -79,6 +79,20 @@ void PS_Group::makeDensityField() {
 }
 
 
+// Takes a grid-based force, generally passed from a potential,
+// and adds it to this group's grid force
+void PS_Group::accumulateGridForces(
+    const float* d_fg   // [Dim*M] grid-based force
+) {
+
+    int Grid = mybox->DMGrid;
+    int Block = mybox->M_Block;
+    int ndof = mybox->returnDimension() * mybox->M;
+
+    d_floatPlusEqFloat<<<Grid, Block>>>(d_gridForce, d_fg, ndof);
+}
+
+
 // Sets the field variables to zero to start each time step
 void PS_Group::zeroFields() {
 

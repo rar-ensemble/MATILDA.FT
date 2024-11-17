@@ -37,16 +37,19 @@ class PS_Group {
         PS_Group();
         PS_Group(std::istringstream&, PS_Box*);
         PS_Group(std::string, int, PS_Box*);
-
-        void zeroFields();
-        void allocateGroupMemory(int);
-        void makeDensityField();
-        void writeDensityField();
-        int isGroup(std::string);
-        int hasForce();
-        void enableForce();
         std::string returnName();
         virtual ~PS_Group();
+
+
+        void zeroFields();                          // Zeroes density, force fields
+        void allocateGroupMemory(int);              // Allocates arrays
+        void makeDensityField();                    // Populates the grid-based density
+        void writeDensityField();                   // Writes output file for grid-based density
+        int isGroup(std::string);                   // Checks whether group name matches string
+        int hasForce();                             // 0/1 if group does not/does have forces
+        void enableForce();                         // Turns on forces, allocates memory
+        void accumulateGridForces(const float*);    // d_gridForce += float*. device floats
+
 };
 
 #endif

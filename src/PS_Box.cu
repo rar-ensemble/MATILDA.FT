@@ -48,22 +48,22 @@ void PS_Box::doTimeStep(int step) {
         d_dxf, nstot, pmeorder, M, Dim );
     check_cudaError("Weights calculated in PS_Box");
 
-// // DEBUGGING STUFF
-// int *gridInds;
-// float *gridW;
-// gridInds = (int*) malloc(nstot*gridPerPartic * sizeof(int));
-// gridW = (float*) malloc(nstot*gridPerPartic * sizeof(float));
+    // // DEBUGGING STUFF
+    // int *gridInds;
+    // float *gridW;
+    // gridInds = (int*) malloc(nstot*gridPerPartic * sizeof(int));
+    // gridW = (float*) malloc(nstot*gridPerPartic * sizeof(float));
 
-// cudaMemcpy(gridInds, d_gridInds, nstot*gridPerPartic*sizeof(int), cudaMemcpyDeviceToHost);
-// cudaMemcpy(gridW, d_gridW, nstot*gridPerPartic*sizeof(float), cudaMemcpyDeviceToHost);
-// for ( int i=0 ; i<5 ; i++ ) {
-//     std::cout << "i: " << i << " " ;
-//     for ( int j=0 ; j<gridPerPartic; j++ ) {
-//         std::cout << gridInds[i*gridPerPartic+j] << " " << gridW[i*gridPerPartic+j] << " " ;
-//     }
-//     std::cout << std::endl;
-// }
-// die("fin");
+    // cudaMemcpy(gridInds, d_gridInds, nstot*gridPerPartic*sizeof(int), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(gridW, d_gridW, nstot*gridPerPartic*sizeof(float), cudaMemcpyDeviceToHost);
+    // for ( int i=0 ; i<5 ; i++ ) {
+    //     std::cout << "i: " << i << " " ;
+    //     for ( int j=0 ; j<gridPerPartic; j++ ) {
+    //         std::cout << gridInds[i*gridPerPartic+j] << " " << gridW[i*gridPerPartic+j] << " " ;
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // die("fin");
 
 
 
@@ -168,12 +168,14 @@ void PS_Box::forces() {
     
     if ( verbose ) std::cout << "bonds done, " << std::endl;
 
+    // 2. NB forces
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        std::cout << "Calling calc forces for potential " << i << "..." ; fflush(stdout);
+        potentials[i]->CalcForces();
+        std::cout << "done!" << std::endl;
+    }
     
-    
-    
-    
-    // 2. NB forces; 
-    
+
     // 3. Extras
 
 }

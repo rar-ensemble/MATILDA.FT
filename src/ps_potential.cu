@@ -11,7 +11,13 @@
 // potential, forces, virial contribution
 // in both r- and k-space
 void PS_Potential::initializePotential() {
+    
+    Iind = mybox->findGroupInteger(grpI);
+    Jind = mybox->findGroupInteger(grpJ);
 
+    // Allocate grid force memory for groups I, J if needed
+    if ( mybox->psGroup[Iind].hasForce() == 0 ) { mybox->psGroup[Iind].enableForce(); }
+    if ( mybox->psGroup[Jind].hasForce() == 0 ) { mybox->psGroup[Jind].enableForce(); }
 
 }
 
@@ -61,6 +67,7 @@ void PS_Potential::CalcForces() {
         d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxGabe, M);
 
         // Gabe now contains the forces that act on particles I
+        mybox->psGroup[Iind].accumulateGridForces(d_Gabe);
 
     }
 

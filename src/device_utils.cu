@@ -37,6 +37,20 @@ __global__ void d_multiplyCuComplexByFloat(
     f[id].y *= val;
 }
 
+// computes out += in for floats
+__global__ void d_floatPlusEqFloat(
+    float* out,
+    const float* in,
+    const int N
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id] += in[id];
+}
+
+
 // Computes out = Real(in)
 __global__ void d_cpxToFloat(
     float* out,             // [N] array to be filled
