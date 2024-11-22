@@ -36,6 +36,7 @@ std::vector<std::string> quoteDB = {
   "'If you're in heaven then you'll forgive me, dear, cause that's what they do up there.' \n--Nick Cave and the Bad Seeds",
   "'How do flat earthers travel??\n\n........\n\nOn a plane.' \n--DockTok",
   "'I was sitting in traffic the other day.\n\n..........\n\nIt's probably why I got run over.' \n--DockTok",
+  "'Evil will always triumph, because good is dumb.' \n--Dark Helmet",
   "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
