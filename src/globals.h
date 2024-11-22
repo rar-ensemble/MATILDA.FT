@@ -32,6 +32,7 @@
 #include "Extraforce.h"
 #include "Extraforce_langevin.h"
 #include "Extraforce_midpush.h"
+#include "Extraforce_lewis.h"
 #include "global_templated_functions.h"
 #include "group_region.h"
 #include "include_libs.h"

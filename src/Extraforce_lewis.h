@@ -3,6 +3,7 @@
 
 
 #include "Extraforce.h"
+#include "Extraforce_dynamic.h"
 #include "nlist.h"
 #include "nlist_bonding.h"
 #include <thrust/host_vector.h>
@@ -19,8 +20,7 @@
 #include <ctime>
 
 
-
-__global__ void d_make_bonds_lewis(
+__global__ void d_make_bonds_Lewis_1(
     const float *x,
     float* f,
     thrust::device_ptr<int> d_BONDS,
@@ -47,12 +47,42 @@ __global__ void d_make_bonds_lewis(
     int D,
     float qind,
     float* d_charges,
-    int grid_per_partic,
-    float* d_electrostatic_potential,
-    int* d_grid_inds,
-    float* d_grid_W);
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
 
-__global__ void d_break_bonds_lewis(
+
+__global__ void d_make_bonds_Lewis_2(
+    const float *x,
+    float* f,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_ACCEPTORS,
+    thrust::device_ptr<int> d_FREE,
+    thrust::device_ptr<int> d_RN_ARRAY,
+    thrust::device_ptr<int> d_RN_ARRAY_COUNTER,
+    thrust::device_ptr<float> d_VirArr,
+    int n_free_donors,
+    int n_donors,
+    int n_acceptors,
+    int sticker_density,
+    int nncells,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float r_n,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);  
+
+
+__global__ void d_break_bonds_Lewis_1(
     const float *x,
     thrust::device_ptr<int> d_BONDS,
     thrust::device_ptr<int> d_BONDED,
@@ -72,14 +102,36 @@ __global__ void d_break_bonds_lewis(
     int D,
     float qind,
     float* d_charges,
-    int grid_per_partic,
-    float* d_electrostatic_potential,
-    int* d_grid_inds,
-    float* d_grid_W);
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
 
 
-#ifndef _EXTRAFORCE_LEWIS
-#define _EXTRAFORCE_LEWIS
+__global__ void d_break_bonds_Lewis_2(
+    const float *x,
+    thrust::device_ptr<int> d_BONDS,
+    thrust::device_ptr<int> d_BONDED,
+    int n_bonded,
+    int n_donors,
+    int n_acceptors,
+    int r_n,
+    thrust::device_ptr<int> d_index, 
+    const int ns,        
+    curandState *d_states,
+    float k_spring,
+    float e_bond,
+    float r0,
+    float active_fraction,
+    float *L,
+    float *Lh,
+    int D,
+    float qind,
+    float* d_charges,
+    thrust::device_ptr<int> d_lewis_vect,
+    thrust::device_ptr<float> d_dU_lewis);   
+
+
+#ifndef _EXTRAFORCE_Lewis
+#define _EXTRAFORCE_Lewis
 
 
 class Lewis : public ExtraForce {
@@ -94,11 +146,14 @@ protected:
     
     std::string file_name;
 
-    thrust::host_vector<int> AD, BONDS, BONDED, FREE;
-    thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED;//, d_FLAG_LIST, d_AD;
+    thrust::host_vector<int> AD, BONDS, BONDED, FREE, lewis_vect;
+    thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED, d_lewis_vect;//, d_FLAG_LIST, d_AD;
     
     thrust::device_vector<float> d_VirArr;
     thrust::host_vector<float> VirArr;
+
+    thrust::device_vector<float> d_dU_lewis;
+    thrust::host_vector<float> dU_lewis;
 
     // NListBonding* nlist;
     int offset;
@@ -155,6 +210,8 @@ public:
     void UpdateNList();
     void IncreaseCapacity();
     void write_resume_files();
+    void MakeBonds();
+    void BreakBonds();
 };
 
 #endif

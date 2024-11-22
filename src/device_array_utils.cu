@@ -222,10 +222,34 @@ __global__ void d_prepareChargeDensity(float* d_t_charge_density,
 // d_ep:         [M] variable to store electrostatic potential
 // bjerrum:      Bjerrum length
 // length_scale: charge smearing length
+// __global__ void d_prepareElectrostaticPotential(cufftComplex* d_tc, cufftComplex* d_ep, 
+// 	float bjerrum, float length_scale, const int M, const int Dim, const float* L,
+// 	const int* Nx) {
+	
+// 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+
+// 	if (ind >= M)
+// 		return;
+
+// 	float kv[3], k2;
+// 	k2 = d_get_k(ind, kv, L, Nx, Dim);
+
+// 	if (k2 != 0) {
+// 		//d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp(-1 * k2 / (2 * length_scale * length_scale));
+// 		d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
+// 		d_ep[ind].y = ((d_tc[ind].y * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
+// 	}
+// 	else {
+// 		d_ep[ind].x = 0.f;
+// 		d_ep[ind].y = 0.f;
+// 	}
+// }
+
+
 __global__ void d_prepareElectrostaticPotential(cufftComplex* d_tc, cufftComplex* d_ep, 
 	float bjerrum, float length_scale, const int M, const int Dim, const float* L,
 	const int* Nx) {
-	
+
 	const int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (ind >= M)
@@ -236,8 +260,8 @@ __global__ void d_prepareElectrostaticPotential(cufftComplex* d_tc, cufftComplex
 
 	if (k2 != 0) {
 		//d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp(-1 * k2 / (2 * length_scale * length_scale));
-		d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
-		d_ep[ind].y = ((d_tc[ind].y * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale / 2.0);
+		d_ep[ind].x = ((d_tc[ind].x * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale );
+		d_ep[ind].y = ((d_tc[ind].y * 4 * PI * bjerrum) / k2) * exp( -k2 * length_scale * length_scale );
 	}
 	else {
 		d_ep[ind].x = 0.f;
@@ -279,7 +303,8 @@ __global__ void d_prepareElectricField(cufftComplex* d_cpxx, cufftComplex* d_cpx
 	int dir;
 	k2 = d_get_k(ind, k, L, Nx, Dim);
 
-	float exp_k = exp(-k2 * length_scale * length_scale /2.0);
+	float exp_k = 1.0;
+	// float exp_k = exp(-k2 * length_scale * length_scale /2.0);
 	float d_ep_y = d_ep[ind].y;
 	float d_ep_x = d_ep[ind].x;
 

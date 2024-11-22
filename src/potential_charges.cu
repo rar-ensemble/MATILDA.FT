@@ -131,25 +131,25 @@ void Charges::CalcVirial() {
 
 
 
-float Charges::CalcEnergy(){
-    calc_electrostatic_energy();
-    cuda_collect_electric_field();
+// float Charges::CalcEnergy(){
+//     calc_electrostatic_energy();
+//     cuda_collect_electric_field();
 
-    energy = 0;
-    *electrostatic_energy = 0;
+//     energy = 0;
+//     *electrostatic_energy = 0;
 
-    float mult = 1.0f;
+//     float mult = 1.0f;
 
-    for(int i = 0; i < Dim; ++i){
-        mult*=L[i]/float(Nx[i]);
-    }
+//     for(int i = 0; i < Dim; ++i){
+//         mult*=L[i]/float(Nx[i]);
+//     }
 
-	for (int i = 0; i < M; i++) {
-		*electrostatic_energy += electrostatic_potential[i] * charge_density_field[i] * mult;
-		energy += electrostatic_potential[i] * charge_density_field[i] * mult;
-	}
-    return energy;
-}
+// 	for (int i = 0; i < M; i++) {
+// 		*electrostatic_energy += electrostatic_potential[i] * charge_density_field[i] * mult;
+// 		energy += electrostatic_potential[i] * charge_density_field[i] * mult;
+// 	}
+//     return energy;
+// }
 
 void Charges::CalcCharges() {
     //zero d_cpx1 and d_cpx2
@@ -258,3 +258,50 @@ void calc_electrostatic_energy_directly() {
 }
 
 int Charges::do_charges= 0;
+
+
+// Self interaction term
+
+float calc_self_interaction_sum(float* charges, int ns, float bjerrumLength, float smearingLength) {
+    float coef = bjerrumLength / (sqrt(M_PI) * 2* smearingLength);
+    float sum = 0.0f;
+    for (int i = 0; i < ns; ++i) {
+        sum += coef * charges[i] * charges[i];
+    }
+    return sum;
+}
+
+
+
+
+float Charges::CalcEnergy(){
+    calc_electrostatic_energy();
+    cuda_collect_electric_field();
+
+    energy = 0;
+    *electrostatic_energy = 0;
+
+    float mult = 1.0f;
+
+    for(int i = 0; i < Dim; ++i){
+        mult*=L[i]/float(Nx[i]);
+    }
+
+    for (int i = 0; i < M; i++) {
+        *electrostatic_energy += electrostatic_potential[i] * mult * 0.5 * charge_density_field[i];
+        energy += electrostatic_potential[i] * mult * 0.5* charge_density_field[i];
+    }
+    // minus self interaction
+    float self_interaction_sum = calc_self_interaction_sum(charges, ns, charge_bjerrum_length, charge_smearing_length);
+    energy -= self_interaction_sum;
+    // Output the self_interaction_sum to a text file
+    std::ofstream outFile("self_interaction_sum.txt");
+    if (outFile.is_open()) {
+        outFile << "Self-interaction Sum: " << self_interaction_sum << std::endl;
+        outFile.close();
+    } else {
+        // Optionally handle the error if the file could not be opened
+        std::cerr << "Unable to open file for writing." << std::endl;
+    }
+    return energy;
+}

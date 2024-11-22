@@ -51,9 +51,9 @@ ExtraForce* ExtraForceFactory(istringstream &iss){
 	if (s1 == "dynamic"){
 		return new Dynamic(iss);
 	}
-	// if (s1 == "lewis"){
-	// 	return new Lewis(iss);
-	// }
+	if (s1 == "lewis"){
+		return new Lewis(iss);
+	}
 	// if (s1 == "lewis_full"){
 	// 	return new LewisFull(iss);
 	// }
