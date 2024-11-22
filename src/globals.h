@@ -46,6 +46,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/count.h>
 #include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 
 #define PI 3.141592654f
 #define PI2 6.2831853071f

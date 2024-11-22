@@ -170,7 +170,8 @@ protected:
 
     thrust::host_vector<int> DONORS, ACCEPTORS, FREE_ACCEPTORS, S_ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS, d_S_ACCEPTORS, d_FREE_ACCEPTORS;
-
+    thrust::device_vector<int> d_LOW_DENS_FLAG;
+    thrust::device_vector<int> d_LOW_DENS_FLAG2;
 
     int xyz;
 
@@ -180,7 +181,6 @@ protected:
     thrust::host_vector<int> Nxx; // grid spacing for the n-list [Dim]
     thrust::host_vector<float> Lg; // grid cell length [Dim]
 
-    thrust::device_vector<int> d_LOW_DENS_FLAG;
 
     thrust::device_vector<int> d_MASTER_GRID;
     thrust::device_vector<int> d_MASTER_GRID_counter;

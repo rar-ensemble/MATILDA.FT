@@ -1,0 +1,24 @@
+Dim 3
+Nx 21
+Ny 21
+Nz 21
+delt 0.005
+Default initialization of the 'All' group
+integrator all GJF
+rand_seed 1732290073
+max_steps 2000001
+MAX_BONDS 3
+MAX_ANGLES 3
+log_freq 1500
+threads 512
+grid_freq 0
+traj_freq 0
+gsd_freq 0
+binary_freq 25000
+struc_freq 0
+skip_steps 20000
+pmeorder 1
+diffusivity 1 1
+potential gaussian 1 1 1.5625  1.0
+integrator all GJF
+bond 1 harmonic 1.5 0

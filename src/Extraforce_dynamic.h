@@ -207,7 +207,7 @@ protected:
     
     std::string file_name;
 
-    thrust::host_vector<int> AD, BONDS, BONDED, FREE, BONDED_EFFECTIVE, FREE_EFFECTIVE;
+    thrust::host_vector<int> AD, BONDS, BONDED, FREE, BONDED_EFFECTIVE, FREE_EFFECTIVE, FREE_MAP;
     thrust::device_vector<int> d_BONDS, d_FREE, d_BONDED, d_BONDED_EFFECTIVE, d_FREE_EFFECTIVE;//, d_FLAG_LIST, d_AD;
     
     thrust::device_vector<float> d_VirArr;
@@ -235,6 +235,7 @@ protected:
     std::vector<int>dual_links;
 
     thrust::host_vector<int> DONORS, ACCEPTORS, FREE_ACCEPTORS, S_ACCEPTORS;
+    thrust::host_vector<int> tmp_FREE, tmp_FREE_ACCEPTORS;
     thrust::device_vector<int> d_DONORS, d_ACCEPTORS, d_S_ACCEPTORS, d_FREE_ACCEPTORS;
 
 

@@ -31,7 +31,7 @@ data = np.loadtxt('bonds')
 N = 100
 L = 20
 V = L**3
-nc = 400
+nc = 100
 f = np.average(data[-nc:,1])
 print(f)
 
@@ -39,7 +39,7 @@ print(f)
 
 Kc = (N * f)/V / ((1-f)*N/V)**2
 print(Kc)
-plt.axvline((data[-nc,0]))
+plt.axvline((data[-nc,0]),c="k",ls="--")
 plt.plot(data[:,0],data[:,1])
 plt.show()
 # 60 -- >

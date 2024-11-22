@@ -3,7 +3,7 @@ Dim 3
 max_steps 100000001
 log_freq 100000
 binary_freq 500000
-traj_freq 5000
+traj_freq 500000
 pmeorder 1
 
 charges 0.43484 1.0
@@ -13,10 +13,31 @@ delt 0.005000
 read_data input.data
 integrator all GJF
 
+# readRequiredParameter(iss, k_spring);
+# cout << "k_spring: " << k_spring << endl;
+# readRequiredParameter(iss, e_bond);
+# cout << "e_bond: " << e_bond << endl;
+# readRequiredParameter(iss, r0);
+# cout << "r0: " << r0 << endl;
+# readRequiredParameter(iss, r_n);
+# cout << "r_n: " << r_n << endl;
+# readRequiredParameter(iss, sticker_density);
+# cout << "sticker_density: " << sticker_density << endl;
+# readRequiredParameter(iss, active_fraction);
+# cout << "Active fraction: " << active_fraction << endl;
+# if (active_fraction <= 0 || active_fraction > 1){
+#     die("Invalid active fraction!");
+# }
+# readRequiredParameter(iss, bond_freq);
+# cout << "bond_freq: " << bond_freq << endl;
+# readRequiredParameter(iss, bond_log_freq);
+# cout << "bond_log_freq: " << bond_log_freq << endl;
+# readRequiredParameter(iss, file_name);
+# cout << "output_file: " << file_name << endl;
+# readRequiredParameter(iss, offset);
+# cout << "offset: " << offset << endl;
 
-# file k_spring e_bond r_n sticker_density bond_freq bond_log_freq output_file offset
-# extraforce all dynamic ad_input 0.0 2.0 0.0 5.0 100 0.05 100 1000 bonds 0
-extraforce all lewis_serial ad_input 0.0 0.0 0.0 0.0 5.0 300 0.05 100 1000 bonds 0
+ extraforce all dynamic ad_input 0.0 2.0 0.0 5.0 100 0.02 1 10 bonds 0
 
 
 Nx 30

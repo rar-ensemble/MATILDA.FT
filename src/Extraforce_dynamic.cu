@@ -283,7 +283,10 @@ Dynamic::Dynamic(istringstream &iss) : ExtraForce(iss)
 
     BONDED.resize( n_donors);
     FREE.resize( n_donors);
+    tmp_FREE.resize(n_donors);
     FREE_ACCEPTORS.resize(n_donors);
+    tmp_FREE_ACCEPTORS.resize(n_donors);
+    FREE_MAP.resize( n_donors);
 
     BONDED_EFFECTIVE.resize(n_donors);
     FREE_EFFECTIVE.resize(n_donors);
@@ -719,8 +722,10 @@ void Dynamic::UpdateNList(){
         thrust::fill(FREE_ACCEPTORS.begin(),FREE_ACCEPTORS.end(),-1);
         thrust::shuffle(FREE.begin(), FREE.begin() + n_free_donors, g);
 
-        d_FREE = FREE;
 
+        thrust::fill(FREE_MAP.begin(),FREE_MAP.end(),-1);
+        thrust::sequence(thrust::host,FREE_MAP.begin(),FREE_MAP.begin() + n_free_donors,0,1);
+        thrust::shuffle(FREE_MAP.begin(), FREE_MAP.begin() + n_free_donors, g);
 
         for (int i = 0; i < n_free_donors; ++i){
 
@@ -765,8 +770,21 @@ void Dynamic::UpdateNList(){
 
             }
         }
+
         // std::cout <<  std::endl<<std::endl;
+
+        for (int i = 0; i < n_free_donors; ++i){
+            int m = FREE_MAP[i];
+            tmp_FREE_ACCEPTORS[i] = FREE_ACCEPTORS[m];
+            tmp_FREE[i] = FREE[m];
+        }
+
+        FREE = tmp_FREE;
+        FREE_ACCEPTORS = tmp_FREE_ACCEPTORS;
+
         d_FREE_ACCEPTORS = FREE_ACCEPTORS;
+        d_FREE = FREE;
+
 
         // d_RN_ARRAY = RN_ARRAY; // ordered neighbour list
 
@@ -784,6 +802,7 @@ void Dynamic::AddExtraForce()
 
 
     if (LINK_FLAG == 0 && DUAL_POINT == 0){
+
 
         if (step % bond_freq == 0 && step > 1){
 
@@ -810,11 +829,12 @@ void Dynamic::AddExtraForce()
             
             IncreaseCapacity();
 
-            for (int i = 0; i < 2; i++){
+            for (int i = 0; i < 1; i++){
                 if (n_free_donors > 0){
                         UpdateNList();
 
-                        int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+                        //int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+                            int BLOCKS = (int)ceil(n_free_donors/(float)threads);
 
                         d_make_bonds<<<BLOCKS, threads>>>(d_x,d_f,
                             d_BONDS.data(),
@@ -833,6 +853,9 @@ void Dynamic::AddExtraForce()
 
                     } // if n_free_donors > 0
 
+                int old_free = n_free_donors;
+
+                // UpdateBonders();
 
                 thrust::shuffle(BONDED.begin(),BONDED.begin() + n_bonded,g);
                 d_BONDED = BONDED;
@@ -840,7 +863,8 @@ void Dynamic::AddExtraForce()
 
                 if (n_bonded > 0){
 
-                    int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+                    //int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+                    int BLOCKS = (int)ceil(n_bonded/(float)threads);
 
 
                     d_break_bonds<<<BLOCKS, threads>>>(d_x,
@@ -1007,7 +1031,8 @@ void Dynamic::AddExtraForce()
         }
     }
 
-    else if (LINK_FLAG == 0 && DUAL_POINT == 1){
+    else if (LINK_FLAG == 0 && DUAL_POINT == 1)
+    {
 
         if (link_pos==0){
 
@@ -1119,7 +1144,8 @@ void Dynamic::AddExtraForce()
 
                             UpdateNList();
 
-                            int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+                            //int BLOCKS = (int)ceil((n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)/(float)threads);
+                            int BLOCKS = (int)ceil((n_free_donors * active_fraction)/(float)threads);
 
                             d_make_bonds<<<BLOCKS, threads>>>(d_x,d_f,
                                 d_BONDS.data(),
@@ -1143,7 +1169,9 @@ void Dynamic::AddExtraForce()
 
                         if (n_bonded > 0){
 
-                            int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+                            //int BLOCKS = (int)ceil((n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)/(float)threads);
+                            int BLOCKS = (int)ceil((n_bonded  * active_fraction)/(float)threads);
+
 
 
                             d_break_bonds_primary<<<BLOCKS, threads>>> (d_x,
@@ -1305,7 +1333,11 @@ __global__ void d_make_bonds(
 {
 
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)
+    
+    // if (tmp_ind >= n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)
+    //     return;
+
+    if (tmp_ind >= n_free_donors * active_fraction)
         return;
 
     int n_bonded = n_donors - n_free_donors;
@@ -1441,9 +1473,19 @@ __global__ void d_break_bonds(
 
 {
     int tmp_ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)
+
+    int n_free_acceptors = n_acceptors - n_bonded;
+    int n_free_donors = n_donors-n_bonded;
+
+    // if (tmp_ind >= n_bonded *float(n_bonded)/(n_donors + n_acceptors)*2.0 * active_fraction)
+    //     return;
+
+
+    if (tmp_ind >= n_free_donors * active_fraction)
         return;
 
+    // if (tmp_ind >= (n_donors-n_bonded) *active_fraction)
+    //     return;
     int list_ind = d_BONDED[tmp_ind];
     int ind = d_index[list_ind];
 
@@ -1454,8 +1496,6 @@ __global__ void d_break_bonds(
     d_states[ind] = l_state;
 
     
-    int n_free_acceptors = n_acceptors - n_bonded;
-    int n_free_donors = n_donors-n_bonded;
 
     int lnid = d_BONDS[list_ind * 2 + 1];
     int nid = d_index[lnid];

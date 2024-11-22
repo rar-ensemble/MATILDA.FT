@@ -313,9 +313,10 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 
     ACCEPTOR_LOCKS.resize(group->nsites);
 
+    d_LOW_DENS_FLAG.resize(xyz); // Check if the per-cell capacity set is enough
+    d_LOW_DENS_FLAG2.resize(group->nsites); // Check if the per-cell capacity set is enough
 
 
-    d_LOW_DENS_FLAG.resize(group->nsites);
 
     thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
     thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
@@ -324,6 +325,8 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
     thrust::fill(d_RN_ARRAY_COUNTER.begin(),d_RN_ARRAY_COUNTER.end(),0);
 
     thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+    thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
 
     std::cout << "Total cells: " << xyz << ", sticker_density: " << sticker_density << ", Dim: " << Dim << ", n_cells: " << nncells << endl;
 
@@ -375,17 +378,34 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 }
 
 
-void Lewis::IncreaseCapacity(){
+
+void Dynamic::IncreaseCapacity(){
+
+    // cout << file_name << std::endl;
 
         // increase the capacity of the density array if it is not enough to hold all the particles
 
-        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        // int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        // std::cout << "Sum: " << sum << std::endl;
 
-        while (sum > 0){
-            int incr = ceil(float(sum)/float(xyz));
-            cout << "#########\nInput sticker density was: " << sticker_density <<" but at least "<< sticker_density + incr <<" is required"<<endl;
-            sticker_density += (incr + 10);
-            cout << "Increasing sticker density to " <<  sticker_density  <<  " at step " << step << "\n#########" << endl;
+        int max_val = *thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+        if (max_val == 0){
+            return;
+        }
+        thrust::device_vector<int>::iterator iterb = thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+        unsigned int position_bin = iterb - d_LOW_DENS_FLAG.begin();
+        // thrust::device_vector<float>::iterator iterp = thrust::max_element(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end());
+        // unsigned int position_par = iterp - d_vec.begin();
+        cout <<  "\n#########\n" << "Detected low capacity: " << max_val << " at position " <<position_bin << endl;
+        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        std::cout << "Sum of bins: " << sum << std::endl;
+        int sum2 = thrust::reduce(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0, thrust::plus<int>());
+        std::cout << "Sum of particles: " << sum2 <<  std::endl;
+
+        while (max_val > 0){
+            int old_density = sticker_density;
+            sticker_density = sticker_density+ max_val + 1;
+            cout << file_name << " at step " << step << "| old capacity: " << old_density << " >> new capacity: " <<  sticker_density << endl;
 
             d_MASTER_GRID.resize(xyz * sticker_density);                 
         
@@ -397,20 +417,36 @@ void Lewis::IncreaseCapacity(){
 
             thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
             thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
+
             thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+            thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
+
+            cudaDeviceSynchronize();
 
             d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
                 d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
                 d_Nxx.data(), d_Lg.data(),
                 d_LOW_DENS_FLAG.data(),
+                d_LOW_DENS_FLAG2.data(),
                 d_ACCEPTORS.data(),
                 nncells, n_acceptors, sticker_density,
                 group->d_index.data(), group->nsites, Dim);
 
+            cudaDeviceSynchronize();
 
-            sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+            max_val = *thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+            thrust::device_vector<int>::iterator iterb = thrust::max_element(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end());
+            unsigned int position_bin = iterb - d_LOW_DENS_FLAG.begin();
+            if (max_val !=0){
+                cout << "\nNon zero max after increase! " << max_val << " at position " << position_bin << endl;
+                int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+                std::cout << "Sum of bins: " << sum << std::endl;
+                int sum2 = thrust::reduce(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0, thrust::plus<int>());
+                std::cout << "Sum of particles: " << sum2 <<  "\n#########\n" << std::endl;
+            }
+            
         }
-
     
 }
 
@@ -521,38 +557,43 @@ void Lewis::UpdateNList(){
 void Lewis::AddExtraForce()
 {   
 
-    if (step % bond_freq == 0 && step > 0){
+     if (step % bond_freq == 0 && step > 1){
 
 
         thrust::fill(d_MASTER_GRID.begin(),d_MASTER_GRID.end(),-1);
         thrust::fill(d_MASTER_GRID_counter.begin(),d_MASTER_GRID_counter.end(),0);
         thrust::fill(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0);
+        thrust::fill(d_LOW_DENS_FLAG2.begin(), d_LOW_DENS_FLAG2.end(), 0);
+
+
+        cudaDeviceSynchronize();
 
         d_update_grid<<<GRID, threads>>>(d_x, d_Lh, d_L,
             d_MASTER_GRID_counter.data(), d_MASTER_GRID.data(),
             d_Nxx.data(), d_Lg.data(),
             d_LOW_DENS_FLAG.data(),
+            d_LOW_DENS_FLAG2.data(),
             d_ACCEPTORS.data(),
             nncells, n_acceptors, sticker_density,
             group->d_index.data(), group->nsites, Dim);
-        int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-        LOW_DENS_FLAG = float(sum)/float(d_MASTER_GRID_counter.size());
+            // int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
+        
+        cudaDeviceSynchronize();
+        
+        IncreaseCapacity();
 
-        if (LOW_DENS_FLAG > 0){
-            IncreaseCapacity();
-        }
+        for (int i = 0; i < int(ceil(n_donors * 0.1)); i++){
+            if (rand()%2==0){
 
-        for (int i = 0; i < 1; i++){
-            if (((double) rand() / (RAND_MAX)) < n_free_donors/float(n_donors) && n_free_donors > 0 && ((double) rand() / (RAND_MAX)) < 2.0 * (float)n_acceptors/(n_donors + n_acceptors)){
                 MakeBonds();
-            }
-            else if (((double) rand() / (RAND_MAX)) < n_bonded/float(n_donors) && n_bonded > 0){
-
                 BreakBonds();
-
+            }
+            else{
+                MakeBonds();
+                BreakBonds();
             }
 
-        UpdateBonders();
+            UpdateBonders();
         }// loop
 
     } // end if (step % Lewis_bond_freq == 0 && step >= bond_freq)
@@ -576,24 +617,43 @@ void Lewis::AddExtraForce()
 }
 
 
-//MAKE BONDS
+// ### Device Functions ###
 
-//     UpdateNList();
 
-//     prepareDensityFields();
-//     MasterCharge->CalcCharges();
-//     MasterCharge->CalcEnergy();
+/*
+    ### Make_Bonds() ###
+    
+        Bond making using EE change in the acceptance criterion
+        2-part function, 2 kernels and FFT in-between
+        Data between the kernels is transferred through lewis vectors
+        int lewis_vect[3]:
+            0: 
+            1: 
+            2: proceed flag (1=="True")
+        float dU_lewis[1]:
+            0: dU (change in the potential energy, spring+delta EE)
 
-//     U_Electro_old = MasterCharge->energy;
+    ### Preparatory code
 
-//     dU_lewis[0] = 0.0f;
-//     d_dU_lewis = dU_lewis;
+        UpdateNList();
 
-//     lewis_vect[0] = -1;
-//     lewis_vect[1] = -1;  
-//     lewis_vect[2] = -1;
+        prepareDensityFields();
+        MasterCharge->CalcCharges();
+        MasterCharge->CalcEnergy();
 
-//     d_lewis_vect = lewis_vect;               
+        U_Electro_old = MasterCharge->energy;
+
+        dU_lewis[0] = 0.0f;
+        d_dU_lewis = dU_lewis;
+
+        lewis_vect[0] = -1;
+        lewis_vect[1] = -1;  
+        lewis_vect[2] = -1;
+
+        d_lewis_vect = lewis_vect;               
+
+*/
+
 
 /*
 Updates forces acting on particles due to Lewis bonds
@@ -703,25 +763,33 @@ __global__ void d_make_bonds_Lewis_1(
 }
 
 
-//     // Copy device vectors to host vectors
+/*  
+    ### CPU part of the calculation ###
 
-//     lewis_vect = d_lewis_vect;
-//     dU_lewis = d_dU_lewis;
+    1. Copy device vectors into the host
+    2. Asses if binding proceeds or terminates (lewis_vect[2]==1)
+        3a. Recalculate the EE
+        4a. Append the EE difference to the total energy change
+        5a. Copy back to the GPU (d_dU_lewis)
+
+        lewis_vect = d_lewis_vect;
+        dU_lewis = d_dU_lewis;
 
 
-//     if (lewis_vect[2] == 1){
+        if (lewis_vect[2] == 1){
 
-//         // Recalculate electrostatic field
+            // Recalculate electrostatic field
 
-//         prepareDensityFields();
-//         MasterCharge->CalcCharges();
-//         MasterCharge->CalcEnergy();
+            prepareDensityFields();
+            MasterCharge->CalcCharges();
+            MasterCharge->CalcEnergy();
 
-//         float dUEl = U_Electro_old - MasterCharge->energy;
+            float dUEl = U_Electro_old - MasterCharge->energy;
 
-//         dU_lewis[0] += dUEl;
-//         d_dU_lewis = dU_lewis;
+            dU_lewis[0] += dUEl;
+            d_dU_lewis = dU_lewis;
 
+*/
 
 
 __global__ void d_make_bonds_Lewis_2(
@@ -1039,7 +1107,7 @@ void Lewis::MakeBonds(void){
 
         if (lewis_vect[2] == 1){
             cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-            std::cout << "Accepted bonding!" << std::endl;
+            // std::cout << "Accepted bonding!" << std::endl;
         }
         else{
             prepareDensityFields();
@@ -1088,17 +1156,17 @@ void Lewis::BreakBonds(void){
 
     // Recalculate electrostatic field
 
-    std::cout << "\nBreaking full @ step  "<< step<< std::endl;
-    std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
-    std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+    // std::cout << "\nBreaking full @ step  "<< step<< std::endl;
+    // std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+    // std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
 
     prepareDensityFields();
     MasterCharge->CalcCharges();
     MasterCharge->CalcEnergy();
     
     float dUEl = MasterCharge->energy - U_Electro_old;
-    std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
-    std::cout << "Change: "<<  dUEl<< std::endl;
+    // std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+    // std::cout << "Change: "<<  dUEl<< std::endl;
 
     dU_lewis[0] += dUEl;
     d_dU_lewis = dU_lewis;
@@ -1120,11 +1188,11 @@ void Lewis::BreakBonds(void){
     lewis_vect = d_lewis_vect;
 
 
-    std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+    // std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
 
     if (lewis_vect[2] == 1){
         cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-        std::cout << "Accepted breaking!" << std::endl;
+        // std::cout << "Accepted breaking!" << std::endl;
     }
     else{
         prepareDensityFields();

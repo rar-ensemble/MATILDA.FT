@@ -17,8 +17,8 @@ integrator all GJF
 group bonding_group1 id id_file1
 extraforce bonding_group1 dynamic ad_file1 1.5 10.0 0.0 4.0 600 0.05 1000 10000 bonds1 60000000
 
-group bonding_group2 id id_file2
-extraforce bonding_group2 dynamic ad_file2 1.5 10.0 0.0 4.0 600 0.05 1000 10000 bonds2 60000000
+# group bonding_group2 id id_file2
+# extraforce bonding_group2 dynamic ad_file2 1.5 10.0 0.0 4.0 600 0.05 1000 10000 bonds2 60000000
 
 
 
