@@ -5,7 +5,7 @@ Nz 10
 delt 0.005
 Default initialization of the 'All' group
 integrator all GJF
-rand_seed 1732371804
+rand_seed 1732373953
 max_steps 100
 MAX_BONDS 3
 MAX_ANGLES 3

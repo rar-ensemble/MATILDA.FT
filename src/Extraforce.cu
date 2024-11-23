@@ -6,8 +6,6 @@
 #include "Extraforce.h"
 #include "Extraforce_wall.h"
 #include "Extraforce_lewis.h"
-#include "Extraforce_lewis_full.h"
-#include "Extraforce_lewis_serial.h"
 #include "Extraforce_dpd.h"
 #include "Extraforce_dynamic.h"
 
