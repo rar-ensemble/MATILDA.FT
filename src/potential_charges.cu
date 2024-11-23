@@ -295,13 +295,13 @@ float Charges::CalcEnergy(){
     float self_interaction_sum = calc_self_interaction_sum(charges, ns, charge_bjerrum_length, charge_smearing_length);
     energy -= self_interaction_sum;
     // Output the self_interaction_sum to a text file
-    std::ofstream outFile("self_interaction_sum.txt");
-    if (outFile.is_open()) {
-        outFile << "Self-interaction Sum: " << self_interaction_sum << std::endl;
-        outFile.close();
-    } else {
-        // Optionally handle the error if the file could not be opened
-        std::cerr << "Unable to open file for writing." << std::endl;
-    }
+    // std::ofstream outFile("self_interaction_sum.txt");
+    // if (outFile.is_open()) {
+    //     outFile << "Self-interaction Sum: " << self_interaction_sum << std::endl;
+    //     outFile.close();
+    // } else {
+    //     // Optionally handle the error if the file could not be opened
+    //     std::cerr << "Unable to open file for writing." << std::endl;
+    // }
     return energy;
 }

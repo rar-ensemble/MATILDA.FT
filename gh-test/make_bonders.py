@@ -1,7 +1,7 @@
 import numpy as np
 from random import random
-N = 2000
-L = 10
+N = 10000
+L = 25
 # print(N/L**3,10664/(25*25*180))
 with open("ad_input", "w") as f:
     for n in range(N//2):

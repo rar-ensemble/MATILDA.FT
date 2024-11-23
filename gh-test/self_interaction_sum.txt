@@ -1,1 +1,1 @@
-Self-interaction Sum: 5.88797
+Self-interaction Sum: 98.3778

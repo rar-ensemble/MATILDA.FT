@@ -1,15 +1,15 @@
 Dim 3
-Nx 10
-Ny 10
-Nz 10
+Nx 25
+Ny 25
+Nz 25
 delt 0.005
 Default initialization of the 'All' group
 integrator all GJF
-rand_seed 1732373953
-max_steps 100
+rand_seed 1732377238
+max_steps 10000
 MAX_BONDS 3
 MAX_ANGLES 3
-log_freq 100000
+log_freq 10
 threads 512
 grid_freq 0
 traj_freq 500000
@@ -21,6 +21,6 @@ pmeorder 1
 charges 0.43484 1
 diffusivity 1 1
 charges 0.43484 1.0
-extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.1 1 10 bonds 0
+extraforce all lewis ad_input 1.0 5.0 1.0 0.0 5.0 100 0.01 10 1000 bonds 0
 integrator all GJF
-extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.1 1 10 bonds 0
+extraforce all lewis ad_input 1.0 5.0 1.0 0.0 5.0 100 0.01 10 1000 bonds 0
