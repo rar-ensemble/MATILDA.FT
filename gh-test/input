@@ -1,0 +1,22 @@
+Dim 3
+
+max_steps 100
+log_freq 100000
+binary_freq 500000
+traj_freq 500000
+pmeorder 1
+
+charges 0.43484 1.0
+
+delt 0.005000
+
+read_data input.data
+integrator all GJF
+
+
+Nx 10
+Ny 10
+Nz 10
+
+
+extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.1 1 10 bonds 0

@@ -1337,7 +1337,7 @@ __global__ void d_make_bonds(
     // if (tmp_ind >= n_free_donors * 2.0 * (float)n_acceptors/(n_donors + n_acceptors) * active_fraction)
     //     return;
 
-    if (tmp_ind >= n_free_donors * active_fraction)
+    if (tmp_ind >= 100)
         return;
 
     int n_bonded = n_donors - n_free_donors;
@@ -1481,7 +1481,7 @@ __global__ void d_break_bonds(
     //     return;
 
 
-    if (tmp_ind >= n_free_donors * active_fraction)
+    if (tmp_ind >= 100)
         return;
 
     // if (tmp_ind >= (n_donors-n_bonded) *active_fraction)

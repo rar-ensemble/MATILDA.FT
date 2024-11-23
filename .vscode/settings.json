@@ -73,6 +73,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "__availability": "cpp",
+        "__config": "cpp"
     }
 }

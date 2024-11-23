@@ -1,0 +1,542 @@
+Simulation style not specified!
+Defaulting to the particle simulation!
+Set simulation style to: TILD
+Dim 3
+max_steps 100
+log_freq 100000
+binary_freq 500000
+traj_freq 500000
+pmeorder 1
+charges 0.43484 1.0
+Warning: charges is deprecated. Please include "potential"  before charges moving forward.
+delt 0.005000
+read_data input.data
+READING CHARGE CONFIG
+Particle memory allocated on host!
+integrator all GJF
+Read parameter: group_name: all
+Read parameter: name: GJF
+Nx 10
+Ny 10
+Nz 10
+extraforce all lewis ad_input 0.0 2.0 1.0 0.0 5.0 100 0.1 1 10 bonds 0
+Read parameter: group_name: all
+Read parameter: style: lewis
+Lewis bonds active!
+Read parameter: ad_file: ad_input
+AD mapping file: ad_input
+Donors >= Acceptors
+Read parameter: k_spring: 0
+k_spring: 0
+Read parameter: e_bond: 2
+e_bond: 2
+Read parameter: qind: 1
+induced charge: 1
+Read parameter: r0: 0
+r0: 0
+Read parameter: r_n: 5
+r_n: 5
+Read parameter: sticker_density: 100
+sticker_density: 100
+Read parameter: active_fraction: 0.1
+Active fraction: 0.1
+Read parameter: bond_freq: 1
+bond_freq: 1
+Read parameter: bond_log_freq: 10
+bond_log_freq: 10
+Read parameter: file_name: bonds
+output_file: bonds
+Read parameter: offset: 0
+offset: 0
+Group size: 2000
+Donors: 1000
+Acceptors: 1000
+New r_n! N-list spans entire box!
+Nx[0]: 3 |L:10 |dL: 3.33333
+Nx[1]: 3 |L:10 |dL: 3.33333
+Nx[2]: 3 |L:10 |dL: 3.33333
+Total cells: 27, sticker_density: 100, Dim: 3, n_cells: 27
+extraSiteMemory 0
+Input file read!
+Grid memory allocated! 
+ns: 2000, ns_Grid: 4
+M: 1000, M_Grid: 2
+Grid state 
+Box parameters sent to device
+Device potentials initialized
+Initial box coordinates sent!
+Device memory allocated: 0.972049 MB
+Setting frequencies
+Seting up class dependencies
+ENTERING MAIN LOOP!!
+
+Bonding full @ step  2
+Particles: 799 1112
+Old Electrostatic: 0
+New Electrostatic: 0.00631339
+Change: 0.00631339
+dU = 0.006313
+
+Bonding full @ step  2
+Particles: 504 1308
+Old Electrostatic: 0
+New Electrostatic: 0.0111243
+Change: 0.0111243
+dU = 0.011124
+
+Bonding full @ step  2
+Particles: 882 1735
+Old Electrostatic: 0
+New Electrostatic: 0.0104355
+Change: 0.0104355
+dU = 0.010436
+Accepted bonding!
+dU = -0.010436
+
+Bonding full @ step  2
+Particles: 153 1346
+Old Electrostatic: 0
+New Electrostatic: 0.00227937
+Change: 0.00227937
+dU = 0.002279
+Accepted bonding!
+dU = -0.002279
+
+Bonding full @ step  2
+Particles: 414 1475
+Old Electrostatic: -0.243053
+New Electrostatic: -0.240656
+Change: 0.00239649
+dU = 0.002396
+dU = -0.002279
+
+Bonding full @ step  2
+Particles: 644 1488
+Old Electrostatic: -0.243053
+New Electrostatic: -0.240422
+Change: 0.00263107
+dU = 0.002631
+Accepted bonding!
+dU = -0.002631
+
+Bonding full @ step  2
+Particles: 101 1328
+Old Electrostatic: -0.485754
+New Electrostatic: -0.481951
+Change: 0.00380269
+dU = 0.003803
+Accepted bonding!
+dU = -0.003803
+
+Bonding full @ step  2
+Particles: 917 1021
+Old Electrostatic: -0.485754
+New Electrostatic: -0.479909
+Change: 0.00584531
+dU = 0.005845
+dU = -0.003195
+
+Bonding full @ step  2
+Particles: 535 1044
+Old Electrostatic: -0.485754
+New Electrostatic: -0.483748
+Change: 0.00200623
+dU = 0.002006
+dU = -0.003195
+
+Bonding full @ step  2
+Particles: 58 1955
+Old Electrostatic: -0.485754
+New Electrostatic: -0.469033
+Change: 0.0167206
+dU = 0.016721
+Accepted bonding!
+dU = -0.001777
+
+Bonding full @ step  2
+Particles: 20 1954
+Old Electrostatic: -0.714366
+New Electrostatic: -0.70576
+Change: 0.00860548
+dU = 0.008605
+dU = -0.016721
+
+Bonding full @ step  2
+Particles: 460 1044
+Old Electrostatic: -0.714366
+New Electrostatic: -0.709934
+Change: 0.00443155
+dU = 0.004432
+Accepted bonding!
+dU = -0.001916
+
+Bonding full @ step  2
+Particles: 404 1313
+Old Electrostatic: -0.71185
+New Electrostatic: -0.709546
+Change: 0.00230402
+dU = 0.002304
+dU = -0.004292
+
+Bonding full @ step  2
+Particles: 693 1944
+Old Electrostatic: -0.71185
+New Electrostatic: -0.70493
+Change: 0.00692004
+dU = 0.006920
+dU = -0.002247
+
+Bonding full @ step  2
+Particles: 234 1616
+Old Electrostatic: -0.71185
+New Electrostatic: -0.705668
+Change: 0.00618184
+dU = 0.006182
+dU = -0.002247
+
+Bonding full @ step  2
+Particles: 636 1370
+Old Electrostatic: -0.71185
+New Electrostatic: -0.710998
+Change: 0.000851989
+dU = 0.000852
+dU = -0.002247
+
+Bonding full @ step  2
+Particles: 77 1337
+Old Electrostatic: -0.71185
+New Electrostatic: -0.709802
+Change: 0.00204796
+dU = 0.002048
+dU = -0.002247
+
+Bonding full @ step  2
+Particles: 944 1663
+Old Electrostatic: -0.71185
+New Electrostatic: -0.704665
+Change: 0.00718522
+dU = 0.007185
+dU = -0.002247
+
+Bonding full @ step  2
+Particles: 629 1338
+Old Electrostatic: -0.71185
+New Electrostatic: -0.707888
+Change: 0.00396246
+dU = 0.003962
+Accepted bonding!
+dU = -0.004156
+
+Bonding full @ step  2
+Particles: 19 1247
+Old Electrostatic: -0.712044
+New Electrostatic: -0.704929
+Change: 0.00711524
+dU = 0.007115
+Accepted bonding!
+dU = -0.004659
+
+Bonding full @ step  2
+Particles: 962 1710
+Old Electrostatic: -0.950261
+New Electrostatic: -0.943898
+Change: 0.00636327
+dU = 0.006363
+dU = -0.007115
+
+Bonding full @ step  2
+Particles: 595 1790
+Old Electrostatic: -0.950261
+New Electrostatic: -0.941856
+Change: 0.00840509
+dU = 0.008405
+dU = -0.004659
+
+Bonding full @ step  2
+Particles: 406 1193
+Old Electrostatic: -0.950261
+New Electrostatic: -0.949238
+Change: 0.00102341
+dU = 0.001023
+dU = -0.004659
+
+Bonding full @ step  2
+Particles: 407 1351
+Old Electrostatic: -0.950261
+New Electrostatic: -0.944824
+Change: 0.00543708
+dU = 0.005437
+dU = -0.013891
+
+Bonding full @ step  2
+Particles: 178 1054
+Old Electrostatic: -0.950261
+New Electrostatic: -0.949823
+Change: 0.000437856
+dU = 0.000438
+Accepted bonding!
+dU = -0.015428
+
+Bonding full @ step  2
+Particles: 389 1300
+Old Electrostatic: -1.19516
+New Electrostatic: -1.18868
+Change: 0.00647199
+dU = 0.006472
+dU = -0.003826
+
+Bonding full @ step  2
+Particles: 713 1963
+Old Electrostatic: -1.19516
+New Electrostatic: -1.19475
+Change: 0.000402689
+dU = 0.000403
+Accepted bonding!
+dU = -0.000834
+
+Bonding full @ step  2
+Particles: 421 1501
+Old Electrostatic: -1.44009
+New Electrostatic: -1.43322
+Change: 0.00686443
+dU = 0.006864
+dU = -0.015656
+
+Bonding full @ step  2
+Particles: 315 1429
+Old Electrostatic: -1.44009
+New Electrostatic: -1.43172
+Change: 0.00836456
+dU = 0.008365
+dU = -0.000403
+
+Bonding full @ step  2
+Particles: 696 1605
+Old Electrostatic: -1.44009
+New Electrostatic: -1.43978
+Change: 0.000306606
+dU = 0.000307
+dU = -0.000468
+
+Bonding full @ step  2
+Particles: 29 1927
+Old Electrostatic: -1.44009
+New Electrostatic: -1.43632
+Change: 0.00376034
+dU = 0.003760
+Accepted bonding!
+dU = -0.005658
+
+Bonding full @ step  2
+Particles: 936 1222
+Old Electrostatic: -1.68166
+New Electrostatic: -1.68356
+Change: -0.00190139
+dU = -0.001901
+dU = -0.005658
+
+Bonding full @ step  2
+Particles: 195 1191
+Old Electrostatic: -1.44198
+New Electrostatic: -1.43436
+Change: 0.00761878
+dU = 0.007619
+dU = -0.000619
+
+Bonding full @ step  2
+Particles: 63 1685
+Old Electrostatic: -1.19727
+New Electrostatic: -1.19215
+Change: 0.00511622
+dU = 0.005116
+Accepted bonding!
+dU = -0.000357
+
+Bonding full @ step  2
+Particles: 976 1816
+Old Electrostatic: -1.43749
+New Electrostatic: -1.43257
+Change: 0.00491261
+dU = 0.004913
+Accepted bonding!
+dU = -0.002822
+
+Bonding full @ step  2
+Particles: 238 1402
+Old Electrostatic: -1.6779
+New Electrostatic: -1.67596
+Change: 0.0019474
+dU = 0.001947
+Accepted bonding!
+dU = -0.018695
+
+Bonding full @ step  2
+Particles: 377 1441
+Old Electrostatic: -1.92129
+New Electrostatic: -1.92032
+Change: 0.000974178
+dU = 0.000974
+dU = -0.000937
+
+Bonding full @ step  2
+Particles: 796 1508
+Old Electrostatic: -1.92129
+New Electrostatic: -1.91619
+Change: 0.00510263
+dU = 0.005103
+Accepted bonding!
+dU = -0.005103
+
+Bonding full @ step  2
+Particles: 830 1125
+Old Electrostatic: -2.16152
+New Electrostatic: -2.15958
+Change: 0.00193977
+dU = 0.001940
+Accepted bonding!
+dU = -0.001940
+
+Bonding full @ step  2
+Particles: 919 1570
+Old Electrostatic: -2.40491
+New Electrostatic: -2.38225
+Change: 0.022666
+dU = 0.022666
+Accepted bonding!
+dU = -0.022666
+
+Bonding full @ step  2
+Particles: 762 1242
+Old Electrostatic: -2.62758
+New Electrostatic: -2.62692
+Change: 0.000659227
+dU = 0.000659
+dU = -0.002910
+
+Bonding full @ step  2
+Particles: 987 1438
+Old Electrostatic: -2.62758
+New Electrostatic: -2.61975
+Change: 0.0078249
+dU = 0.007825
+dU = -0.001992
+
+Bonding full @ step  2
+Particles: 521 1647
+Old Electrostatic: -2.62758
+New Electrostatic: -2.63259
+Change: -0.00501108
+dU = -0.005011
+dU = -0.005979
+
+Bonding full @ step  2
+Particles: 255 1245
+Old Electrostatic: -2.62758
+New Electrostatic: -2.61227
+Change: 0.0153091
+dU = 0.015309
+Accepted bonding!
+dU = 0.000624
+
+Bonding full @ step  2
+Particles: 988 1337
+Old Electrostatic: -2.8576
+New Electrostatic: -2.8669
+Change: -0.00929713
+dU = -0.009297
+Accepted bonding!
+dU = -0.002712
+
+Bonding full @ step  2
+Particles: 597 1884
+Old Electrostatic: -3.11223
+New Electrostatic: -3.11411
+Change: -0.00188375
+dU = -0.001884
+Accepted bonding!
+dU = -0.002836
+
+Bonding full @ step  2
+Particles: 38 1480
+Old Electrostatic: -3.11695
+New Electrostatic: -3.11611
+Change: 0.000844479
+dU = 0.000844
+dU = 0.005942
+
+Bonding full @ step  2
+Particles: 181 1829
+Old Electrostatic: -3.11695
+New Electrostatic: -3.1167
+Change: 0.000254393
+dU = 0.000254
+dU = 0.004519
+
+Bonding full @ step  2
+Particles: 188 1909
+Old Electrostatic: -3.11695
+New Electrostatic: -3.10099
+Change: 0.0159564
+dU = 0.015956
+dU = 0.002234
+
+Bonding full @ step  2
+Particles: 545 1789
+Old Electrostatic: -3.11695
+New Electrostatic: -3.11584
+Change: 0.00111198
+dU = 0.001112
+Accepted bonding!
+dU = -0.004821
+
+Bonding full @ step  2
+Particles: 319 1505
+Old Electrostatic: -3.36117
+New Electrostatic: -3.33379
+Change: 0.0273845
+dU = 0.027385
+Accepted bonding!
+dU = -0.002655
+
+Bonding full @ step  2
+Particles: 337 1188
+Old Electrostatic: -3.57912
+New Electrostatic: -3.58012
+Change: -0.00100064
+dU = -0.001001
+Accepted bonding!
+dU = -0.010766
+
+Bonding full @ step  2
+Particles: 509 1983
+Old Electrostatic: -3.82545
+New Electrostatic: -3.81648
+Change: 0.00897598
+dU = 0.008976
+Accepted bonding!
+dU = -0.001019
+
+Bonding full @ step  2
+Particles: 84 1340
+Old Electrostatic: -3.81749
+New Electrostatic: -3.80946
+Change: 0.00803566
+dU = 0.008036
+dU = -0.001878
+
+Bonding full @ step  2
+Particles: 600 1842
+Old Electrostatic: -3.81749
+New Electrostatic: -3.82075
+Change: -0.00325584
+dU = -0.003256
+dU = -0.006941
+
+Bonding full @ step  2
+Particles: 401 1625
+Old Electrostatic: -3.81749
+New Electrostatic: -3.80604
+Change: 0.0114563
+dU = 0.011456
+Accepted bonding!
+dU = -0.004814

@@ -379,7 +379,7 @@ Lewis::Lewis(istringstream &iss) : ExtraForce(iss)
 
 
 
-void Dynamic::IncreaseCapacity(){
+void Lewis::IncreaseCapacity(){
 
     // cout << file_name << std::endl;
 
@@ -576,23 +576,14 @@ void Lewis::AddExtraForce()
             d_ACCEPTORS.data(),
             nncells, n_acceptors, sticker_density,
             group->d_index.data(), group->nsites, Dim);
-            // int sum = thrust::reduce(d_LOW_DENS_FLAG.begin(), d_LOW_DENS_FLAG.end(), 0, thrust::plus<int>());
-        
+
         cudaDeviceSynchronize();
         
         IncreaseCapacity();
 
-        for (int i = 0; i < int(ceil(n_donors * 0.1)); i++){
-            if (rand()%2==0){
-
-                MakeBonds();
-                BreakBonds();
-            }
-            else{
-                MakeBonds();
-                BreakBonds();
-            }
-
+        for (int i = 0; i < int(ceil(n_donors * active_fraction)); i++){
+            if (n_bonded != 0){BreakBonds();}
+            if (n_free_donors != 0){MakeBonds();}
             UpdateBonders();
         }// loop
 
@@ -1064,7 +1055,7 @@ void Lewis::MakeBonds(void){
     lewis_vect = d_lewis_vect;
     dU_lewis = d_dU_lewis;
 
-    std::cout << "\nBonding full @ step  "<< step<< std::endl;
+    std::cout << "\nBonding at step  "<< step<< std::endl;
     std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
     std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
 
@@ -1107,9 +1098,10 @@ void Lewis::MakeBonds(void){
 
         if (lewis_vect[2] == 1){
             cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-            // std::cout << "Accepted bonding!" << std::endl;
+            std::cout << "Accepted bonding, particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
         }
         else{
+            std::cout << "Rejected bonding, particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
             prepareDensityFields();
             MasterCharge->CalcCharges();
             MasterCharge->CalcEnergy();
@@ -1156,17 +1148,17 @@ void Lewis::BreakBonds(void){
 
     // Recalculate electrostatic field
 
-    // std::cout << "\nBreaking full @ step  "<< step<< std::endl;
-    // std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
-    // std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
+    std::cout << "\nBreaking at step  "<< step<< std::endl;
+    std::cout << "Particles: "<< lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+    std::cout << "Old Electrostatic: "<< U_Electro_old<< std::endl;
 
     prepareDensityFields();
     MasterCharge->CalcCharges();
     MasterCharge->CalcEnergy();
     
     float dUEl = MasterCharge->energy - U_Electro_old;
-    // std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
-    // std::cout << "Change: "<<  dUEl<< std::endl;
+    std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
+    std::cout << "Change: "<<  dUEl<< std::endl;
 
     dU_lewis[0] += dUEl;
     d_dU_lewis = dU_lewis;
@@ -1188,16 +1180,16 @@ void Lewis::BreakBonds(void){
     lewis_vect = d_lewis_vect;
 
 
-    // std::cout << "New Electrostatic: "<<  MasterCharge->energy<< std::endl;
-
     if (lewis_vect[2] == 1){
         cudaMemcpy(charges, d_charges, ns * sizeof(float), cudaMemcpyDeviceToHost);
-        // std::cout << "Accepted breaking!" << std::endl;
+        std::cout << "Accepted breaking, particles" << lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
     }
     else{
         prepareDensityFields();
         MasterCharge->CalcCharges();
         MasterCharge->CalcEnergy();
+        std::cout << "Rejected breaking, particles" << lewis_vect[0] <<" " << lewis_vect[1] << std::endl;
+
     }
 }
 
