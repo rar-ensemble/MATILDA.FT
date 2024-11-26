@@ -581,6 +581,8 @@ void Lewis::AddExtraForce()
         
         IncreaseCapacity();
 
+        UpdateNList();
+
         for (int i = 0; i < int(ceil(n_donors * active_fraction)); i++){
             if (n_bonded != 0){BreakBonds();}
             if (n_free_donors != 0){MakeBonds();}
@@ -1016,7 +1018,7 @@ __global__ void d_break_bonds_Lewis_2(
 void Lewis::MakeBonds(void){
 
 
-    UpdateNList();
+    // UpdateNList();
     prepareDensityFields();
     MasterCharge->CalcCharges();
     MasterCharge->CalcEnergy();
