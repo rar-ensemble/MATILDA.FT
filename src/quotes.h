@@ -34,10 +34,14 @@ std::vector<std::string> quoteDB = {
   "'Its chaos; be kind.' \n--Patton Oswalt",
   "'Trying hrder is not the solution if effort is not the problem.' \n--How to ADHD",
   "'If you're in heaven then you'll forgive me, dear, cause that's what they do up there.' \n--Nick Cave and the Bad Seeds",
+  "'God was a major player in Heaven.' \n--Nick Cave and the Bad Seeds",
   "'How do flat earthers travel??\n\n........\n\nOn a plane.' \n--DockTok",
   "'I was sitting in traffic the other day.\n\n..........\n\nIt's probably why I got run over.' \n--DockTok",
   "'Evil will always triumph, because good is dumb.' \n--Dark Helmet",
   "'Small talk hurts my face.' \n--a former roommate",
+  "When a metric becomes a target, it is no longer a useful metric. \n--Goodhart's law, paraphrased",
+  "'What can be asserted without evidence can also be dismissed without evidence' \n--Kitchen's razor",
+  "'Bake for 30 minutes, cool for 5, then serve to a grateful world.' \n--recipe for Alton Brown's baked mac & cheese",
   "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
