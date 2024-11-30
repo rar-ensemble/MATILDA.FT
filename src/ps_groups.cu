@@ -93,6 +93,13 @@ void PS_Group::accumulateGridForces(
 }
 
 
+void PS_Group::mapForces() {
+
+    d_mapGridForcesToPartics<<<Grid, Block>>>(mybox->d_f, d_gridForce, d_siteList, mybox->d_gridInds,
+        mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, mybox->returnDimension(), nsites);
+    check_cudaError("Group ps_group::mapForces()");
+}
+
 // Sets the field variables to zero to start each time step
 void PS_Group::zeroFields() {
 

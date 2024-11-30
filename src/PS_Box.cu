@@ -84,7 +84,7 @@ void PS_Box::doTimeStep(int step) {
 
     // Zero particle forces
     if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
-        "zero forces..." ; fflush(stdout); }
+        "zero particle forces..." ; fflush(stdout); }
     
     d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nstot);
     
@@ -168,13 +168,17 @@ void PS_Box::forces() {
     
     if ( verbose ) std::cout << "bonds done, " << std::endl;
 
-    // 2. NB forces
+    // 2a. Grid forces
     for ( int i=0 ; i<potentials.size(); i++ ) {
         std::cout << "Calling calc forces for potential " << i << "..." ; fflush(stdout);
         potentials[i]->CalcForces();
         std::cout << "done!" << std::endl;
     }
     
+    // 2b. Grid forces --> particle forces
+    for ( int i=0 ; i<psGroup.size() ; i++ ) {
+        psGroup[i].mapForces();
+    }
 
     // 3. Extras
 

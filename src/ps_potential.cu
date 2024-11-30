@@ -37,7 +37,7 @@ void PS_Potential::CalcForces() {
     d_cpxAlex = mybox->d_cpxAlex;
     d_cpxGabe = mybox->d_cpxGabe;
     d_Gabe = mybox->d_Gabe;
-    d_Alex = mybox->d_Alex;
+    // d_Alex = mybox->d_Alex;
 
     int M = mybox->M;
     int Dim = mybox->returnDimension();
@@ -69,6 +69,40 @@ void PS_Potential::CalcForces() {
         // Gabe now contains the forces that act on particles I
         mybox->psGroup[Iind].accumulateGridForces(d_Gabe);
 
+        // If the group acts on itself, simply accumulate the grid force twice
+        if ( Iind == Jind ) {
+            // Gabe now contains the forces that act on particles I
+            mybox->psGroup[Iind].accumulateGridForces(d_Gabe);
+        }    
+    }
+
+
+    // Group does not act on itself // 
+    if ( Iind != Jind ) {
+        
+        ///////////////////////////////////////////////
+        // Forces acting on type J arise from type I //
+        ///////////////////////////////////////////////
+        // Pointer to density field for J
+        d_rhoI = mybox->psGroup[Iind].d_rho;
+
+        // real(Alex) = rhoI, imag(Alex) = 0.0
+        d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoI, M);
+
+        // Gabe = FT(Alex); Alex now available
+        mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
+
+        for ( int j=0 ; j<Dim ; j++ ) {
+            // Alex = fk[j] * FT(rhoJ), j \in [x,y,z]
+            d_multiplyCpxDirByCpx<<<Grid, Block>>>(d_cpxAlex, d_fk, d_cpxGabe, j, Dim, M);
+
+            // Gabe = IFT(Alex)
+            mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, -1);
+            d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxGabe, M);
+
+            // Gabe now contains the forces that act on particles J
+            mybox->psGroup[Jind].accumulateGridForces(d_Gabe);
+        }
     }
 
 }

@@ -15,6 +15,8 @@
 __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_fillDensityGrid(float*, const int*, const int*, const float*,
 const int, const int);
+__global__ void d_mapGridForcesToPartics(float*, const float*, const int*, const int*, const float*,
+const float, const int, const int, const int);
 
 class PS_Box;
 
@@ -49,6 +51,7 @@ class PS_Group {
         int hasForce();                             // 0/1 if group does not/does have forces
         void enableForce();                         // Turns on forces, allocates memory
         void accumulateGridForces(const float*);    // d_gridForce += float*. device floats
+        void mapForces();                           // map d_gridForce to particles
 
 };
 
