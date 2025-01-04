@@ -39,5 +39,6 @@ __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_floatPlusEqFloat(float*, const float*, const int);
 __global__ void d_floatVecPlusEqFloatComp(float*, const float*, const int, const int, const int);
 double ran2(void);
+std::string giveQuote(void);
 
 #endif

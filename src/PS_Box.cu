@@ -96,6 +96,7 @@ void PS_Box::doTimeStep(int step) {
     ///////////////
 
     // Write log data
+    int startTime = time(0);
     if ( step % logFreq == 0 ) {
         if ( verbose ) { std::cout << "log..." ; fflush(stdout); }
         writeData(step);
@@ -119,6 +120,7 @@ void PS_Box::doTimeStep(int step) {
     if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
         writeFields();
     }
+    ioTimer += time(0) - startTime;
 
 } // doTimeStep
 
@@ -139,6 +141,8 @@ void PS_Box::NVT(int maxSteps) {
     writeFields();
     writeGSDtraj(); 
 
+    writeTime();
+    giveQuote();
 }
 
 
@@ -329,6 +333,9 @@ void PS_Box::writeTime() {
     
     dt = ftTimer;
     std::cout << "Total FT time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
+
+    dt = ioTimer;
+    std::cout << "Total I/O time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
 
 }
 

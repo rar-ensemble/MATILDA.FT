@@ -13,6 +13,7 @@ Box::Box() {}
 Box::~Box() {}
 Box::Box(std::istringstream& iss) {
     input_command = iss.str();
+    ftTimer = ioTimer = 0;
 }
 
 

@@ -36,6 +36,7 @@ class Box {
         int totSteps;                       // Total elapsed iterations
         long int simTime;                   // Total simulation time
         long int ftTimer;                   // Time spent in FFT routine
+        long int ioTimer;                   // Time in I/O routines
         int blockSize;                      // GPU block size
 
         cufftHandle fftplan, fftplanSingle; // FFT Plans
