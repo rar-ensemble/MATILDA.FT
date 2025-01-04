@@ -2,9 +2,12 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 #include "include_libs.h"
+std::string giveQuote(void);
 
 void die(const char* msg) {
 	std::cout << msg << std::endl;
+	std::cout << "\n\nYour job finished prematurely, maybe these wise words will cheer you up:\n" << \
+			giveQuote() << std::endl;
 	exit(1);
 }
 

@@ -8,6 +8,7 @@
 #include <vector>
 #include <fstream>
 #include "Box.h"
+#include "quotes.h"
 
 void die(const char*);
 #ifndef MAIN
@@ -90,4 +91,10 @@ int main(int argc, char** argv)
 
 
 	return 0;
+}
+
+std::string giveQuote() {
+	int id = rand() % quoteDB.size();
+
+	return quoteDB[id];
 }

@@ -32,7 +32,7 @@ std::vector<std::string> quoteDB = {
   "'Well first of all, I'd have to be a good person to remain one...' \n--Drew Morgan",
   "'If you stands for nothing, you'll fall for anythings.' \n--Squirrely Dan",
   "'Its chaos; be kind.' \n--Patton Oswalt",
-  "'Trying hrder is not the solution if effort is not the problem.' \n--How to ADHD",
+  "'Trying harder is not the solution if effort is not the problem.' \n--How to ADHD",
   "'If you're in heaven then you'll forgive me, dear, cause that's what they do up there.' \n--Nick Cave and the Bad Seeds",
   "'God was a major player in Heaven.' \n--Nick Cave and the Bad Seeds",
   "'How do flat earthers travel??\n\n........\n\nOn a plane.' \n--DockTok",
@@ -41,7 +41,13 @@ std::vector<std::string> quoteDB = {
   "'Small talk hurts my face.' \n--a former roommate",
   "When a metric becomes a target, it is no longer a useful metric. \n--Goodhart's law, paraphrased",
   "'What can be asserted without evidence can also be dismissed without evidence' \n--Kitchen's razor",
+  "'Fortunately for him, the devil is also a Southerner' \n--Drive-By Truckers",
+  "'If I ever find Jesus, Imma kickin his ass' \n--Hayes Carll",
   "'Bake for 30 minutes, cool for 5, then serve to a grateful world.' \n--recipe for Alton Brown's baked mac & cheese",
+  "'Crazy. Toys in the attic, I am crazy.' \n--Pink Floyd",
+  "'You're spare parts, aren't ya bud?' \n--Wayne of Letterkenny",
+  "'I believe in peace, bitch' \n--Tori Amos",
+  "'There are 5000 people in Letterkenney.\n\nThese are their problems. \n",
   "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
