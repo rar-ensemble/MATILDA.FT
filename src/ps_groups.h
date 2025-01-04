@@ -50,7 +50,7 @@ class PS_Group {
         int isGroup(std::string);                   // Checks whether group name matches string
         int hasForce();                             // 0/1 if group does not/does have forces
         void enableForce();                         // Turns on forces, allocates memory
-        void accumulateGridForces(const float*);    // d_gridForce += float*. device floats
+        void accumulateGridForceComp(const float*, const int);    // d_gridForce += float*. device floats
         void mapForces();                           // map d_gridForce to particles
 
 };

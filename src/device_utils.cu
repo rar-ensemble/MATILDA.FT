@@ -51,6 +51,22 @@ __global__ void d_floatPlusEqFloat(
 }
 
 
+// computes out += in for floats
+__global__ void d_floatVecPlusEqFloatComp(
+    float* out,         // [Dim*N] array to store vector forces
+    const float* in,    // [N] array containing component of force
+    const int dir,      // direction in out to be accumulated
+    const int Dim,      // system dimensionality
+    const int N         // size of the grid
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id*Dim+dir] += in[id];
+}
+
+
 // Computes out = Real(in)
 __global__ void d_cpxToFloat(
     float* out,             // [N] array to be filled
@@ -225,8 +241,14 @@ __global__ void d_mapGridForcesToPartics(
             floc += gridF[gind*Dim + j] * W3 * gvol;
         }// i=0:gridPerPartic
 
+
+        // ditched atomic add bc each thread is a unique particle
+        // assuming no duplicates in the group
+        f[pind*Dim+j] += floc;
+
+
         // Atomic add the force to the particles
-        atomicAdd(&f[pind*Dim+j], floc);
+        // atomicAdd(&f[pind*Dim+j], floc);
     }// j=0:Dim
 
 

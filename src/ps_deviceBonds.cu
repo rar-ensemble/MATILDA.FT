@@ -134,7 +134,7 @@ __global__ void d_bondStressEnergy(
 			mdr2 += dr[j] * dr[j];
 		}
 
-		if (mdr2 > 1.0E-5f) {
+		if (mdr2 > 1.0E-4f) {
 			mdr = sqrtf(mdr2);
 
 			if (bs == 0){

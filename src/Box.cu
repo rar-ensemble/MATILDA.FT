@@ -208,7 +208,10 @@ void Box::get_r(int id, double *r) {
 }
 
 // For given id \in [0,M), defines position vector for that grid point
-void Box::get_rf(int id, float *r) {
+void Box::get_rf(
+    int id,     // grid index \in [0,M)
+    float *r    // position array to be filled
+    ) {
     
     int i, *n;
     n = new int[Dim];

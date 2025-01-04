@@ -57,42 +57,12 @@ void NBGauss::initializePotential() {
     // Same thing for force arrays
     cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
     check_cudaError("sending force array to device in Gauss potential");
-    
+
+
     // Copy potential, force functions back to host
     // only really used for debugging
+    // ur = d_ur
     cudaMemcpy(ur, d_ur, M*sizeof(float), cudaMemcpyDeviceToHost);
 
 
-
-
-    // for ( int j=0 ; j<Dim ; j++ ) {
-    //     d_extractCpxDirToCpx<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_cpxGabe, d_fk, j, Dim, M);
-    //     check_cudaError("extracting component");
-
-    //     mybox->cufftWrapperSingle(mybox->d_cpxGabe, mybox->d_cpxAlex, -1);
-
-    //     d_cpxToFloatVecComponent<<<mybox->M_Grid, mybox->M_Block>>>(d_fA, mybox->d_cpxAlex, j, Dim, M);
-    //     check_cudaError("placing component");
-    // }
-
-
-
-    // cudaMemcpy(fA, d_fA, M*Dim*sizeof(float), cudaMemcpyDeviceToHost);
-
-    // // debug i/o and quit
-    // mybox->writeFieldFloat("gaussianPotential.dat", ur);
-    // float *tp;
-    // tp = (float*) calloc(M, sizeof(float));
-    // for ( int j=0 ; j<Dim ; j++ ) {
-    //     for ( int i=0 ; i<M; i++ ) {
-    //         tp[i] = fA[i*Dim+j];
-    //     }
-    //     std::string nm = "gaussianForce" + std::to_string(j) + ".dat";
-
-    //     mybox->writeFieldFloat(nm.c_str(), tp);
-    // }
-
-    // free(tp);
-    // die("field written?");
-
-}
+}//initializePotential()

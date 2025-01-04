@@ -33,10 +33,11 @@ void PS_Potential::CalcForces() {
 
     // Pointers to reused box vars
     cuComplex *d_cpxAlex, *d_cpxGabe;
-    float *d_Gabe, *d_Alex;
+    float *d_Gabe;
     d_cpxAlex = mybox->d_cpxAlex;
     d_cpxGabe = mybox->d_cpxGabe;
     d_Gabe = mybox->d_Gabe;
+    // float *d_Alex;
     // d_Alex = mybox->d_Alex;
 
     int M = mybox->M;
@@ -52,30 +53,35 @@ void PS_Potential::CalcForces() {
     // Pointer to density field for J
     d_rhoJ = mybox->psGroup[Jind].d_rho;
 
-    // real(Alex) = rhoI, imag(Alex) = 0.0
+    // real(Alex) = rhoJ, imag(Alex) = 0.0
     d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoJ, M);
 
-    // Gabe = FT(Alex); Alex now available
+    // Gabe = FT(Alex=rhoJ); Alex now available
     mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
+
+    check_cudaError("Potential first fft");
+    
 
     for ( int j=0 ; j<Dim ; j++ ) {
         // Alex = fk[j] * FT(rhoJ), j \in [x,y,z]
         d_multiplyCpxDirByCpx<<<Grid, Block>>>(d_cpxAlex, d_fk, d_cpxGabe, j, Dim, M);
 
+
         // Gabe = IFT(Alex)
-        mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, -1);
-        d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxGabe, M);
+        mybox->cufftWrapperSingle(d_cpxAlex, d_cpxAlex, -1);
+        d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxAlex, M);
+
 
         // Gabe now contains the forces that act on particles I
-        mybox->psGroup[Iind].accumulateGridForces(d_Gabe);
+        mybox->psGroup[Iind].accumulateGridForceComp(d_Gabe, j);
 
         // If the group acts on itself, simply accumulate the grid force twice
         if ( Iind == Jind ) {
             // Gabe now contains the forces that act on particles I
-            mybox->psGroup[Iind].accumulateGridForces(d_Gabe);
+            mybox->psGroup[Iind].accumulateGridForceComp(d_Gabe, j);
         }    
     }
-
+    check_cudaError("Potential first force accumulation");
 
     // Group does not act on itself // 
     if ( Iind != Jind ) {
@@ -101,7 +107,7 @@ void PS_Potential::CalcForces() {
             d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxGabe, M);
 
             // Gabe now contains the forces that act on particles J
-            mybox->psGroup[Jind].accumulateGridForces(d_Gabe);
+            mybox->psGroup[Jind].accumulateGridForceComp(d_Gabe, j);
         }
     }
 

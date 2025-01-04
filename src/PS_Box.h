@@ -175,6 +175,7 @@ class PS_Box : public Box {
         // Writes thrust::host_vector array
         void writeFieldTFloat(const char*, thrust::host_vector<float>);        
         void writeFieldFloat(const char*, const float*);
+        void writeKFieldFloat(const char*, const std::complex<float>*);
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
 

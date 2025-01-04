@@ -48,22 +48,6 @@ void PS_Box::doTimeStep(int step) {
         d_dxf, nstot, pmeorder, M, Dim );
     check_cudaError("Weights calculated in PS_Box");
 
-    // // DEBUGGING STUFF
-    // int *gridInds;
-    // float *gridW;
-    // gridInds = (int*) malloc(nstot*gridPerPartic * sizeof(int));
-    // gridW = (float*) malloc(nstot*gridPerPartic * sizeof(float));
-
-    // cudaMemcpy(gridInds, d_gridInds, nstot*gridPerPartic*sizeof(int), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(gridW, d_gridW, nstot*gridPerPartic*sizeof(float), cudaMemcpyDeviceToHost);
-    // for ( int i=0 ; i<5 ; i++ ) {
-    //     std::cout << "i: " << i << " " ;
-    //     for ( int j=0 ; j<gridPerPartic; j++ ) {
-    //         std::cout << gridInds[i*gridPerPartic+j] << " " << gridW[i*gridPerPartic+j] << " " ;
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // die("fin");
 
 
 
@@ -142,6 +126,9 @@ void PS_Box::doTimeStep(int step) {
 void PS_Box::NVT(int maxSteps) {
     std::cout << "RUNNING NVT?!?" << std::endl;
     
+    std::cout << "Initial values:" << std::endl;
+    writeData(-1);
+
     for ( int i=0 ; i<maxSteps; i++ ) {
         doTimeStep(i);
 
@@ -168,20 +155,26 @@ void PS_Box::forces() {
     
     if ( verbose ) std::cout << "bonds done, " << std::endl;
 
+
+
+
     // 2a. Grid forces
     for ( int i=0 ; i<potentials.size(); i++ ) {
-        std::cout << "Calling calc forces for potential " << i << "..." ; fflush(stdout);
         potentials[i]->CalcForces();
-        std::cout << "done!" << std::endl;
     }
     
+
     // 2b. Grid forces --> particle forces
     for ( int i=0 ; i<psGroup.size() ; i++ ) {
         psGroup[i].mapForces();
     }
 
-    // 3. Extras
 
+
+
+
+    // 3. Extras
+    // TBD
 }
 
 
@@ -239,7 +232,6 @@ void PS_Box::writeFields() {
         psGroup[i].writeDensityField();
         
         check_cudaError("writeFields in ps_box");
-        // std::cout << "Integral of field: " << sumDeviceArray(psGroup[i].d_rho, blockSize, M) * gvol << std::endl;
     }    
     if ( verbose ) std::cout << "  Field written\n" << std::endl;
 }
@@ -300,6 +292,35 @@ void PS_Box::writeFieldFloat(const char* name, const float* dat) {
     delete r;
 }
 
+// write field of array vectors
+void PS_Box::writeKFieldFloat(const char* name, const std::complex<float>* dat) {
+    int i, j, * nn;
+    nn = new int[Dim];
+    FILE* otp;
+    float* kv = new float [Dim];
+    float k2;
+
+    otp = fopen(name, "w");
+    if ( otp == NULL ) { die("Failed to open output file in writeFieldFloat!"); }
+
+    for (i = 0; i < M; i++) {
+        k2 = get_kD(i, kv);
+        unstack2(i, nn);
+
+        for (j = 0; j < Dim; j++)
+            fprintf(otp, "%f ", kv[j]);
+
+        fprintf(otp, "%1.8e %1.8e %1.8e %1.8e\n", abs(dat[i]), sqrt(k2), real(dat[i]), imag(dat[i]));
+
+        if (Dim == 2 && nn[0] == Nx[0] - 1)
+            fprintf(otp, "\n");
+    }
+
+    fclose(otp);
+
+    delete nn;
+    delete kv;
+}
 
 void PS_Box::writeTime() {
 

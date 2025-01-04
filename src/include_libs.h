@@ -37,5 +37,7 @@ __global__ void d_multiplyCpxDirByCpx(cuComplex*, const cuComplex*, const cuComp
 __global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, const int, const int);
 __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_floatPlusEqFloat(float*, const float*, const int);
+__global__ void d_floatVecPlusEqFloatComp(float*, const float*, const int, const int, const int);
+double ran2(void);
 
 #endif

@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 }
 
 std::string giveQuote() {
-	int id = rand() % quoteDB.size();
+	int id = int( ran2() * quoteDB.size() );
 
 	return quoteDB[id];
 }

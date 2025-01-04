@@ -404,6 +404,9 @@ void PS_Box::finishInitialization() {
     for ( int i=0 ; i<potentials.size() ; i++ ) {
         potentials[i]->initializePotential();
     }
+    
+    // die("potentials written?");
+
 
     GSDinit();
     writeGSDtraj();

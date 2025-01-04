@@ -6,7 +6,7 @@ std::string giveQuote(void);
 
 void die(const char* msg) {
 	std::cout << msg << std::endl;
-	std::cout << "\n\nYour job finished prematurely, maybe these wise words will cheer you up:\n" << \
+	std::cout << "\n\nSorry, your job finished prematurely. Maybe these wise words will cheer you up:\n" << \
 			giveQuote() << std::endl;
 	exit(1);
 }

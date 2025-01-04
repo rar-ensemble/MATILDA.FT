@@ -54,12 +54,9 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
             }
         }
 
-        //std::cout << "Group based on type " << typ+1 << " has " << nsites << " members, is named " << name << "." << std::endl;
-
     }// type-based group
 
 
-    // std::cout << "Group constructor for typ = " << typ << ", command: " << inputCommand << std::endl;
 
     // Copy site list to device
     cudaMemcpy(d_siteList, siteList, nsites*sizeof(int), cudaMemcpyHostToDevice);
@@ -81,23 +78,33 @@ void PS_Group::makeDensityField() {
 
 // Takes a grid-based force, generally passed from a potential,
 // and adds it to this group's grid force
-void PS_Group::accumulateGridForces(
-    const float* d_fg   // [Dim*M] grid-based force
+void PS_Group::accumulateGridForceComp(
+    const float* d_fx,  // [M] grid-based force comopnent
+    const int dir       // Component of the vector to accumulate into
 ) {
 
-    int Grid = mybox->DMGrid;
-    int Block = mybox->M_Block;
-    int ndof = mybox->returnDimension() * mybox->M;
+    int MGrid = mybox->M_Grid;
+    int MBlock = mybox->M_Block;
+    int dim = mybox->returnDimension();
+    int ndof = dim * mybox->M;
 
-    d_floatPlusEqFloat<<<Grid, Block>>>(d_gridForce, d_fg, ndof);
-}
+    d_floatVecPlusEqFloatComp<<<MGrid, MBlock>>>(d_gridForce, d_fx, dir, dim, ndof);  
+
+}// accumulateGridForces()
 
 
+// Maps the forces on this group from the grid to the particles
 void PS_Group::mapForces() {
 
-    d_mapGridForcesToPartics<<<Grid, Block>>>(mybox->d_f, d_gridForce, d_siteList, mybox->d_gridInds,
-        mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, mybox->returnDimension(), nsites);
-    check_cudaError("Group ps_group::mapForces()");
+    if ( forceFlag ) {
+        d_mapGridForcesToPartics<<<Grid, Block>>>(mybox->d_f, d_gridForce, d_siteList, mybox->d_gridInds,
+            mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, mybox->returnDimension(), nsites);
+        check_cudaError("Group ps_group::mapForces()");
+
+    }
+    else {
+        if ( mybox->verbose ) std::cout << "NO FORCE HERE, group name = " << name << std::endl;
+    }
 }
 
 // Sets the field variables to zero to start each time step
@@ -119,7 +126,6 @@ void PS_Group::allocateGroupMemory(int ns) {
     siteList = (int*) calloc(ns, sizeof(int));
     cudaMalloc(&d_siteList, ns * sizeof(int));
 
-    // std::cout << "  in group allocating density fields for M grid points: " << mybox->M << std::endl;
     
     // Allocate memory for fields
     rho = (float*) malloc(mybox->M * sizeof(float));
@@ -147,17 +153,12 @@ void PS_Group::enableForce() {
 // Copies density field to host, calls
 // subroutine to write thrust float vector
 void PS_Group::writeDensityField() {
-    std::string fileName = std::string("density-") + name + std::string(".dat");
-    
-    // std::cout << "  file name: " << fileName << std::endl;
-    // std::cout << "  DEBUGGING: M=" << mybox->M << std::endl;
 
+    std::string fileName = std::string("density-") + name + std::string(".dat");
 
     // rho = d_rho;
     cudaMemcpy(rho, d_rho, mybox->M*sizeof(float), cudaMemcpyDeviceToHost);
     check_cudaError("PS_Group::writeDensityFields memory copy");
-
-    // std::cout << "  attempting to write field " << name << std::endl;
 
     mybox->writeFieldFloat(fileName.c_str(), rho);
 
