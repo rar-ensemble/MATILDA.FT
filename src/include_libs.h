@@ -29,11 +29,14 @@
 #include "global_templated_functions.h"
 
 void check_cudaError(const char*);
+
 __global__ void d_floatToCpx(cuComplex*, const float*, const int);
 __global__ void d_cpxToFloat(float*, const cuComplex*, const int);
 __global__ void d_extractCpxDirToCpx(cuComplex*, const cuComplex*, const int, const int, const int);
 __global__ void d_multiplyCpxDirByCpx(cuComplex*, const cuComplex*, const cuComplex*, 
         const int, const int, const int);
+__global__ void d_multiplyCpxByCpx(cuComplex*, const cuComplex*, const cuComplex*, const int);
+__global__ void d_multiplyFloatByFloat(float*, const float*, const float*, const int);
 __global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, const int, const int);
 __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_floatPlusEqFloat(float*, const float*, const int);

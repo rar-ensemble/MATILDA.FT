@@ -47,6 +47,7 @@ std::vector<std::string> quoteDB = {
   "'Crazy. Toys in the attic, I am crazy.' \n--Pink Floyd",
   "'You're spare parts, aren't ya bud?' \n--Wayne of Letterkenny",
   "'I believe in peace, bitch' \n--Tori Amos",
+  "'I know she worked very hard on it; it had some very nice pictures in it.' \n--Angela Collier",
   "'There are 5000 people in Letterkenney.\n\nThese are their problems. \n",
   "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 

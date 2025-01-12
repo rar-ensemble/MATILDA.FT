@@ -54,6 +54,7 @@ class PS_Box : public Box {
         
         curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
         
+        float Upe;          // Total potential energy
         float Ubond, Uangle;// Stores bond and angle energy
 
         // Data for gsd, lammpstrj file storage

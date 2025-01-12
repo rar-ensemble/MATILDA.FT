@@ -199,6 +199,15 @@ void PS_Box::computeThermoProps() {
     // Prefactor 0.5 corrects for double-counting
     Ubond = 0.5 * sumDeviceArray(d_e, blockSize, nstot);
 
+
+    Upe = 0.0;
+    // 2a. Grid forces
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        Upe += potentials[i]->CalcEnergy();
+    }
+
+    Upe += Ubond;
+
     cudaFree(d_e);
     cudaFree(d_bondVir);
 
@@ -215,9 +224,16 @@ void PS_Box::writeData(int step) {
     OTP << step ;
     std::cout << "step: " << step ;
 
+    std::cout << " Upe: " << Upe ;
+
     if ( Ubond > 0.0 ) {
         OTP << " " << Ubond ;
         std::cout << " Ubond: " << Ubond;
+    }
+
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        OTP << " " << potentials[i]->energy;
+        std::cout << " pot[" << i << "]: " << potentials[i]->energy;
     }
 
     OTP << std::endl;

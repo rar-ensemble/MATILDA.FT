@@ -113,7 +113,38 @@ __global__ void d_multiplyCpxDirByCpx(
     out[id].y = fk[id*Dim + dir].y * rh[id].x + fk[id*Dim + dir].x * rh[id].y;
 }
 
+// assumes fk is a vector function
+// performs complex multiplication with rh
+__global__ void d_multiplyCpxByCpx(
+    cuComplex* out,         // [N] array to be filled
+    const cuComplex *uk,    // [N] extracting directional component from f
+    const cuComplex *rh,    // [N] array be multiplied by dir comp of fk
+    const int N             // Array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
 
+    out[id].x = uk[id].x * rh[id].x - uk[id].y * rh[id].y;
+    out[id].y = uk[id].y * rh[id].x + uk[id].x * rh[id].y;
+}
+
+
+// assumes fk is a vector function
+// performs complex multiplication 
+__global__ void d_multiplyFloatByFloat(
+    float *out,         // [N] array to be filled
+    const float *uk,    // [N] extracting directional component from f
+    const float *rh,    // [N] array be multiplied by dir comp of fk
+    const int N             // Array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id] = uk[id] * rh[id];
+    
+}
 
 // assumes f is a vector function
 // extracts the 'dir' component of the vector into 

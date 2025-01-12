@@ -103,8 +103,8 @@ void PS_Potential::CalcForces() {
             d_multiplyCpxDirByCpx<<<Grid, Block>>>(d_cpxAlex, d_fk, d_cpxGabe, j, Dim, M);
 
             // Gabe = IFT(Alex)
-            mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, -1);
-            d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxGabe, M);
+            mybox->cufftWrapperSingle(d_cpxAlex, d_cpxAlex, -1);
+            d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxAlex, M);
 
             // Gabe now contains the forces that act on particles J
             mybox->psGroup[Jind].accumulateGridForceComp(d_Gabe, j);
@@ -122,6 +122,45 @@ void PS_Potential::CalcForces() {
 float PS_Potential::CalcEnergy() {
     energy = 0.0f;
 
+    float *d_rhoI, *d_rhoJ;
+
+    // Pointers to reused box vars
+    cuComplex *d_cpxAlex, *d_cpxGabe;
+    float *d_Gabe, *d_Alex;
+    d_cpxAlex = mybox->d_cpxAlex;
+    d_cpxGabe = mybox->d_cpxGabe;
+    d_Gabe = mybox->d_Gabe;
+    d_Alex = mybox->d_Alex;
+
+    int M = mybox->M;
+    int Dim = mybox->returnDimension();
+    int Grid = mybox->M_Grid;
+    int Block = mybox->M_Block;
+
+
+    // Pointer to density field for J
+    d_rhoJ = mybox->psGroup[Jind].d_rho;
+
+    // real(Alex) = rhoJ, imag(Alex) = 0.0
+    d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoJ, M);
+
+    // Gabe = FT(Alex=rhoJ); Alex now available
+    mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
+
+    // Alex = uk[j] * FT(rhoJ), j \in [x,y,z]
+    d_multiplyCpxByCpx<<<Grid, Block>>>(d_cpxAlex, d_uk, d_cpxGabe, M);
+
+
+    // Gabe = IFT(Alex) = [u \ast \rho_J](r)
+    mybox->cufftWrapperSingle(d_cpxAlex, d_cpxAlex, -1);
+    d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxAlex, M);
+
+    // Alex = rhoI * Gabe
+    d_rhoI = mybox->psGroup[Iind].d_rho;
+    d_multiplyFloatByFloat<<<Grid, Block>>>(d_Alex, d_rhoI, d_Gabe, M);
+
+    energy = mybox->gvol * mybox->sumDeviceArray(d_Alex, 
+                                mybox->M_Block, mybox->M);
 
     return this->energy;
     
