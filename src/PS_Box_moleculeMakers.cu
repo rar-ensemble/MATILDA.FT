@@ -66,7 +66,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             die("worm-like chains, drude oscillators, and charges not implemented!");
         }
         else if ( s1 == "bondType" || s1 == "bondtype" ) {
-            die("bond types not set up in ps_box make linear");
+            for ( int j=0 ; j<numBlocks ; j++ ) {
+                int t1; 
+                iss >> t1;
+                blockBondType[j] = t1-1;
+            }
             // make sure to decide on how to handle junction cases, document it
         }
         else if ( s1 == "xrange" ) {
