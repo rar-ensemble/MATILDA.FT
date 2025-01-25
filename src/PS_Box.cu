@@ -427,7 +427,7 @@ void PS_Box::writeDataConfig(std::string filename) {
     max = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
         for ( int j=0 ; j<nAngles[i]; j++ ) 
-            die("angles not set up in writeDataCofnig");
+            if ( angleType[i*MAXANGLES+j] > max ) max = angleType[i*MAXBONDS+j];
     }
     out << max+1 << " angle types" << std::endl;
 
@@ -489,6 +489,20 @@ void PS_Box::writeDataConfig(std::string filename) {
         }
     }
 
+    out << "\nAngles\n" << std::endl;
+    int angleCounter=0;
+    for ( int i=0 ; i<nstot; i++ ) {
+
+        for ( int j=0 ; j<nAngles[i]; j++ ) {
+            // Only write bonds when i is first particle involved
+            if ( i == angleGroup[3*(i*MAXANGLES+j)] ) {
+                out << angleCounter+1 << " " << angleType[i*MAXANGLES+j] << " " << \
+                    angleGroup[3*(i*MAXANGLES+j) + 0]+1 << " " << \
+                    angleGroup[3*(i*MAXANGLES+j) + 1]+1 << " " << \
+                    angleGroup[3*(i*MAXANGLES+j) + 2]+1 << std::endl;
+            }
+        }
+    }
 
     out.close();
 }// end of writeDataConfig

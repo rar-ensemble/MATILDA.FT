@@ -71,7 +71,33 @@ void PS_Box::readInput(std::ifstream& inp) {
                 break;
             }
 
-            if ( firstWord == "blocksize" || firstWord == "blockSize" ) { iss >> blockSize ; }
+            if ( firstWord == "angle" ) {
+                int atype;
+                iss >> atype;
+                if ( atype > angleK.size() ) {
+                    angleK.resize(atype);
+                    angleTheq.resize(atype);
+                    angleStyle.resize(atype);
+                }
+
+                std::string style;
+                iss >> style;
+
+                iss >> angleK[atype-1];
+                if ( style == "wlc" ) {
+                    angleStyle[atype-1] = 0;
+                }
+                else if ( style == "harmonic" ) {
+                    angleStyle[atype-1] = 1;
+                    iss >> angleTheq[atype-1];
+                }
+                else die("Angle style not supported!");
+
+                nAngleTypes = angleK.size();
+
+            }
+
+            else if ( firstWord == "blocksize" || firstWord == "blockSize" ) { iss >> blockSize ; }
 
 
             else if ( firstWord == "bond" ) {
@@ -258,7 +284,7 @@ void PS_Box::initializeSim() {
     
 
     // Initialize the output stream
-    OTP.open("ps_data.dat");
+    OTP.open(datFileName);
     OTP.close();
 
     totSteps = 0;
@@ -338,9 +364,18 @@ void PS_Box::finishInitialization() {
         }
 
         for ( int j=0 ; j<nAngles[i] ; j++ ) {
-            die("angle counter not set up in PS_Box.cu::readInput");
+            // only count angle if i == middle particle 
+            std::cout << i << " nagns: " << nAngles[i] ;
+            fflush(stdout);
+            int aind = 3*(i*MAXANGLES+j);
+            if ( angleGroup[aind + 1] == i ) {
+                std::cout << " " << aind << " " << angleGroup[aind+0] << " " << angleGroup[aind+1] << " " << angleGroup[aind+2] ;
+                nAnglesTot++;
+            }
+            std::cout << std::endl;
         }
     }
+    std::cout << "counted " << nAnglesTot << " angles in total" << std::endl;
 
     writeDataConfig("init.input.data");
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
@@ -438,7 +473,7 @@ void PS_Box::createDefaultGroups() {
 // This can also be used for the intial allocation 
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
-    std::cout << "(Re)allocating for " << newns << " sites on the host..." ;
+    std::cout << "  (Re)allocating for " << newns << " sites on the host..." ;
     x.resize(newns*Dim);
    
    
@@ -461,8 +496,8 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
 
     nAngles.resize(newns);
-    angleGroup.resize(newns*MAXANGLES*3);
     angleType.resize(newns*MAXANGLES);
+    angleGroup.resize(newns*MAXANGLES*3);
 
     std::cout << "done!" << std::endl;
 }
@@ -473,7 +508,8 @@ void PS_Box::allocHostParticleArrays(int newns) {
 // NOTE: Data stored in these arrays will be lost
 // ONLY AFFECTS DEVICE ARRAYS
 void PS_Box::allocDeviceArrays(const int nsAlloc) {
-    std::cout << "Reallocating for " << nsAlloc << " sites on the device..." ;
+    std::cout << "Allocating for " << nsAlloc << " sites on the device..." ;
+    fflush(stdout);
 
     if ( d_states != NULL ) {
         cudaFree(d_states);
@@ -488,25 +524,29 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     cudaMalloc(&d_v, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_f, nsAlloc*Dim*sizeof(float));
 
-    cudaMalloc(&d_nBonds, nsAlloc*sizeof(int));
-    cudaMalloc(&d_bondedTo, nsAlloc*MAXBONDS*sizeof(int));
-    cudaMalloc(&d_bondType, nsAlloc*MAXBONDS*sizeof(int));
-
     cudaMalloc(&d_intSpecies, nsAlloc * sizeof(int));
     cudaMalloc(&d_mID, nsAlloc * sizeof(int));
 
-    std::cout << "Allocating grid info arrays with " << nsAlloc*gridPerPartic << " entries" << std::endl;
+
     cudaMalloc(&d_gridW,    nsAlloc*gridPerPartic * sizeof(float));
     cudaMalloc(&d_gridInds, nsAlloc*gridPerPartic * sizeof(int));
 
+    cudaMalloc(&d_nBonds, nsAlloc*sizeof(int));
+    cudaMalloc(&d_bondedTo, nsAlloc*MAXBONDS*sizeof(int));
+    cudaMalloc(&d_bondType, nsAlloc*MAXBONDS*sizeof(int));
 
     cudaMalloc(&d_bondStyle,nBondTypes * sizeof(int));
     cudaMalloc(&d_bondReq,  nBondTypes * sizeof(int));
     cudaMalloc(&d_bondK,    nBondTypes * sizeof(int));
 
-    d_nAngles.resize(nsAlloc);
-    d_angleGroup.resize(nsAlloc*MAXANGLES*3);
-    d_angleType.resize(nsAlloc*MAXANGLES);
+    cudaMalloc(&d_nAngles,    nsAlloc*sizeof(int));
+    cudaMalloc(&d_angleGroup, nsAlloc*MAXANGLES*3*sizeof(int));
+    cudaMalloc(&d_angleType,  nsAlloc*MAXANGLES*sizeof(int));
+
+    cudaMalloc(&d_angleTheq,  nAngleTypes*sizeof(int));
+    cudaMalloc(&d_angleK,     nAngleTypes*sizeof(int));
+    cudaMalloc(&d_angleStyle, nAngleTypes*sizeof(int));
+    
 
     // Grid-based arrays
     cudaMalloc(&d_Gabe, M * sizeof(float));
@@ -562,6 +602,21 @@ void PS_Box::sendAllHostToDevice(void) {
     sendThrustVectorToDeviceArray(bondStyle, d_bondStyle, nBondTypes);
 
     check_cudaError("template sent bond info to device");
+
+
+    // cudaMemcpy(d_nAngles, nAngles, nstot * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
+
+    sendThrustVectorToDeviceArray(nAngles, d_nAngles,       nstot);
+    sendThrustVectorToDeviceArray(angleGroup, d_angleGroup, nstot*MAXANGLES*3 );
+    sendThrustVectorToDeviceArray(angleType, d_angleType,   nstot*MAXANGLES);
+
+    sendThrustVectorToDeviceArray(angleTheq, d_angleTheq,   nAngleTypes);
+    sendThrustVectorToDeviceArray(angleK, d_angleK,         nAngleTypes);
+    sendThrustVectorToDeviceArray(angleStyle, d_angleStyle, nAngleTypes);
+    
+    check_cudaError("template sending angle info to device");
 
     // d_nBonds = nBonds;
     // d_bondedTo = bondedTo;

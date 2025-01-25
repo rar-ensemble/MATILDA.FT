@@ -40,7 +40,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     
     std::vector<int> Nblocks(numBlocks);
     std::vector<int> blockBondType(numBlocks,0);
-    std::vector<int> wlcFlag(numBlocks,0);
+    std::vector<int> blockAngleType(numBlocks,0);
     std::vector<int> drudeFlag(numBlocks,0);
     std::vector<int> chargeFlag(numBlocks,0);
     std::vector<std::string> speciesBlocks(numBlocks);
@@ -59,11 +59,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     }
 
     // Check for optional arguments
-    if ( iss.tellg() != -1 ) {
+    while ( iss.tellg() != -1 ) {
 
         iss >> s1;
-        if ( s1 == "wlc" || s1 == "drude" || s1 == "charge" ) {
-            die("worm-like chains, drude oscillators, and charges not implemented!");
+        if ( s1 == "drude" || s1 == "charge" ) {
+            die("drude oscillators and charges not implemented!");
         }
         else if ( s1 == "bondType" || s1 == "bondtype" ) {
             for ( int j=0 ; j<numBlocks ; j++ ) {
@@ -72,6 +72,13 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 blockBondType[j] = t1-1;
             }
             // make sure to decide on how to handle junction cases, document it
+        }
+        else if ( s1 == "angleType" || s1 == "angletype" ) {
+            for ( int j=0 ; j<numBlocks ; j++ ) {
+                int t1;
+                iss >> t1;
+                blockAngleType[j] = t1 - 1;
+            }
         }
         else if ( s1 == "xrange" ) {
             iss >> Rmin[0];
@@ -114,9 +121,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
 
 
-
     // Main loop over molecules, blocks, sites on each block
     for ( int i=0 ; i<nmolecs ; i++ ) {
+
+        // backbone monomer index for molecule i
+        int bbIndex = 0;    
         for ( int j=0 ; j<numBlocks; j++ ) {
             int speciesVal = findSpeciesInteger(speciesBlocks[j]);
             
@@ -177,11 +186,65 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     nBonds[ind]++;
                 }
 
+
+                // Initialize angles
+                // logic is different from bonds. If *central* particle is
+                // in an angle, then i1 and i3 angle lists are both updated.
+                // This ensures angles accounted for when one site is on a
+                // different block that may have different angleTypes (or none)
+                if ( blockAngleType[j] != 0 ) {
+                    if ( j==0 && s==0 ) {
+                        continue;
+                    }
+                    else if ( j==numBlocks-1 && s==Nblocks[j]-1 ) {
+                        continue;
+                    }
+                    int i1 = ind-1;
+                    int i2 = ind;
+                    int i3 = ind+1;
+
+                    int n1 = nAngles[i1];
+                    int n2 = nAngles[i2];
+                    int n3 = nAngles[i3];
+
+                    std::cout << "n vals: " << n1 << " " << n2 << " " << n3 << std::endl;
+
+                    int index1 = i1*MAXANGLES*3+3*n1;
+                    int index2 = i2*MAXANGLES*3+3*n2;
+                    int index3 = i3*MAXANGLES*3+3*n3;
+
+                    std::cout << "index: " << index1 << " " << index2 << " " << index3 << std::endl;
+
+                    
+                    // angleGroup[index1+0] = i1;
+                    // angleGroup[index1+1] = i2;
+                    // angleGroup[index1+2] = i3;
+
+                    // angleGroup[index2+0] = i1;
+                    // angleGroup[index2+1] = i2;
+                    // angleGroup[index2+2] = i3;
+
+                    // angleGroup[index3+0] = i1;
+                    // angleGroup[index3+1] = i2;
+                    // angleGroup[index3+2] = i3;
+
+                    angleType[i1*MAXANGLES+n1] = blockAngleType[j];
+                    angleType[i2*MAXANGLES+n2] = blockAngleType[j];
+                    angleType[i3*MAXANGLES+n3] = blockAngleType[j];
+                    
+                    nAngles[i1]++;
+                    nAngles[i2]++;
+                    nAngles[i3]++;
+
+                }// blockAngleType[j]
+
+
+
                 mID[ind] = molecInd;
 
                 // Increment the particle index
                 ind++;
-
+                bbIndex++;
             }// s=0:N[j]
 
         }// j=0:numBlocks; 

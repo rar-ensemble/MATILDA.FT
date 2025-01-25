@@ -111,25 +111,27 @@ class PS_Box : public Box {
 
 
 
-        thrust::host_vector<int> nAngles;        // [nstot] number of bonds per particle vector
-        thrust::device_vector<int> d_nAngles;    // [nstot] number of bonds per particle vector
+        thrust::host_vector<int> nAngles;        // [nstot] number of angles per particle 
+        int* d_nAngles;    
 
         thrust::host_vector<int> angleGroup;    // [nstot*MAXANGLES*3] list of the three particles in each angle
-        thrust::device_vector<int> d_angleGroup;// [nstot*MAXANGLES*3] list of the three particles in each angle
-
+        int* d_angleGroup;
+        
         thrust::host_vector<int> angleType;     // [MAXANGLES*nstot] bond types for each particles
-        thrust::device_vector<int> d_angleType; // [MAXANGLES*nstot] device, bond types for particles
+        int* d_angleType; 
         
-        thrust::host_vector<float> angleTheq;     // [nAngleTypes] equil angle
-        thrust::device_vector<float> d_angleTheq; // [nAngleTypes] 
         
-        thrust::host_vector<float> angleK;       // [nAngleTypes] force const for angles
-        thrust::device_vector<float> d_angleK;   // [nAngleTypes] force const for angles
+        thrust::host_vector<float> angleTheq;   // [nAngleTypes] equil angle
+        float* d_angleTheq;
         
-        thrust::host_vector<int> angleStyle;     // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
-        thrust::device_vector<int> d_angleStyle; // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
+        thrust::host_vector<float> angleK;      // [nAngleTypes] force const for angles
+        float* d_angleK;   
+        
+        thrust::host_vector<int> angleStyle;    // [nAngleTypes] angle type (0=WLC, 1=harmonic)  
+        int* d_angleStyle; 
 
 
+        
         std::vector<PS_Group> psGroup;          // Vector of particle groups
         
         std::vector<Integrator*> integrators;   // Time integration schemes
