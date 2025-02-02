@@ -384,7 +384,7 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
 int PS_Box::findGroupInteger(std::string testLabel) {
     int id = -1;
     for ( int i=0 ; i<psGroup.size() ; i++ ) {
-        std::cout << "PSBox findGroup: " << testLabel << " " << psGroup[i].returnName() << " " << psGroup[i].isGroup(testLabel) << std::endl;
+        // std::cout << "PSBox findGroup: " << testLabel << " " << psGroup[i].returnName() << " " << psGroup[i].isGroup(testLabel) << std::endl;
         if ( psGroup[i].isGroup( testLabel) ) {
             id = i;
             break;
@@ -496,7 +496,7 @@ void PS_Box::writeDataConfig(std::string filename) {
         for ( int j=0 ; j<nAngles[i]; j++ ) {
             // Only write bonds when i is first particle involved
             if ( i == angleGroup[3*(i*MAXANGLES+j)] ) {
-                out << angleCounter+1 << " " << angleType[i*MAXANGLES+j] << " " << \
+                out << angleCounter+1 << " " << angleType[i*MAXANGLES+j]+1 << " " << \
                     angleGroup[3*(i*MAXANGLES+j) + 0]+1 << " " << \
                     angleGroup[3*(i*MAXANGLES+j) + 1]+1 << " " << \
                     angleGroup[3*(i*MAXANGLES+j) + 2]+1 << std::endl;

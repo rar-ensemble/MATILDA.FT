@@ -69,7 +69,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             for ( int j=0 ; j<numBlocks ; j++ ) {
                 int t1; 
                 iss >> t1;
-                blockBondType[j] = t1-1;
+                blockBondType[j] = t1;
             }
             // make sure to decide on how to handle junction cases, document it
         }
@@ -77,7 +77,8 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             for ( int j=0 ; j<numBlocks ; j++ ) {
                 int t1;
                 iss >> t1;
-                blockAngleType[j] = t1 - 1;
+                blockAngleType[j] = t1;
+                std::cout << "block ang type: " << j << " " << blockAngleType[j] << std::endl;
             }
         }
         else if ( s1 == "xrange" ) {
@@ -120,6 +121,16 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     if ( molecInd < 0 ) molecInd = 0;
 
 
+    // Initializes angle counter to zero
+    int aind = ind;
+    for ( int i=0 ; i<nmolecs ; i++ ) {
+        for ( int j=0 ; j<numBlocks ; j++ ) {
+            for (int s=0; s<Nblocks[j] ; s++ ) {
+                nAngles[aind] = 0;
+                aind++;
+            }
+        }
+    }
 
     // Main loop over molecules, blocks, sites on each block
     for ( int i=0 ; i<nmolecs ; i++ ) {
@@ -173,7 +184,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     int nb = nBonds[ind];
                     
                     bondedTo[ind*MAXBONDS+nb] = ind-1;
-                    bondType[ind*MAXBONDS+nb] = blockBondType[j];
+                    bondType[ind*MAXBONDS+nb] = blockBondType[j] - 1;
                     nBonds[ind]++;
                 }
 
@@ -182,7 +193,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     int nb = nBonds[ind];
                     
                     bondedTo[ind*MAXBONDS+nb] = ind+1;
-                    bondType[ind*MAXBONDS+nb] = blockBondType[j];
+                    bondType[ind*MAXBONDS+nb] = blockBondType[j] - 1;
                     nBonds[ind]++;
                 }
 
@@ -192,45 +203,45 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 // in an angle, then i1 and i3 angle lists are both updated.
                 // This ensures angles accounted for when one site is on a
                 // different block that may have different angleTypes (or none)
-                if ( blockAngleType[j] != 0 ) {
-                    if ( j==0 && s==0 ) {
-                        continue;
-                    }
-                    else if ( j==numBlocks-1 && s==Nblocks[j]-1 ) {
-                        continue;
-                    }
+                if ( ( blockAngleType[j] != 0 ) &&                  // this block has angles
+                     ( j > 0 || s > 0 ) &&                          // not the first monomer
+                     ( j < numBlocks-1 || s < Nblocks[j]-1 ) ) {    // not the final monomer
+
+                    // std::cout << "j: " << j << " s: " << s << " ind: " << ind << std::endl;
                     int i1 = ind-1;
                     int i2 = ind;
                     int i3 = ind+1;
+
+                    // std::cout << "ivals: " << i1 << " " << i2 << " " << i3 << std::endl;
 
                     int n1 = nAngles[i1];
                     int n2 = nAngles[i2];
                     int n3 = nAngles[i3];
 
-                    std::cout << "n vals: " << n1 << " " << n2 << " " << n3 << std::endl;
+                    //std::cout << "n vals: " << n1 << " " << n2 << " " << n3 << std::endl;
 
                     int index1 = i1*MAXANGLES*3+3*n1;
                     int index2 = i2*MAXANGLES*3+3*n2;
                     int index3 = i3*MAXANGLES*3+3*n3;
 
-                    std::cout << "index: " << index1 << " " << index2 << " " << index3 << std::endl;
+                    // std::cout << "index: " << index1 << " " << index2 << " " << index3 << std::endl;
 
                     
-                    // angleGroup[index1+0] = i1;
-                    // angleGroup[index1+1] = i2;
-                    // angleGroup[index1+2] = i3;
+                    angleGroup[index1+0] = i1;
+                    angleGroup[index1+1] = i2;
+                    angleGroup[index1+2] = i3;
 
-                    // angleGroup[index2+0] = i1;
-                    // angleGroup[index2+1] = i2;
-                    // angleGroup[index2+2] = i3;
+                    angleGroup[index2+0] = i1;
+                    angleGroup[index2+1] = i2;
+                    angleGroup[index2+2] = i3;
 
-                    // angleGroup[index3+0] = i1;
-                    // angleGroup[index3+1] = i2;
-                    // angleGroup[index3+2] = i3;
+                    angleGroup[index3+0] = i1;
+                    angleGroup[index3+1] = i2;
+                    angleGroup[index3+2] = i3;
 
-                    angleType[i1*MAXANGLES+n1] = blockAngleType[j];
-                    angleType[i2*MAXANGLES+n2] = blockAngleType[j];
-                    angleType[i3*MAXANGLES+n3] = blockAngleType[j];
+                    angleType[i1*MAXANGLES+n1] = blockAngleType[j] - 1;
+                    angleType[i2*MAXANGLES+n2] = blockAngleType[j] - 1;
+                    angleType[i3*MAXANGLES+n3] = blockAngleType[j] - 1;
                     
                     nAngles[i1]++;
                     nAngles[i2]++;

@@ -111,14 +111,12 @@ class PS_Box : public Box {
 
 
 
-        thrust::host_vector<int> nAngles;        // [nstot] number of angles per particle 
-        int* d_nAngles;    
-
-        thrust::host_vector<int> angleGroup;    // [nstot*MAXANGLES*3] list of the three particles in each angle
-        int* d_angleGroup;
+        int *d_nAngles, *nAngles;         // [nstot] number of angles per particle 
+            
+        int *angleGroup, *d_angleGroup;    // [nstot*MAXANGLES*3] list of the three particles in each angle
         
-        thrust::host_vector<int> angleType;     // [MAXANGLES*nstot] bond types for each particles
-        int* d_angleType; 
+        int *d_angleType, *angleType;     // [MAXANGLES*nstot] bond types for each particles
+        
         
         
         thrust::host_vector<float> angleTheq;   // [nAngleTypes] equil angle

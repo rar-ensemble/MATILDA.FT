@@ -365,18 +365,13 @@ void PS_Box::finishInitialization() {
 
         for ( int j=0 ; j<nAngles[i] ; j++ ) {
             // only count angle if i == middle particle 
-            std::cout << i << " nagns: " << nAngles[i] ;
-            fflush(stdout);
             int aind = 3*(i*MAXANGLES+j);
             if ( angleGroup[aind + 1] == i ) {
-                std::cout << " " << aind << " " << angleGroup[aind+0] << " " << angleGroup[aind+1] << " " << angleGroup[aind+2] ;
                 nAnglesTot++;
             }
-            std::cout << std::endl;
         }
     }
-    std::cout << "counted " << nAnglesTot << " angles in total" << std::endl;
-
+    
     writeDataConfig("init.input.data");
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
@@ -408,8 +403,10 @@ void PS_Box::finishInitialization() {
     for ( int i=0 ; i<nTypes; i++ ) {
         speciesMass[i] = species[i].mass;
         speciesMobility[i] = species[i].mobility;
-        std::cout << "  type index: " << i << " mass: " << speciesMass[i] << 
+        if ( verbose ) { 
+            std::cout << "  type index: " << i << " mass: " << speciesMass[i] << 
             " mobility: " << speciesMobility[i] << std::endl;
+        }
     }
 
     // temp storage arrays
@@ -494,11 +491,10 @@ void PS_Box::allocHostParticleArrays(int newns) {
     intSpecies.resize(newns);
     mID.resize(newns);
 
-
-    nAngles.resize(newns);
-    angleType.resize(newns*MAXANGLES);
-    angleGroup.resize(newns*MAXANGLES*3);
-
+    nAngles =    (int*) realloc(nAngles,    newns*sizeof(int));
+    angleType =  (int*) realloc(angleType,  newns*MAXANGLES*sizeof(int));
+    angleGroup = (int*) realloc(angleGroup, newns*MAXANGLES*3*sizeof(int));
+    
     std::cout << "done!" << std::endl;
 }
 
@@ -608,10 +604,10 @@ void PS_Box::sendAllHostToDevice(void) {
     cudaMemcpy(d_bondedTo, bondedTo, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_bondType, bondType, nstot*MAXBONDS * sizeof(int), cudaMemcpyHostToDevice);
 
-    sendThrustVectorToDeviceArray(nAngles, d_nAngles,       nstot);
-    sendThrustVectorToDeviceArray(angleGroup, d_angleGroup, nstot*MAXANGLES*3 );
-    sendThrustVectorToDeviceArray(angleType, d_angleType,   nstot*MAXANGLES);
-
+    cudaMemcpy(d_nAngles,    nAngles,     nstot*sizeof(int),             cudaMemcpyHostToDevice);
+    cudaMemcpy(d_angleType,  angleType,   nstot*MAXANGLES*sizeof(int),   cudaMemcpyHostToDevice);
+    cudaMemcpy(d_angleGroup, angleGroup,  nstot*3*MAXANGLES*sizeof(int), cudaMemcpyHostToDevice);
+    
     sendThrustVectorToDeviceArray(angleTheq, d_angleTheq,   nAngleTypes);
     sendThrustVectorToDeviceArray(angleK, d_angleK,         nAngleTypes);
     sendThrustVectorToDeviceArray(angleStyle, d_angleStyle, nAngleTypes);
