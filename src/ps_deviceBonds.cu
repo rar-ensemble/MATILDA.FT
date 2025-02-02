@@ -167,17 +167,6 @@ __global__ void d_bondStressEnergy(
 			d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
 		}
 
-		// else if(bs == 1){
-		// 	d_vir[ind * n_P_comps + 0] += -mf * dr[0] * dr[0];
-		// 	d_vir[ind * n_P_comps + 1] += -mf * dr[1] * dr[1];
-		// 	if ( Dim == 2 )
-		// 		d_vir[ind * n_P_comps + 2] += -mf * dr[0] * dr[1];
-		// 	else if (Dim == 3) {
-		// 		d_vir[ind * n_P_comps + 2] += -mf * dr[2] * dr[2];
-		// 		d_vir[ind * n_P_comps + 3] += -mf * dr[0] * dr[1];
-		// 		d_vir[ind * n_P_comps + 4] += -mf * dr[0] * dr[2];
-		// 		d_vir[ind * n_P_comps + 5] += -mf * dr[1] * dr[2];
-		// 	}
-		// }
+
 	}
 }
