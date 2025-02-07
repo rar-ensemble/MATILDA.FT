@@ -22,6 +22,10 @@ const int*, const int*, const int*,
 const float*, const float*, const int*, const float*, const float*,
 const int, const int, const int, const int);
 
+__global__ void d_angles(float*, const float*, const float*, const float*,
+const int*, const int*, const int*, const int*, const float*, const float*,
+const int, const int, const int);
+
 __global__ void sumArrayKernel(float*, float*, int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
@@ -158,6 +162,14 @@ void PS_Box::forces() {
         d_bondStyle, d_x, d_L, d_Lh, nstot, MAXBONDS, Dim);
     
     if ( verbose ) std::cout << "bonds done, " << std::endl;
+
+
+    // if ( verbose ) { std::cout << "Into angles..." ; fflush(stdout); }
+
+    // d_angles<<<nsGrid, nsBlock>>>(d_f, d_x, d_angleK, d_angleTheq, d_angleStyle, 
+    //     d_nAngles, d_angleType, d_angleGroup, d_L, d_Lh, nstot, MAXANGLES, Dim);
+
+    // if ( verbose) std::cout << "angles done!" << std::endl;
 
 
 

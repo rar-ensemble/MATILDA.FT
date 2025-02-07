@@ -5,9 +5,8 @@
 std::string giveQuote(void);
 
 void die(const char* msg) {
-	std::cout << msg << std::endl;
-	std::cout << "\n\nSorry, your job finished prematurely. Maybe these wise words will cheer you up:\n" << \
-			giveQuote() << std::endl;
+	std::cout << std::endl << msg << std::endl;
+	std::cout << "\n***************************************************\n" << giveQuote() << std::endl;
 	exit(1);
 }
 

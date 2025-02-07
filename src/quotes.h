@@ -27,7 +27,7 @@ std::vector<std::string> quoteDB = {
   "'Bite my shiny metal ass' \n--Bender",
   "'Libertarians are like house cats: convinced of their fierce independence while dependent on a system they neither appreciate nor understand' \n--Unknown",
   "'I'm against protesting, but I don't know how to show it' \n--Mitch Hedberg",
-  "'Think about how stupid the average person is...and then realize that half of them are stupider than that!' \n--George Carlin",
+  "'Think about how stupid the average person is...and then realize that half of them are stupider than that' \n--George Carlin",
   "'When a friend asks for help, ya help 'em' \n--Letterkenny",
   "'Well first of all, I'd have to be a good person to remain one...' \n--Drew Morgan",
   "'If you stands for nothing, you'll fall for anythings.' \n--Squirrely Dan",
@@ -49,6 +49,7 @@ std::vector<std::string> quoteDB = {
   "'I believe in peace, bitch' \n--Tori Amos",
   "'I know she worked very hard on it; it had some very nice pictures in it.' \n--Angela Collier",
   "'There are 5000 people in Letterkenney.\n\nThese are their problems. \n",
+  "'Strange women lying in ponds distributing swords is no basis for a system of government.'\n\n--Monty Python",
   "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif

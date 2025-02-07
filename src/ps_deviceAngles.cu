@@ -4,8 +4,8 @@
 
 
 __global__ void d_angles(
-    const float* x,                 // [ns*Dim] particle positions
     float* f,                       // [ns*Dim] particle forces
+    const float* x,                 // [ns*Dim] particle positions
     const float* angle_k,           // [nangle_types] force constants
     const float* angle_theta_eq,    // [nangle_types] equilibrium angle
     const int* angle_style,         // [nangle_types] angle style flag (0=WLC, 1=Harmonic)

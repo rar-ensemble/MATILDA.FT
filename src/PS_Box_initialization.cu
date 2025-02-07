@@ -608,27 +608,12 @@ void PS_Box::sendAllHostToDevice(void) {
     cudaMemcpy(d_angleType,  angleType,   nstot*MAXANGLES*sizeof(int),   cudaMemcpyHostToDevice);
     cudaMemcpy(d_angleGroup, angleGroup,  nstot*3*MAXANGLES*sizeof(int), cudaMemcpyHostToDevice);
     
-    sendThrustVectorToDeviceArray(angleTheq, d_angleTheq,   nAngleTypes);
-    sendThrustVectorToDeviceArray(angleK, d_angleK,         nAngleTypes);
+    sendThrustVectorToDeviceArray(angleTheq,  d_angleTheq,  nAngleTypes);
+    sendThrustVectorToDeviceArray(angleK,     d_angleK,     nAngleTypes);
     sendThrustVectorToDeviceArray(angleStyle, d_angleStyle, nAngleTypes);
     
     check_cudaError("template sending angle info to device");
 
-    // d_nBonds = nBonds;
-    // d_bondedTo = bondedTo;
-    // d_bondType = bondType;
-
-    // d_bondStyle = bondStyle;
-    // d_bondK = bondK;
-    // d_bondReq = bondReq;
-
-    // d_nAngles = nAngles;
-    // d_angleGroup = angleGroup;
-    // d_angleType = angleType;
-
-    // d_angleTheq = angleTheq;
-    // d_angleK = angleK;
-    // d_angleStyle = angleStyle;
 
     free(xtmp);
 
