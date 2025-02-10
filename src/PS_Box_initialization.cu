@@ -90,6 +90,7 @@ void PS_Box::readInput(std::ifstream& inp) {
                 else if ( style == "harmonic" ) {
                     angleStyle[atype-1] = 1;
                     iss >> angleTheq[atype-1];
+                    angleTheq[atype-1] *= PI / 180.0;
                 }
                 else die("Angle style not supported!");
 
