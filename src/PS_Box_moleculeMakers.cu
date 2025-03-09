@@ -18,6 +18,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     // Both set to negative values to determine which keyword given
     double phi = -1.0;  
     int nmolecs = -1; 
+    int angleFlag = 0;
 
     std::string s1;
 
@@ -79,6 +80,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 iss >> t1;
                 blockAngleType[j] = t1;
                 std::cout << "block ang type: " << j << " " << blockAngleType[j] << std::endl;
+                angleFlag = 1;
             }
         }
         else if ( s1 == "xrange" ) {
@@ -136,7 +138,8 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     for ( int i=0 ; i<nmolecs ; i++ ) {
 
         // backbone monomer index for molecule i
-        int bbIndex = 0;    
+        int bbIndex = 0;
+        double ru[3];
         for ( int j=0 ; j<numBlocks; j++ ) {
             int speciesVal = findSpeciesInteger(speciesBlocks[j]);
             
@@ -157,8 +160,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 // Not a chain end: place monomer a unit vector away
                 // from previous monomer
                 else {
-                    double ru[3];
-                    random_unit_vec(ru, Dim);
+                    
+                    // if first monomer past the end or there are no angles,
+                    // re-generate the bond orientation
+                    if ( ( s==1 && j==0 ) || (!angleFlag) )
+                        random_unit_vec(ru, Dim);
 
                     for ( int a=0 ; a<Dim ; a++ ) {
                         int prevXInd = (ind-1)*Dim+a;

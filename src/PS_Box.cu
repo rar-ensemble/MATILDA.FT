@@ -21,6 +21,9 @@ __global__ void d_bondStressEnergy(float*, float*, const float*,
 const int*, const int*, const int*,
 const float*, const float*, const int*, const float*, const float*,
 const int, const int, const int, const int);
+__global__ void d_anglesStressEnergy(float*, float*, const float*, 
+const float*, const float*, const int*, const int*, const int*, const int*,
+const float*, const float*, const int, const int, const int, const int);
 
 __global__ void d_angles(float*, const float*, const float*, const float*,
 const int*, const int*, const int*, const int*, const float*, const float*,
@@ -212,6 +215,19 @@ void PS_Box::computeThermoProps() {
     Ubond = 0.5 * sumDeviceArray(d_e, blockSize, nstot);
 
 
+    float *d_angleVir;
+    cudaMalloc(&d_angleVir, nstot*n_P_comps * sizeof(float));
+
+    d_anglesStressEnergy<<<nsGrid, nsBlock>>>(d_e, d_angleVir,
+        d_x, d_angleK, d_angleTheq, d_angleStyle, d_nAngles, 
+        d_angleType, d_angleGroup, d_L, d_Lh, nstot, MAXANGLES, n_P_comps, Dim);
+
+    // Sums over the particle energies
+    // Division by 3 corrects triple-counting
+    Uangle = sumDeviceArray(d_e, blockSize, nstot) / 3.0;
+
+
+
     Upe = 0.0;
     // 2a. Grid forces
     for ( int i=0 ; i<potentials.size(); i++ ) {
@@ -219,9 +235,11 @@ void PS_Box::computeThermoProps() {
     }
 
     Upe += Ubond;
+    Upe += Uangle;
 
     cudaFree(d_e);
     cudaFree(d_bondVir);
+    cudaFree(d_angleVir);
 
 }
 
@@ -238,9 +256,14 @@ void PS_Box::writeData(int step) {
 
     std::cout << " Upe: " << Upe ;
 
-    if ( Ubond > 0.0 ) {
+    if ( nBondsTot > 0 ) {
         OTP << " " << Ubond ;
         std::cout << " Ubond: " << Ubond;
+    }
+    
+    if ( nAnglesTot > 0 ) { 
+        OTP << " " << Uangle ;
+        std::cout << " Uangle: " << Uangle;
     }
 
     for ( int i=0 ; i<potentials.size(); i++ ) {

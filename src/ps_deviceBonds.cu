@@ -168,5 +168,5 @@ __global__ void d_bondStressEnergy(
 		}
 
 
-	}
+	}//i=0:d_n_bonds[ind]
 }
