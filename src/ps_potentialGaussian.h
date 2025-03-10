@@ -6,6 +6,8 @@
 #ifndef _NBGAUSS
 #define _NBGAUSS
 
+// Sets up potential for either NP-NP or NP-Gaussian potential
+// See manual for complete details
 class NBGauss : public PS_Potential {
     protected:
 
