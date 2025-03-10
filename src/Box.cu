@@ -227,6 +227,36 @@ void Box::get_rf(
 }
 
 
+double Box::pbc_dr2(double* dr, const double* ri, const double* rj) {
+    double mdr2 = 0.0;
+    for ( int j=0 ; j<Dim ; j++ ) {
+        dr[j] = ri[j] - rj[j];
+
+        if ( dr[j] > Lh[j] ) dr[j] -= L[j];
+        else if ( dr[j] < -Lh[j] ) dr[j] += L[j];
+
+        mdr2 += dr[j] * dr[j];
+    }
+
+    return mdr2;
+}
+
+float Box::pbc_dr2(float* dr, const float* ri, const float* rj) {
+    float mdr2 = 0.0;
+    for ( int j=0 ; j<Dim ; j++ ) {
+        dr[j] = ri[j] - rj[j];
+
+        if ( dr[j] > Lh[j] ) dr[j] -= L[j];
+        else if ( dr[j] < -Lh[j] ) dr[j] += L[j];
+
+        mdr2 += dr[j] * dr[j];
+    }
+
+    return mdr2;
+}
+
+
+
 std::string Box::printCommand() {
     return input_command;
 }

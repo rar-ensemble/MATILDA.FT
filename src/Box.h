@@ -57,6 +57,9 @@ class Box {
         float get_kD(int, float*);        // Subroutine to compute wavevector corresponding to grid index
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
         void get_rf(int, float*);           // Subroutine to compute position corresponding to grid index
+        // template<typename T> T pbc_dr2(T*, const T*, const T*);
+        float pbc_dr2(float*, const float*, const float*);
+        double pbc_dr2(double*, const double*, const double*);
         
         void unstack2(int, int*);
         int returnDimension(void);
