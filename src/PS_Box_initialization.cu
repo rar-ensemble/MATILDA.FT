@@ -132,7 +132,7 @@ void PS_Box::readInput(std::ifstream& inp) {
                     std::cout << "\nWARNING! WARNING!\nboxLengths read before dimension specified, assuming default value of 2"<<std::endl;
 
                 for ( int j=0 ; j<Dim ; j++ ) {
-                    iss >> L[j];
+                    if ( !(iss >> L[j])) { die("Failed to read boxlength value! Did you include values for each dimension?"); }
                     V *= L[j];
                     if ( Nx[0] > 0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }
@@ -157,7 +157,7 @@ void PS_Box::readInput(std::ifstream& inp) {
             else if ( firstWord == "grid" ) {
                 if ( !readDimension ) { die("Dim must be defined before grid!" );}
                 for ( int j=0 ; j<Dim ; j++ ) {
-                    iss >> Nx[j];
+                    if ( !(iss >> Nx[j]) ) { die("Failed to read grid value! Did you include values for each dimension?"); }
                     M *= Nx[j];
                     if ( L[0] > 0.0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }

@@ -113,7 +113,7 @@ __global__ void d_multiplyCpxDirByCpx(
     out[id].y = fk[id*Dim + dir].y * rh[id].x + fk[id*Dim + dir].x * rh[id].y;
 }
 
-// assumes fk is a vector function
+
 // performs complex multiplication with rh
 __global__ void d_multiplyCpxByCpx(
     cuComplex* out,         // [N] array to be filled
