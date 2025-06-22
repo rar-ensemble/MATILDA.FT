@@ -2,28 +2,27 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
-#include "ps_potentialErf2.h"
+#include "ps_potentialErfG.h"
 #include "PS_Box.h"
 
 
 
-NBErf2::NBErf2() {}
-NBErf2::~NBErf2() {}
+NBErfG::NBErfG() {}
+NBErfG::~NBErfG() {}
 
 // Constructor called by the "factor" routine in ps_potential.cu
-NBErf2::NBErf2(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
+NBErfG::NBErfG(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
     
     iss >> grpI;
     iss >> grpJ;
 
     iss >> Ao;
-    iss >> Rp1;
-    iss >> xi1;
-    iss >> Rp2;
-    iss >> xi2;
+    iss >> Rp;
+    iss >> xi;
+    iss >> sigma;
 }
 
-void NBErf2::initializePotential() {
+void NBErfG::initializePotential() {
     std::cout << "Initializing Erf potential..." << std::endl;
 
     PS_Potential::initializePotential();
@@ -45,13 +44,14 @@ void NBErf2::initializePotential() {
         float mdr2 = mybox->pbc_dr2(dr, ri, r0);
         float mdr = sqrtf(mdr2);
 
-        
-        ur[i]  = Ao * (1.0 - erf((mdr - Rp1)/(xi1)));
-        ur2[i] = Ao * (1.0 - erf((mdr - Rp2)/(xi2)));
+        // Multiplication by V ensures proper normalization when used in
+        // Fourier space.
+        ur[i]  = Ao * mybox->V * (1.0 - erf((mdr - Rp)/(xi)));
+
+        float pref = Ao * pow( 2.0 * PI * sigma * sigma, -float(Dim/2.0) );
+        ur2[i] = pref * exp(-mdr2 / 2.0 / sigma / sigma );
 
     }
-    mybox->writeFieldFloat("erf2-ur.dat", ur);
-    mybox->writeFieldFloat("erf2-ur2.dat", ur2);
 
     // d_ur = ur, copy real-space potential to device
     cudaMemcpy(d_ur, ur, M*sizeof(float), cudaMemcpyHostToDevice);
@@ -101,65 +101,17 @@ void NBErf2::initializePotential() {
     }
 
 
-    // // RAR test
-    float k2, k;
-	
-	
-
-	for (int i = 0; i < M; i++) {
-		k2 = mybox->get_kD(i, kv);
-		k = sqrt(k2);
-
-		if (k2 == 0) {
-			this->uk[i] = Ao * // prefactor
-				// exp(-k2 * sigma_squared * 0.5f) * //Gaussian contribution = 1
-				PI4 * Rp1 * Rp1 * Rp1 / 3 *   // step function contribution for 1
-				PI4 * Rp2 * Rp2 * Rp2 / 3;   // step function contribution for 2
-		}
-		else
-		{
-			//FFT of step function 
-			float temp1 = PI4 * (sin(Rp1 * k) - Rp1 * k * cos(Rp1 * k)) / (k2 * k);
-            float temp2 = PI4 * (sin(Rp2 * k) - Rp2 * k * cos(Rp2 * k)) / (k2 * k);
-                   
-			this->uk[i] = Ao * // prefactor
-				exp(-k2 * (xi1*xi1 + xi2*xi2) * 0.5f) * //Gaussian contribution of both
-				temp1 * // step function for 1
-				temp2;  // step function for the other
-		}
-
-		for (int j = 0; j < Dim; j++) {
-			this->fk[i*Dim + j] = -I * kv[j] * this->uk[i];
-		}
-
-	}
-        // Send these to device, inv transform to get ur, f(r)
-        cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-        check_cudaError("uk --> d_uk in initialize erf2");
-    
-        // Compute inverse fft of d_uk, store in temp variable
-        mybox->cufftWrapperSingle(d_uk, mybox->d_cpxAlex, -1);
-    
-        // d_ur = Real(d_cpxAlex)
-        d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(d_ur, mybox->d_cpxAlex, M);
-        check_cudaError("cpxToFloat in erf2 potential");
-    
-        // Same thing for force arrays
-        cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-        check_cudaError("sending force array to device in erf2 potential");
-    
-    
-        // Copy potential, force functions back to host
-        // only really used for debugging
-        // ur = d_ur
-        cudaMemcpy(ur, d_ur, M*sizeof(float), cudaMemcpyDeviceToHost);
-        std::cout << "  erf2 initialization completed" << std::endl;
-    // END TEST
-
     // Send force arrays to device
     // d_fk = fk
     cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-    check_cudaError("sending force array to device in erf2 potential");
+    check_cudaError("sending force array to device in Gauss potential");
+
+    free(ur2);
+
+    
+
+
+
 
     std::complex<float> *tp;
     tp = (std::complex<float>*) malloc(M*sizeof(std::complex<float>));
@@ -171,32 +123,26 @@ void NBErf2::initializePotential() {
         }
         
         cudaMemcpy(mybox->d_cpxAlex, tp, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-        check_cudaError("erf2 test");
+        check_cudaError("erfg test");
         
         mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxGabe, 1);
-        check_cudaError("erf2 test 1");
+        check_cudaError("erfg test 1");
 
         d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_Alex, mybox->d_cpxGabe, M);
-        check_cudaError("erf2 test 2");
+        check_cudaError("erfg test 2");
 
         cudaMemcpy(mybox->alex, mybox->d_Alex, M*sizeof(float), cudaMemcpyDeviceToHost);
-        check_cudaError("erf2 test 3");
+        check_cudaError("erfg test 3");
 
-        std::string tName = "erf2-force-" + std::to_string(j) + ".dat";
+        std::string tName = "erfG-force-" + std::to_string(j) + ".dat";
         mybox->writeFieldFloat(tName.c_str(), mybox->alex);
 
 
     }
 
-    std::string potName = "erf2-potential-" + grpI + "-" + grpJ + ".dat";
+
+    std::string potName = "erfG-potential-" + grpI + "-" + grpJ + ".dat";
     mybox->writeFieldFloat(potName.c_str(), ur);
     //die("field written1");
-
-    free(ur2);
-    free(tp);
-
-
-
-
 
 }//initializePotential()

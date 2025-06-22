@@ -430,6 +430,9 @@ int PS_Box::findGroupInteger(std::string testLabel) {
     return id;
 }
 
+
+// Writes to LAMMPS .data file type
+// Should be compatible with ``angle'' file type
 void PS_Box::writeDataConfig(std::string filename) {
     
     std::ofstream out(filename);
@@ -541,6 +544,9 @@ void PS_Box::writeDataConfig(std::string filename) {
 
     out.close();
 }// end of writeDataConfig
+
+
+
 
 
 

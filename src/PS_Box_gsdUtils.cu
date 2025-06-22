@@ -7,6 +7,10 @@
 
 void die(const char*);
 
+
+
+
+
 void PS_Box::writeGSDtraj() {
 
     int i;

@@ -235,6 +235,12 @@ void PS_Box::readInput(std::ifstream& inp) {
                 RANDSEED = idum;    // Set GPU RNG to have seed = RANDSEED
             }
 
+            else if ( firstWord == "readData" ) {
+                std::string dataName;
+                iss >> dataName;
+                readDataConfig(dataName.c_str());
+            }
+
             else if (firstWord == "rho0") {
                 iss >> rho0;
             }
@@ -617,5 +623,221 @@ void PS_Box::sendAllHostToDevice(void) {
 
 
     free(xtmp);
+
+}
+
+
+
+// Reads input.data style configuration
+// Assumes this is the first set of particles allocated -
+//  - prob can relax this assumption by just changing below 
+//  so that nstot is incremented, and ind initialized from nonzero
+// Initial code base copied from v1 read_charge_config routine
+void PS_Box::readDataConfig(std::string inpName) {
+
+    if ( nstot != 0 ) {
+        die("Must read data file before making additional molecules");
+    }
+
+
+    int i, di, ind, ltp;
+	float dx, dy;
+	char tt[120];
+
+	FILE* inp;
+	inp = fopen(inpName.c_str(), "r");
+	if (inp == NULL) {
+        std::string death = "Failed to open " + inpName;
+		die(death);
+	}
+
+	(void)!fgets(tt, 120, inp);
+	(void)!fgets(tt, 120, inp);
+
+	(void)!fscanf(inp, "%d", &nstot);      (void)!fgets(tt, 120, inp);
+	(void)!fscanf(inp, "%d", &nBondsTot);  (void)!fgets(tt, 120, inp);
+	(void)!fscanf(inp, "%d", &nAnglesTot);  (void)!fgets(tt, 120, inp);
+
+	(void)!fgets(tt, 120, inp);
+
+	(void)!fscanf(inp, "%d", &nTypes);  (void)!fgets(tt, 120, inp);
+	(void)!fscanf(inp, "%d", &nBondTypes);  (void)!fgets(tt, 120, inp);
+	(void)!fscanf(inp, "%d", &nAngleTypes);  (void)!fgets(tt, 120, inp);
+
+	// Read in box shape
+	(void)!fgets(tt, 120, inp);
+	(void)!fscanf(inp, "%f %f", &dx, &dy);   (void)!fgets(tt, 120, inp);
+	L[0] = (float)(dy - dx);
+	(void)!fscanf(inp, "%f %f", &dx, &dy);   (void)!fgets(tt, 120, inp);
+	L[1] = (float)(dy - dx);
+	(void)!fscanf(inp, "%f %f", &dx, &dy);   (void)!fgets(tt, 120, inp);
+	if (Dim > 2)
+		L[2] = (float)(dy - dx);
+	else
+		L[2] = 1.0f;
+
+	V = 1.0f;
+	for (i = 0; i < Dim; i++) {
+		Lh[i] = 0.5f * L[i];
+		V *= L[i];
+	}
+
+
+	// Allocate memory for positions //
+	allocHostParticleArrays(nstot);
+
+	printf("Particle memory allocated on host!\n");
+
+	(void)!fgets(tt, 120, inp);
+
+	// Read in particle masses
+	(void)!fgets(tt, 120, inp); // Masses keyword, presumably
+	(void)!fgets(tt, 120, inp); // blank line
+	for (i = 0; i < nTypes; i++) {
+		(void)!fscanf(inp, "%d %f", &di, &dx); (void)!fgets(tt, 120, inp);
+		species[di-1].mass = float(dx);
+        //speciesMass[di - 1] = float(dx);
+	}
+	(void)!fgets(tt, 120, inp); // blank line
+
+
+	// Read in atomic positions
+	(void)!fgets(tt, 120, inp); // Atom keyword, presumably
+	(void)!fgets(tt, 120, inp); // blank line
+
+	for (i = 0; i < nstot; i++) {
+		if (feof(inp)) die("Premature end of input.conf!");
+
+		(void)!fscanf(inp, "%d %d %d", &ind, &di, &ltp);
+		ind -= 1; // switch to 0 indexing
+
+        mID[ind] = di - 1;
+
+		intSpecies[ind] = ltp - 1;
+
+        if ( doCharges ) {
+            die("input.data not tested with doCharges on!");
+		    // (void)!fscanf(inp, "%f", &dcharge);
+		    // charges[ind] = dcharge;
+        }
+
+		for (int j = 0; j < Dim; j++) {
+			(void)!fscanf(inp, "%f", &dx);
+			x[ind*Dim+j] = dx;
+		}
+
+		(void)!fgets(tt, 120, inp);
+	}
+	(void)!fgets(tt, 120, inp);
+
+	// Read in bond information
+	(void)!fgets(tt, 120, inp);
+	(void)!fgets(tt, 120, inp);
+
+	for (i = 0; i < nstot; i++)
+		nBonds[i] = 0;
+
+	list_of_bond_partners.reserve(nBondsTot*2);
+	list_of_bond_type.reserve(nBondsTot);
+
+	for (i = 0; i < nBondsTot; i++) {
+		(void)!fscanf(inp, "%d", &di); // Bond counter
+		(void)!fscanf(inp, "%d", &di); // bond type
+		int b_type = di - 1; // --> 0 indexing
+
+		(void)!fscanf(inp, "%d", &di); // particle involved in bond
+		int i1 = di - 1; // --> 0 indexing
+
+		(void)!fscanf(inp, "%d", &di); // particle involved in bond
+		int i2 = di - 1; // --> 0 indexing
+
+		if (i2 < i1) {
+			di = i2;
+			i2 = i1;
+			i1 = di;
+		}
+
+		bondedTo[i1*MAXBONDS+nBonds[i1]] = i2;
+		bondType[i1*MAXBONDS+nBonds[i1]] = b_type;
+		nBonds[i1]++;
+
+		bondedTo[i2*MAXBONDS+nBonds[i2]] = i1;
+		bondType[i2*MAXBONDS+nBonds[i2]] = b_type;
+		nBonds[i2]++;
+
+		list_of_bond_type.push_back(b_type);
+		list_of_bond_partners.push_back(i1);
+		list_of_bond_partners.push_back(i2);
+
+	}
+	(void)!fgets(tt, 120, inp);
+
+
+	list_of_angle_partners.reserve(nAnglesTot*3);
+	list_of_angle_type.reserve(nAnglesTot);
+
+	// Read in angle information
+	for (i = 0; i < nstot; i++)
+		nAngles[i] = 0;
+
+	(void)!fgets(tt, 120, inp);
+	(void)!fgets(tt, 120, inp);
+	for (i = 0; i < nAnglesTot; i++) {
+
+		(void)!fscanf(inp, "%d", &di);
+		(void)!fscanf(inp, "%d", &di);
+
+		int a_type = di - 1;
+
+		(void)!fscanf(inp, "%d", &di);
+		int i1 = di - 1;
+
+		(void)!fscanf(inp, "%d", &di);
+		int i2 = di - 1;
+
+		(void)!fscanf(inp, "%d", &di);
+		int i3 = di - 1;
+
+		if (i3 < i1) {
+			di = i3;
+			i3 = i1;
+			i1 = di;
+		}
+
+
+        // Store angle info on particle i1
+		int na = nAngles[i1];
+        angleGroup[i1*MAXANGLES*3 + 3*na + 0] = i1;
+        angleGroup[i1*MAXANGLES*3 + 3*na + 1] = i2;
+        angleGroup[i1*MAXANGLES*3 + 3*na + 2] = i3;
+		angleType[i1*MAXANGLES + na] = a_type;
+		nAngles[i1] += 1;
+
+        // Store angle info particle i2
+        na = nAngles[i2];
+        angleGroup[i2*MAXANGLES*3 + 3*na + 0] = i1;
+        angleGroup[i2*MAXANGLES*3 + 3*na + 1] = i2;
+        angleGroup[i2*MAXANGLES*3 + 3*na + 2] = i3;
+		angleType[i2*MAXANGLES + na] = a_type;
+		nAngles[i2] += 1;
+
+        // Store angle info particle i2
+        na = nAngles[i3];
+        angleGroup[i3*MAXANGLES*3 + 3*na + 0] = i1;
+        angleGroup[i3*MAXANGLES*3 + 3*na + 1] = i2;
+        angleGroup[i3*MAXANGLES*3 + 3*na + 2] = i3;
+		angleType[i3*MAXANGLES + na] = a_type;
+		nAngles[i3] += 1;
+
+
+		(void)!fgets(tt, 120, inp);
+
+		list_of_angle_type.push_back(a_type);
+		list_of_angle_partners.push_back(i1);
+		list_of_angle_partners.push_back(i2);
+		list_of_angle_partners.push_back(i3);
+
+	}
+	fclose(inp);
 
 }

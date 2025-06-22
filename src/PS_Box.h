@@ -169,6 +169,7 @@ class PS_Box : public Box {
         void writeTime() override;          // Writes subroutine run times
         int converged(int dm) {return 0; }; // No implemented for PS methods
         void writeDataConfig(std::string);  // Writes LAMMPS data file format
+        void readDataConfig(std::string);   // Read LAMMPS data file
         void createDefaultGroups();         // Makes default groups
 
         void finishInitialization();          // Finishes initializing box after reading input

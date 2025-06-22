@@ -5,6 +5,7 @@
 #include "ps_potential.h"
 #include "ps_potentialGaussian.h"
 #include "ps_potentialErf2.h"
+#include "ps_potentialErfG.h"
 #include "PS_Box.h"
 
 
@@ -258,6 +259,9 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
  	}
     else if ( s1 == "erf2" ) {
         return new NBErf2(iss,box);
+    }
+    else if ( s1 == "erfG" ) { 
+        return new NBErfG(iss,box);
     }
 // 	if (s1 == "gaussian_erf"){
 // 		return new GaussianErf(iss);
