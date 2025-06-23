@@ -56,7 +56,16 @@ void PS_Box::doTimeStep(int step) {
     check_cudaError("Weights calculated in PS_Box");
 
 
-
+	// RAR debug
+	int dd = Dim;
+    std::cout << std::endl << std::endl;
+    std::cout << "GRID: " << DnsGrid << std::endl;
+	cudaMemcpy(f, d_f, nstot*dd*sizeof(float), cudaMemcpyDeviceToHost);
+	std::cout << "forces: " << std::endl;
+	for ( int i=0 ; i<nstot ; i++ ) {
+		std::cout << i << ": " << f[i*dd+0] << " " << f[i*dd+1] << std::endl;
+	}
+	// end RAR debug
 
     ///////////////////////////
     // UPDATE DENSITY FIELDS //
@@ -82,7 +91,14 @@ void PS_Box::doTimeStep(int step) {
     check_cudaError("Particle forces zeroed");
     if ( verbose ) std::cout << "done!" << std::endl;
 
-
+	// RAR debug
+	std::cout << "GRID: " << DnsGrid << std::endl;
+	cudaMemcpy(f, d_f, nstot*dd*sizeof(float), cudaMemcpyDeviceToHost);
+	std::cout << "forces: " << std::endl;
+	for ( int i=0 ; i<nstot ; i++ ) {
+		std::cout << i << ": " << f[i*dd+0] << " " << f[i*dd+1] << std::endl;
+	}
+	// end RAR debug
     
     ////////////////////
     // COMPUTE FORCES //
