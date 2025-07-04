@@ -20,6 +20,9 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     int nmolecs = -1; 
     int angleFlag = 0;
 
+    // Flag for dealing with charges on this molec type
+    int doMolecCharges = 0;
+
     std::string s1;
 
     // read either phi or nmolecs keyword
@@ -46,7 +49,8 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     std::vector<int> chargeFlag(numBlocks,0);
     std::vector<std::string> speciesBlocks(numBlocks);
     std::vector<int> intSpeciesBlocks(numBlocks);
-
+    std::vector<float> blockCharge(numBlocks, 0.0);
+    
     std::vector<float> Rmin(Dim,0.0);
     std::vector<float> Rmax(Dim);
     for ( int j=0 ; j<Dim ; j++ ) Rmax[j] = L[j];
@@ -63,9 +67,24 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     while ( iss.tellg() != -1 ) {
 
         iss >> s1;
-        if ( s1 == "drude" || s1 == "charge" ) {
-            die("drude oscillators and charges not implemented!");
+        if ( s1 == "drude" ) {
+            die("drude oscillators not implemented!");
         }
+
+        else if ( s1 == "charge" ) {
+            if ( this->doCharges == 0 ) {
+                this->enableCharges();
+            }
+
+            doMolecCharges = 1;
+            
+            for ( int j=0 ; j<numBlocks ; j++ ) {
+                float q1;
+                iss >> q1;
+                blockCharge[j] = q1;
+            }
+        }// s1==charge
+
         else if ( s1 == "bondType" || s1 == "bondtype" ) {
             for ( int j=0 ; j<numBlocks ; j++ ) {
                 int t1; 
@@ -134,7 +153,15 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
         }
     }
 
-    // Main loop over molecules, blocks, sites on each block
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////
+    // Main loop over molecules, blocks, sites on each block //
+    ///////////////////////////////////////////////////////////
     for ( int i=0 ; i<nmolecs ; i++ ) {
 
         // backbone monomer index for molecule i
@@ -180,6 +207,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 // Initialize velocities, forces to 0.0
                 for ( int a=0 ; a<Dim ; a++ ) {
                     v[ind*Dim+a] = f[ind*Dim+a] = 0.0;
+                }
+
+
+                if ( doMolecCharges ) {
+                    charges[ind] = blockCharge[j];
                 }
 
                 nBonds[ind] = 0;

@@ -150,6 +150,10 @@ void PS_Box::readInput(std::ifstream& inp) {
                 else n_P_comps = 6;
             }
 
+            else if ( firstWord == "doCharges" ) {
+                this->enableCharges();
+            }
+
             else if ( firstWord == "fieldFreq" || firstWord == "field_freq" ) {
                 iss >> fieldFreq;
             }
@@ -862,5 +866,8 @@ void PS_Box::enableCharges() {
     if ( !doCharges ) {
         doCharges = 1;
         allocHostParticleArrays(nstot);
+        for ( int i=0 ; i<nstot; i++ ) {
+            charges[i] = 0.0;
+        }
     }    
 }

@@ -29,52 +29,78 @@ void NBErf2::initializePotential() {
     PS_Potential::initializePotential();
     
     std::complex<float> I(0.0, 1.0);
-    float kv[3], k2, kmag;
+    float kv[3], *ur2;
     int Dim = mybox->returnDimension();
     int M = mybox->M;
     
+    float r0[3], ri[3], dr[3];
+    r0[0] = r0[1] = r0[2] = 0.0f;
+
+    ur2 = (float*) malloc( M * sizeof(float) );
+
     for ( int i=0 ; i<M ; i++ ) {
-        k2 = mybox->get_kD(i, kv);
-        kmag = sqrt(k2);
-
-        if (k2 == 0) {
-            uk[i] = Ao *				// prefactor
-            PI4 * Rp1 * Rp1 * Rp1 / 3*   // step function contribution for 1
-            PI4 * Rp2 * Rp2 * Rp2 / 3;   // step function contribution for 2
-        }
-        else
-        {
-            //FFT of step function 
-            float temp1 = PI4 * (sin(Rp1 * kmag) - Rp1 * kmag * cos(Rp1 * kmag)) / (k2 * kmag);
-            float temp2 = PI4 * (sin(Rp2 * kmag) - Rp2 * kmag * cos(Rp2 * kmag)) / (k2 * kmag);
-
-            uk[i] = Ao *				//prefactor
-                exp(-k2 * (xi1*xi1 + xi2*xi2) * 0.5f) * //Gaussian contribution of both
-                temp1 * // step function for 1
-                temp2 ; // step function for the other
-        }
         
+        mybox->get_rf(i, ri);
+
+        float mdr2 = mybox->pbc_dr2(dr, ri, r0);
+        float mdr = sqrtf(mdr2);
+
+        
+        ur[i]  = (1.0 - erf((mdr - Rp1)/(xi1)));
+        ur2[i] = Ao * (1.0 - erf((mdr - Rp2)/(xi2)));
+
+    }
+    mybox->writeFieldFloat("erf2-ur.dat", ur);
+    mybox->writeFieldFloat("erf2-ur2.dat", ur2);
+
+    // d_ur = ur, copy real-space potential to device
+    cudaMemcpy(d_ur, ur, M*sizeof(float), cudaMemcpyHostToDevice);
+
+    // d_alex = d_ur
+    d_floatToCpx<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_cpxAlex, d_ur, M);
+
+    // gabe = FT(alex)
+    mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxGabe, 1);
+
+
+
+    // d_ur = ur2, copy real-space potential to device
+    cudaMemcpy(d_ur, ur2, M*sizeof(float), cudaMemcpyHostToDevice);
+
+    // d_alex = d_ur
+    d_floatToCpx<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_cpxAlex, d_ur, M);
+
+    // alex = FT(alex)
+    mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxAlex, 1);
+
+    // FT(d_uk) = FT(erf1)*FT(erf2), convolution of erf1 with erf2
+    d_multiplyCpxByCpx<<<mybox->M_Grid, mybox->M_Block>>>(d_uk, mybox->d_cpxGabe, mybox->d_cpxAlex, M);
+
+
+    // gabe = IFT(d_uk)
+    mybox->cufftWrapperSingle(d_uk, mybox->d_cpxGabe, -1);
+
+    // d_ur = real(gabe)
+    d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(d_ur, mybox->d_cpxGabe, M);
+    // ur = d_ur
+    cudaMemcpy(ur, d_ur, M*sizeof(float), cudaMemcpyDeviceToHost);
+
+    // uk = d_uk
+    cudaMemcpy(uk, d_uk, M*sizeof(std::complex<float>), cudaMemcpyDeviceToHost);
+
+    // Define the forces in Fourier space
+    for ( int i=0 ; i<M ; i++ ) {
+        mybox->get_kD(i, kv);
         for (int j = 0; j < Dim; j++) {
             fk[i * Dim + j] = -I * kv[j] * uk[i];
         }
+    }//i=0:M
 
-    }// k=0:M
-
-
-    // Send these to device, inv transform to get ur, f(r)
-    cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-    check_cudaError("uk --> d_uk in initialize Gaussian");
-
-    // Compute inverse fft of d_uk, store in temp variable
-    mybox->cufftWrapperSingle(d_uk, mybox->d_cpxAlex, -1);
-
-    // d_ur = Real(d_cpxAlex)
-    d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(d_ur, mybox->d_cpxAlex, M);
-    check_cudaError("cpxToFloat in Gaussian potential");
-
-    // Same thing for force arrays
+    // Send FT of forces back to device
     cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
     check_cudaError("sending force array to device in Gauss potential");
+
+
 
 
 
