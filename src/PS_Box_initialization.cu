@@ -501,6 +501,10 @@ void PS_Box::allocHostParticleArrays(int newns) {
     nAngles =    (int*) realloc(nAngles,    newns*sizeof(int));
     angleType =  (int*) realloc(angleType,  newns*MAXANGLES*sizeof(int));
     angleGroup = (int*) realloc(angleGroup, newns*MAXANGLES*3*sizeof(int));
+
+    if ( doCharges ) {
+        charges = (float*) realloc(charges, newns*sizeof(float));
+    }
     
     std::cout << "done!" << std::endl;
 }
@@ -526,6 +530,11 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     cudaMalloc(&d_x, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_v, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_f, nsAlloc*Dim*sizeof(float));
+
+    
+    if ( doCharges ) {
+        cudaMalloc(&d_charges, nsAlloc*sizeof(float));
+    }
 
     cudaMalloc(&d_intSpecies, nsAlloc * sizeof(int));
     cudaMalloc(&d_mID, nsAlloc * sizeof(int));
@@ -557,6 +566,7 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     cudaMalloc(&d_cpxGabe, M * sizeof(cuComplex));
     cudaMalloc(&d_cpxAlex, M * sizeof(cuComplex));
     
+
 
     std::cout << "done!" << std::endl;
 }
@@ -619,6 +629,11 @@ void PS_Box::sendAllHostToDevice(void) {
     sendThrustVectorToDeviceArray(angleK,     d_angleK,     nAngleTypes);
     sendThrustVectorToDeviceArray(angleStyle, d_angleStyle, nAngleTypes);
     
+
+    if (doCharges) {
+        cudaMemcpy(d_charges, charges, nstot*sizeof(float), cudaMemcpyHostToDevice);
+    }
+
     check_cudaError("template sending angle info to device");
 
 
@@ -840,4 +855,12 @@ void PS_Box::readDataConfig(std::string inpName) {
 	}
 	fclose(inp);
 
+}
+
+
+void PS_Box::enableCharges() {
+    if ( !doCharges ) {
+        doCharges = 1;
+        allocHostParticleArrays(nstot);
+    }    
 }

@@ -73,6 +73,8 @@ class PS_Box : public Box {
 
         float *f, *d_f;                     // [nstot*Dim]
         float *v, *d_v;                     // [nstot*Dim]
+
+        float *charges, *d_charges;         // [nstot] charge magnitude
         
 
         std::vector<PS_Species> species;            // vector of species IDs
@@ -158,6 +160,8 @@ class PS_Box : public Box {
         void NVT(int) override;
         void forces(void);
         void computeThermoProps(void);
+
+        void enableCharges(void); // allocates memory, sets flags for charges
 
         std::ofstream OTP;
         void readInput(std::ifstream&);     // Reads the input file
