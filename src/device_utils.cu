@@ -232,6 +232,46 @@ __global__ void d_fillDensityGrid(
 }
 
 
+// Intended to be called from the group class to fill the group's 
+// density field. 
+__global__ void d_fillChargeDensityGrid(
+    float* rho,             // [M] density field
+    const int* sites,       // [ns] indices of particles in the group
+    const float* q,         // [nstot] charges of all particles
+    const int* gridInds,    // [ns*gridPerPartic] indices of grids for each partic
+    const float* gridW,     // [ns*gridPerPartic] weights for each grid point
+    const int gridPerPartic,// Number of grid points per particle
+    const int ns            // number of sites in this group
+) {
+
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns)
+        return;
+
+    int pind = sites[id];
+
+    // get charge for this particle
+    float qp = q[pind];
+
+    for ( int i=0 ; i<gridPerPartic; i++ ) {
+        // index \in [0, ns*gridPerPartic)
+        int index = pind * gridPerPartic + i;
+
+        // index \in [0,M)
+        int gind = gridInds[index];
+        
+        // Weight of the particle to gind
+        float qW3 = gridW[index] * qp;
+
+        // Accumulate the grid density
+        atomicAdd(&rho[gind], qW3);
+    }// i=0:gridPerPartic
+
+}
+
+
+
+
 // Typically called from group class, accumulates grid forces
 // into the particle force array
 __global__ void d_mapGridForcesToPartics(

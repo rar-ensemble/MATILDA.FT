@@ -57,6 +57,26 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     }// type-based group
 
 
+    // make the group for non-zero charges
+    if ( inp == "charges" ) {
+        name = "charges";
+
+        for ( int i=0 ; i<mybox->nstot; i++ ) {
+            if ( mybox->charges[i] != 0.0 ) nsites++;
+        }
+
+        this->allocateGroupMemory(nsites);
+
+        int listInd = 0;
+        for ( int i=0; i<mybox->nstot; i++ ) {
+            if ( mybox->charges[i] != 0.0 ) {
+                siteList[listInd] = i;
+                listInd++;
+            }
+        }
+        std::cout << "Charge group generated with " << nsites << " particles." << std::endl;
+    }
+
 
     // Copy site list to device
     cudaMemcpy(d_siteList, siteList, nsites*sizeof(int), cudaMemcpyHostToDevice);
@@ -70,8 +90,15 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 // Fills the density field for this group
 void PS_Group::makeDensityField() {
     
-    d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_gridInds, 
-        mybox->d_gridW, mybox->gridPerPartic, nsites);
+    if ( name == "charges" ) {
+        d_fillChargeDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_charges,
+            mybox->d_gridInds, mybox->d_gridW, mybox->gridPerPartic, nsites);
+    }
+
+    else {
+        d_fillDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_gridInds, 
+            mybox->d_gridW, mybox->gridPerPartic, nsites);
+    }
     check_cudaError("Group ps_group::makeDensityField()");
 }
 

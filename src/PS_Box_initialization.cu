@@ -49,6 +49,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     gsd_name = "traj.gsd";
     trajFileName = "traj.lammpstrj";
     datFileName = "ps_data.dat";
+    initDataFileName = "init.input.data";
     trajFreq = 0;
     doCharges = 0;
 
@@ -177,6 +178,10 @@ void PS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "integrator" ) {
                 integrators.push_back( IntegratorFactory(iss, this) );
+            }
+
+            else if ( firstWord == "initDataFileName" ) {
+                iss >> initDataFileName;
             }
 
             else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { 
@@ -352,7 +357,22 @@ void PS_Box::finishInitialization() {
     DnsGrid = (int)ceil((double)(Dim*nstot) / nsBlock);
     
 
+    // Ensure charge neutrality
+    if (doCharges) {
+        float qtot = 0.0, qneg = 0.0, qpos = 0.0;
+        for ( int i=0 ; i<nstot; i++ ) {
+            qtot += charges[i];
+            if ( charges[i] < 0.0 ) qneg += charges[i];
+            else if ( charges[i] > 0.0 ) qpos += charges[i];
+        } 
 
+        if ( qtot != 0.f ) {
+            std::string qerror = "Box net charge is not zero! qtotal: " + std::to_string(qtot);
+            qerror += "total negative: " + std::to_string(qneg) + ", positive: " + std::to_string(qpos);
+            die(qerror);
+        }
+    }
+    
     // Define C, rho0 depending on what is given
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
 
@@ -383,7 +403,8 @@ void PS_Box::finishInitialization() {
         }
     }
     
-    writeDataConfig("init.input.data");
+
+    writeDataConfig(initDataFileName);
     std::cout << "Initial config in data file format written to init.input.data" << std::endl;
 
     // Finish memory allocation on host
@@ -473,6 +494,11 @@ void PS_Box::createDefaultGroups() {
 
         std::cout << "Group name: " << psGroup[i+1].returnName() << std::endl;
     }
+
+    if ( doCharges ) {
+        psGroup.push_back(PS_Group("charges", -1, this));
+    }
+
     std::cout << "Groups for all, each type created" << std::endl;
 }
 
@@ -735,9 +761,9 @@ void PS_Box::readDataConfig(std::string inpName) {
 		intSpecies[ind] = ltp - 1;
 
         if ( doCharges ) {
-            die("input.data not tested with doCharges on!");
-		    // (void)!fscanf(inp, "%f", &dcharge);
-		    // charges[ind] = dcharge;
+            float dcharge;
+		    (void)!fscanf(inp, "%f", &dcharge);
+		    charges[ind] = dcharge;
         }
 
 		for (int j = 0; j < Dim; j++) {

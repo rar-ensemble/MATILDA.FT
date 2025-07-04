@@ -499,6 +499,11 @@ void PS_Box::writeDataConfig(std::string filename) {
     for ( int i=0 ; i<nstot; i++ ) {
 
         out << i+1 << " " << mID[i]+1 << " " << intSpecies[i]+1 << "  " ;
+        
+        if ( this->doCharges ) {
+            out << charges[i] << " " ;
+        }
+
         for ( int j=0 ; j<Dim ; j++ ) 
             out << x[i*Dim+j] << " " ;
         if ( Dim < 3 )
