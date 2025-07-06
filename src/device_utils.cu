@@ -236,6 +236,7 @@ __global__ void d_fillDensityGrid(
 // density field. 
 __global__ void d_fillChargeDensityGrid(
     float* rho,             // [M] density field
+    float* rhoq,             // [M] density field
     const int* sites,       // [ns] indices of particles in the group
     const float* q,         // [nstot] charges of all particles
     const int* gridInds,    // [ns*gridPerPartic] indices of grids for each partic
@@ -261,14 +262,69 @@ __global__ void d_fillChargeDensityGrid(
         int gind = gridInds[index];
         
         // Weight of the particle to gind
-        float qW3 = gridW[index] * qp;
+        float W3 = gridW[index];
+        float qW3 = W3 * qp;
 
         // Accumulate the grid density
-        atomicAdd(&rho[gind], qW3);
+        atomicAdd(&rho[gind], W3);
+        atomicAdd(&rhoq[gind], qW3);
     }// i=0:gridPerPartic
 
 }
 
+
+
+// Called from group class, accumulates grid forces
+// into the particle force array
+__global__ void d_mapGridChargeForcesToPartics(
+    float *f,               // [Dim*nstot] particle forces
+    const float* charges,   // [nstot] charges on each particle
+    const float* gridF,     // [Dim*M] grid forces
+    const int* sites,       // [ns] indices of particles in the group
+    const int* gridInds,    // [ns*gridPerPartic] indices of grids for each partic
+    const float* gridW,     // [ns*gridPerPartic] weights for each grid point
+    const float gvol,       // Grid volum
+    const int gridPerPartic,// Number of grid points per particle
+    const int Dim,          // system dimensionality
+    const int ns            // number of sites in this group
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns)
+        return;
+
+    // particle 'id' in this group is 'pind' in total site list
+    int pind = sites[id];
+
+    float qi = charges[pind];
+    
+    for ( int j=0 ; j<Dim ; j++ ) {
+
+        // Accumulate force locally, then atomicAdd
+        float floc = 0.0;
+
+        for ( int i=0 ; i<gridPerPartic; i++ ) {
+            // index \in [0, ns*gridPerPartic)
+            int index = pind * gridPerPartic + i;
+
+            // index \in [0,M)
+            int gind = gridInds[index];
+
+            // Weight of this grid point
+            float W3 = gridW[index];
+
+            // Accumulate the force
+            floc += gridF[gind*Dim + j] * W3 * gvol;
+        }// i=0:gridPerPartic
+
+
+        // gridF is the electric field pre-convolved with
+        // unit Gaussian. Just needs to be x'd by q_i
+        f[pind*Dim+j] += floc * qi;
+
+    }// j=0:Dim
+
+
+}
 
 
 
