@@ -15,9 +15,11 @@
 __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_fillDensityGrid(float*, const int*, const int*, const float*,
 const int, const int);
-__global__ void d_fillChargeDensityGrid(float*, const int*, const float*, const int*, const float*,
+__global__ void d_fillChargeDensityGrid(float*, float*, const int*, const float*, const int*, const float*,
 const int, const int);
 __global__ void d_mapGridForcesToPartics(float*, const float*, const int*, const int*, const float*,
+const float, const int, const int, const int);
+__global__ void d_mapGridChargeForcesToPartics(float*, const float*, const float*, const int*, const int*, const float*,
 const float, const int, const int, const int);
 
 class PS_Box;
@@ -33,7 +35,7 @@ class PS_Group {
 
         int *siteList, *d_siteList;         // [nsites] list of sites in this group
         float *rho, *d_rho;                 // [M] density field for this group
-                                            // charge density for "charges" group
+        float *rhoq, *d_rhoq;               // [M] charge density for "charges" group
                                             
         float *gridForce, *d_gridForce;     // [Dim*M] grid-based forces for this group
 

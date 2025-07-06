@@ -74,7 +74,9 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
                 listInd++;
             }
         }
+        this->enableForce();
         std::cout << "Charge group generated with " << nsites << " particles." << std::endl;
+        
     }
 
 
@@ -91,7 +93,7 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
 void PS_Group::makeDensityField() {
     
     if ( name == "charges" ) {
-        d_fillChargeDensityGrid<<<Grid, Block>>>(d_rho, d_siteList, mybox->d_charges,
+        d_fillChargeDensityGrid<<<Grid, Block>>>(d_rho, d_rhoq, d_siteList, mybox->d_charges,
             mybox->d_gridInds, mybox->d_gridW, mybox->gridPerPartic, nsites);
     }
 
@@ -124,8 +126,16 @@ void PS_Group::accumulateGridForceComp(
 void PS_Group::mapForces() {
 
     if ( forceFlag ) {
-        d_mapGridForcesToPartics<<<Grid, Block>>>(mybox->d_f, d_gridForce, d_siteList, mybox->d_gridInds,
-            mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, mybox->returnDimension(), nsites);
+        if ( name == "charges" ) {
+            d_mapGridChargeForcesToPartics<<<Grid, Block>>>(mybox->d_f, mybox->d_charges, d_gridForce, 
+                d_siteList, mybox->d_gridInds, mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, 
+                mybox->returnDimension(), nsites);
+
+        }
+        else {
+            d_mapGridForcesToPartics<<<Grid, Block>>>(mybox->d_f, d_gridForce, d_siteList, mybox->d_gridInds,
+                mybox->d_gridW, mybox->gvol, mybox->gridPerPartic, mybox->returnDimension(), nsites);
+        }
         check_cudaError("Group ps_group::mapForces()");
 
     }
@@ -139,6 +149,9 @@ void PS_Group::zeroFields() {
 
     // this routine is in device_utils.cu
     d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(d_rho, 0.0, mybox->M);
+    if ( this->name == "charges" ) {
+        d_assignFloatVal<<<mybox->M_Grid, mybox->M_Block>>>(d_rhoq, 0.0, mybox->M);
+    }
 
     if ( forceFlag ) { 
         d_assignFloatVal<<<mybox->DMGrid, mybox->M_Block>>>(d_gridForce, 0.0, 
@@ -159,6 +172,14 @@ void PS_Group::allocateGroupMemory(int ns) {
     cudaMalloc(&d_rho, mybox->M * sizeof(float));
 
     check_cudaError("group allocation for d_rho");
+
+
+    if ( this->name == "charges" ) {
+        rhoq = (float*) malloc(mybox->M * sizeof(float));
+        cudaMalloc(&d_rhoq, mybox->M * sizeof(float));
+    }
+
+    check_cudaError("group allocation for d_rhoq");
     
 }
 
