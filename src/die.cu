@@ -6,7 +6,7 @@ std::string giveQuote(void);
 
 void die(const char* msg) {
 	std::cout << std::endl << msg << std::endl;
-	std::cout << "\n***************************************************\n" << giveQuote() << std::endl;
+	std::cout << "\n***************************************************\n" << giveQuote() << std::endl << std::endl;
 	exit(1);
 }
 
