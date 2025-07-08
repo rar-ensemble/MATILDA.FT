@@ -42,6 +42,12 @@ int Box::returnDimension() {
     return Dim;
 }
 
+// Returns the simulation box style
+// Currently only either "fts" or "ps"
+std::string Box::returnBoxStyle() {
+    return boxStyle;
+}
+
 // This routine assumes all received data is device thrust vectors
 // Typical use case for this is to convolve density fields and
 // potential fields with smearing functions, so it is expected that

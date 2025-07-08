@@ -13,6 +13,7 @@ class Box {
     protected:
         int Dim;                            // System dimensionality
         std::string input_command;          // Command to create this box
+        std::string boxStyle;               // "ps" or "fts" simulation box
         int nTotalBoxes;                    // Number of simulation boxes
 
     public:
@@ -52,7 +53,6 @@ class Box {
         virtual ~Box();
         void setDimension(int);
         
-        virtual void initializeSim() = 0;               // Subroutine to initial densities/fields prior to a sim
         double get_kD(int, double*);        // Subroutine to compute wavevector corresponding to grid index
         float get_kD(int, float*);        // Subroutine to compute wavevector corresponding to grid index
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
@@ -63,6 +63,7 @@ class Box {
         
         void unstack2(int, int*);
         int returnDimension(void);
+        std::string returnBoxStyle(void);
         std::string printCommand();
         virtual void readInput(std::ifstream&) = 0;
         virtual void writeFields() = 0;
