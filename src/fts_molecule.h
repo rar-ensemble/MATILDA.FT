@@ -18,6 +18,8 @@
 #include "include_libs.h"
 #include "random.h"
 
+void modifyMolecParam(double&, const std::string, const double);
+
 class FTS_Box;
 
 class FTS_Molec {

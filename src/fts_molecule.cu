@@ -60,3 +60,22 @@ FTS_Molec* FTS_MolecFactory(std::istringstream &iss, FTS_Box* box) {
     }
 	return 0;
 }
+
+
+// Changes molecule parameters depending on the style passed by 'how2Mod'
+// Any other related changes to param that are needed or associated memory 
+// allocation need to be taken care of elsewhere. This is just to parse
+// the changes to the variable.
+void modifyMolecParam(double& param, const std::string how2Mod, const double change) {
+    if (how2Mod == "scale" ) {
+        param *= change;
+    }
+
+    else if ( how2Mod == "delta" ) {
+        param += change;
+    }
+
+    else if ( how2Mod == "value" ) {
+        param = change;
+    }
+}

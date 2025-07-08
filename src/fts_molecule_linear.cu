@@ -392,18 +392,20 @@ void LinearMolec::modifyMolecule(std::istringstream& iss) {
         iss >> change;
 
         std::cout << "activity changed from " << activity ;
+
+        modifyMolecParam(activity, how2Mod, change);
         
-        if (how2Mod == "scale" ) {
-            activity *= change;
-        }
+        // if (how2Mod == "scale" ) {
+        //     activity *= change;
+        // }
 
-        else if ( how2Mod == "delta" ) {
-            activity += change;
-        }
+        // else if ( how2Mod == "delta" ) {
+        //     activity += change;
+        // }
 
-        else if ( how2Mod == "value" ) {
-            activity = change;
-        }
+        // else if ( how2Mod == "value" ) {
+        //     activity = change;
+        // }
 
         std::cout << " to " << activity << std::endl;
     }
