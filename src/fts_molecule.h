@@ -66,6 +66,7 @@ class FTS_Molec {
 
         virtual void calcDensity()=0;
         virtual std::complex<double> calcHTerm() = 0;
+        virtual void modifyMolecule(std::istringstream&) = 0;
 };
 
 #endif

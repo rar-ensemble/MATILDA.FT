@@ -41,6 +41,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     idum = RANDSEED = time(0);
     pmeorder = 1;
     verbose = false;
+    boxStyle = "ps";
 
     // Some default values
     logFreq = 100;
@@ -296,17 +297,6 @@ void PS_Box::readInput(std::ifstream& inp) {
 }// End of readInput()
 
 
-void PS_Box::initializeSim() {
-    
-
-    // Initialize the output stream
-    OTP.open(datFileName);
-    OTP.close();
-
-    totSteps = 0;
-}
-
-
 
 
 
@@ -475,6 +465,14 @@ void PS_Box::finishInitialization() {
     GSDinit();
     writeGSDtraj();
     // die("initialization finished, GSD written?");
+
+
+    // Initialize the output stream
+    OTP.open(datFileName);
+    OTP.close();
+
+    totSteps = 0;
+
 
     if ( verbose ) {
         std::cout << "\n" ;

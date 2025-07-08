@@ -166,7 +166,6 @@ class PS_Box : public Box {
         std::ofstream OTP;
         void readInput(std::ifstream&);     // Reads the input file
         void doTimeStep(int);               // Performs one time step of a sim
-        void initializeSim() override;      // Initializes files prior to beginning simulation
         void writeData(int) override;       
 
         void writeFields() override;        // Loops over groups, writes to data file
@@ -177,6 +176,7 @@ class PS_Box : public Box {
         void createDefaultGroups();         // Makes default groups
 
         void finishInitialization();          // Finishes initializing box after reading input
+        void modifyBox(std::istringstream&) override;
 
         // Writes thrust::host_vector array
         void writeFieldTFloat(const char*, thrust::host_vector<float>);        

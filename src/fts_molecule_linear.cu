@@ -380,6 +380,50 @@ std::complex<double> LinearMolec::calcHTerm() {
     return ht;
 }
 
+void LinearMolec::modifyMolecule(std::istringstream& iss) {
+
+    std::string property, how2Mod;
+    iss >> property;
+    
+    if ( property == "activity" ) {
+        iss >> how2Mod;
+
+        double change;
+        iss >> change;
+
+        std::cout << "activity changed from " << activity ;
+        
+        if (how2Mod == "scale" ) {
+            activity *= change;
+        }
+
+        else if ( how2Mod == "delta" ) {
+            activity += change;
+        }
+
+        else if ( how2Mod == "value" ) {
+            activity = change;
+        }
+
+        std::cout << " to " << activity << std::endl;
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "phi" ) {
+        die("changes in FTS:molec:phi not yet supported");
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "nmolecs" ) {
+        die("changes in FTS:molec:nmolecs not yet supported");
+    }
+
+    else {
+        std::string lastWords = property + " is not a valid property to change in FTS:molecule";
+        die(lastWords.c_str());
+    }
+}
+
 
 // Once smearing is implemented, smear functions need to 
 // be included in the linear coefficients

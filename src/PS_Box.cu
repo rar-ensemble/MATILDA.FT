@@ -642,3 +642,7 @@ float PS_Box::sumDeviceArray(
     
     return totalSum;
 }
+
+void PS_Box::modifyBox(std::istringstream& iss) {
+    return;
+}

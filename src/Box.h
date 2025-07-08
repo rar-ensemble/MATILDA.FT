@@ -76,6 +76,8 @@ class Box {
 
         virtual void doTimeStep(int) = 0;
 
+        virtual void modifyBox(std::istringstream&) = 0;
+
 };
 
 #endif // BOX
