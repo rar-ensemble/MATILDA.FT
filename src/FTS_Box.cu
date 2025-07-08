@@ -112,7 +112,7 @@ void FTS_Box::NVT(int nsteps) {
     for ( int i=0 ; i<nsteps ; i++ ) {
         doTimeStep(i);
 
-        if ( i > 50 && converged(i) ) {
+        if ( i >= 50 && converged(i) ) {
             break;
         }
 
@@ -625,4 +625,29 @@ int FTS_Box::converged(int step) {
 
 std::string FTS_Box::returnFTSstyle() {
     return ftsStyle;
+}
+
+void FTS_Box::modifyBox(std::istringstream& iss) {
+
+    std::cout << "Made it into modifyBox!" << std::endl;
+    
+    std::string word;
+    iss >> word;
+
+    if ( word == "potential" ) {
+        die("potential modifications not yet supported");
+    }
+
+    else if ( word == "molecule" ) {
+
+        int molecInd;
+        iss >> molecInd;  // 1-indexed
+
+        if ( molecInd > Molecs.size() ) {
+            die("Invalid molecule index - out of range!");
+        }
+
+        Molecs[molecInd-1]->modifyMolecule(iss);
+    }
+
 }

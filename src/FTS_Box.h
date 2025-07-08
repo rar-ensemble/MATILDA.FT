@@ -47,6 +47,7 @@ class FTS_Box : public Box {
         void writeTime() override;
         void initSmearGaussian(thrust::host_vector<thrust::complex<double>>&, const double, const double);
         int converged(int) override;
+        void modifyBox(std::istringstream&) override;
 
         void NVT(int) override;
         std::complex<double> integComplexD(std::complex<double>*);

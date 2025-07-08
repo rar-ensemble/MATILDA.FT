@@ -64,6 +64,14 @@ void FTS_Species::buildPotentialField() {
 
         }
 
+        if ( box->Potentials[i]->printStyle() == "Incompress" ) {
+
+            // d_w += I * wpl from Helfand
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
         if ( box->Potentials[i]->printStyle() == "Edwards" ) {
 
             // d_w += I * wpl from Edwards

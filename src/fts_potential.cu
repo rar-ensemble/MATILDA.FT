@@ -4,6 +4,7 @@
 
 #include "fts_potential.h"
 #include "fts_potential_helfand.h"
+#include "fts_potential_incompress.h"
 #include "fts_potential_edwards.h"
 #include "fts_potential_flory.h"
 #include "include_libs.h"
@@ -32,6 +33,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 
     else if ( s1 == "Edwards" || s1 == "edwards" ) {
         return new PotentialEdwards(iss, box);
+    }
+
+    else if ( s1 == "incompress" || s1 == "Incompress" || s1 == "incompressible" ) {
+        return new PotentialIncompress(iss, box);
     }
 
     else if ( s1 == "Flory" || s1 == "flory" ) {
