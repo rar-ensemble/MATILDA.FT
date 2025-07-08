@@ -93,12 +93,33 @@ void FTS_Box::doTimeStep(int step) {
     // Write log data
     if ( step % logFreq == 0 ) {
         writeData(step);
+
+        // thrust::complex<double> n0, n1;
+        // n0 = thrust::reduce(Molecs[0]->d_cDensity.begin(), Molecs[0]->d_cDensity.end(), thrust::complex<double>(0.0),
+        //                         thrust::plus<thrust::complex<double>>()) * gvol ;
+
+        // n1 = thrust::reduce(Molecs[1]->d_cDensity.begin(), Molecs[1]->d_cDensity.end(), thrust::complex<double>(0.0),
+        //                         thrust::plus<thrust::complex<double>>()) * gvol ;
+        
+        // std::cout << "Test nmolecs: " << Molecs[0]->nSites << " " << Molecs[1]->nSites << " n0, n1: " << n0 << " " << n1 << std::endl;
     }
 
 }
 
 
 void FTS_Box::NVT(int nsteps) {
+
+    for ( int i=0 ; i<nsteps ; i++ ) {
+        doTimeStep(i);
+
+        if ( i > 50 && converged(i) ) {
+            break;
+        }
+
+        totSteps++;
+    }
+
+    writeTime();
 
 }
 
@@ -107,22 +128,37 @@ void FTS_Box::writeData(int step) {
 
     computeHamiltonian();
 
+    if ( std::isnan(Heff.real()) ) {
+        die("Found Heff = NaN, quitting!");
+    }
+
     OTP.open("fts_data.dat", std::ios_base::app);
-    std::string outline;
 
     OTP << step << " " << Heff.real() << " " ;
     std::cout << step << " " << Heff.real() << " " ;
     if ( ftsStyle == "cl" ) {
         OTP << Heff.imag() << " " ;
     }
+    else {
+      OTP << fabs(Hold - real(Heff)) << " " ;
+      std::cout << fabs(Hold - real(Heff)) << " " ;
+    }
     for ( int i=0 ; i<Potentials.size() ; i++ ) {
-        OTP << Potentials[i]->Hterm << " " ;
-        std::cout << Potentials[i]->Hterm << " " ;
+        OTP << Potentials[i]->Hterm.real() << " " ;
+        std::cout << Potentials[i]->Hterm.real() << " " ;
     }
 
+    // Prints either -n*log(Q) or -z*Q
     for ( int i=0 ; i<Molecs.size(); i++ ) {
-        OTP << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
-        std::cout << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
+        OTP << Molecs[i]->calcHTerm().real() << " " ;
+        std::cout << Molecs[i]->calcHTerm().real() << " " ;
+        
+        if ( Molecs[i]->activity > 0.0 ) {
+            OTP << Molecs[i]->nSites << "  ";
+            std::cout << Molecs[i]->nSites << "  ";
+        }
+        // OTP << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
+        // std::cout << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
     }
 
     OTP << std::endl;
@@ -132,10 +168,12 @@ void FTS_Box::writeData(int step) {
 }
 
 
-void FTS_Box::initializeSim() {
+void FTS_Box::finishInitialization() {
     
     Potentials[0]->wpl = Potentials[0]->d_wpl;
 
+    std::string outline;
+    outline = "# step H error ";
     
     // Zero the species densities
     for ( int i=0 ; i<Species.size(); i++ ) {
@@ -143,15 +181,27 @@ void FTS_Box::initializeSim() {
         Species[i].buildPotentialField();
     }
 
+    for ( int i=0 ; i<Potentials.size() ; i++ ) {
+        outline = outline + "H_" + Potentials[i]->printStyle() + " " ;
+    }
 
-    thrust::host_vector<thrust::complex<double>> htmp(M);
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         Molecs[i]->calcDensity();
+
+        outline += "Q[" + std::to_string(i) + "] ";
+
+        if ( Molecs[i]->activity > 0.0 ) {
+            outline += "nsites[" + std::to_string(i) + "] ";
+        }
+
     }
+
 
     // Initialize the output stream
     OTP.open("fts_data.dat");
+    OTP << outline << std::endl;
+    std::cout << outline << std::endl;
     OTP.close();
 
 
@@ -213,6 +263,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     M = 1;
     V = 1.0;
     rho0 = C = -1.0;
+    boxStyle = "fts";
 
     // Some default values
     logFreq = 100;
@@ -222,6 +273,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
     PCflag = 0;
+    totSteps = 0;
+    idum = time(0);
+
 
     std::string line, firstWord;
 
@@ -242,6 +296,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 break;
             }
 
+
             // Commands are alphabetical from here on
             else if ( firstWord == "boxLengths" ) {
                 if (!readDimension) 
@@ -253,6 +308,11 @@ void FTS_Box::readInput(std::ifstream& inp) {
                     if ( Nx[0] > 0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }
             }
+
+            else if ( firstWord == "C" ) {
+                iss >> C;
+            }
+
 
             else if ( firstWord == "chemFieldFreq" || firstWord == "chemfieldfreq" ) { iss >> chemFieldFreq; }
 
@@ -364,11 +424,13 @@ void FTS_Box::readInput(std::ifstream& inp) {
     if ( rho0 > 0 ) {
         C = rho0/Nr;
         for ( int j=0; j<Dim ; j++ ) C *= Rg;
-        std::cout << "Using Nr = " << Nr << ", computed C = " << C << std::endl;
+        std::cout << "Using Nr = " << Nr << ", computed C = " << C << " rho0: " << C*Nr << " [Rg^-D]" << std::endl;
     }
     else if ( C > 0 ) {
-        rho0 = C * Rg * Rg * Rg / Nr;
-        std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [b^-3]" << std::endl;
+        rho0 = Nr * C;
+        // for ( int j=0 ; j<Dim ; j++ ) rho0 *= ( 1.0 / Rg );
+        
+        std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [Rg^-D]" << std::endl;
     }
 
     simTime = time(0);
@@ -383,10 +445,13 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
+
+    finishInitialization();
 }
 
 void FTS_Box::writeTime() {
 
+    std::cout << std::endl;
     int dt = time(0) - simTime;
     std::cout << "Total simulation time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
     

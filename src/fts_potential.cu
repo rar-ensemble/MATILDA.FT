@@ -4,6 +4,7 @@
 
 #include "fts_potential.h"
 #include "fts_potential_helfand.h"
+#include "fts_potential_edwards.h"
 #include "fts_potential_flory.h"
 #include "include_libs.h"
 #include <istream>
@@ -27,6 +28,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 //	iss.seekg(pos);
 	if (s1 == "Helfand" || s1 == "helfand"){
 		return new PotentialHelfand(iss, box);
+    }
+
+    else if ( s1 == "Edwards" || s1 == "edwards" ) {
+        return new PotentialEdwards(iss, box);
     }
 
     else if ( s1 == "Flory" || s1 == "flory" ) {

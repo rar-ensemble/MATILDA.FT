@@ -39,7 +39,7 @@ class FTS_Box : public Box {
         std::string returnFTSstyle();
         void readInput(std::ifstream&);
         void doTimeStep(int);
-        void initializeSim() override;
+        void finishInitialization();
         void writeSpeciesDensityFields();
         void writeData(int) override;
         void computeHamiltonian();

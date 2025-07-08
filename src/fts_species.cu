@@ -64,6 +64,14 @@ void FTS_Species::buildPotentialField() {
 
         }
 
+        if ( box->Potentials[i]->printStyle() == "Edwards" ) {
+
+            // d_w += I * wpl from Edwards
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
         else if ( box->Potentials[i]->printStyle() == "Flory" ) {
             if ( fts_species == box->Potentials[i]->actsOn[0] ) {
                 
@@ -92,7 +100,8 @@ void FTS_Species::buildPotentialField() {
     // Normalize the field by Nr
     thrust::device_vector<thrust::complex<double>> invNr(box->M);
     thrust::fill(invNr.begin(), invNr.end(), 1.0/double(box->Nr));
-    thrust::transform(d_w.begin(), d_w.end(), invNr.begin(), d_w.begin(), thrust::multiplies<thrust::complex<double>>());
+    thrust::transform(d_w.begin(), d_w.end(), invNr.begin(), d_w.begin(),   
+                        thrust::multiplies<thrust::complex<double>>());
 
 
     // thrust::host_vector<thrust::complex<double>> htmp(box->M);

@@ -15,7 +15,23 @@ FTS_Molec::FTS_Molec(std::istringstream &iss, FTS_Box* bx) {
     iss >> molec_type;
     mybox = bx;
 
-    iss >> phi;
+    phi = nmolecs = activity = -1.0;
+    
+    std::string s1;
+    iss >> s1;
+    
+    if ( s1 == "phi" ) {
+        iss >> phi;
+    }
+    else if ( s1 == "nmolecs" ) {
+        iss >> nmolecs; 
+    }
+    else if ( s1 == "activity" ) {
+        iss >> activity;
+    }
+
+    std::cout << "Molecule genereated with: " << input_command << std::endl;
+    std::cout << "  Now has phi, nmolecs, activity: " << phi << " " << nmolecs << " " << activity << std::endl;
 
     int M = mybox->M;
 

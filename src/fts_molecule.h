@@ -47,7 +47,9 @@ class FTS_Molec {
         thrust::complex<double> Q;
 
         double phi;         // Vol fraction of this molecule
-        double nmolecs;     // number of molecules of this molecule
+        double nmolecs;     // input number of molecules of this molecule
+        double activity;    // Activity used for uVT/semi-grand calcs
+        double nSites;      // Computed total number of sites for this molec
 
         // cDensity is the particle center density
         thrust::device_vector<thrust::complex<double>> d_cDensity;
@@ -63,6 +65,7 @@ class FTS_Molec {
         std::string printCommand() {return input_command;}
 
         virtual void calcDensity()=0;
+        virtual std::complex<double> calcHTerm() = 0;
 };
 
 #endif

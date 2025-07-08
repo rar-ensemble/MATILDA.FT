@@ -277,7 +277,13 @@ void LinearMolec::calcDensity() {
 
 
     int M = mybox->M;
-    thrust::complex<double> factor = nmolecs / Q / mybox->V;
+    thrust::complex<double> factor;
+    if ( nmolecs > 0.0 ) {
+        factor = nmolecs / Q / mybox->V;
+    }
+    else if (activity > 0.0 ) {
+        factor = activity;
+    }
 
     thrust::device_vector<thrust::complex<double>> W(mybox->M);
     thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
@@ -334,6 +340,17 @@ void LinearMolec::calcDensity() {
         d_density = d_cDensity;
     }
     
+    if ( activity > 0.0 ) {
+        nSites = activity * mybox->V * Q.real() * Ntot;
+
+        // thrust::complex<double> ntemp;
+        // ntemp = thrust::reduce(d_cDensity.begin(), d_cDensity.end(), thrust::complex<double>(0.0),
+        //                         thrust::plus<thrust::complex<double>>()) * mybox->gvol;
+        
+        // std::cout << "nmolecs: " << nmolecs << " ntmp: " << ntemp << std::endl;
+            // this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
+            //             thrust::plus<thrust::complex<double>>()) * mybox->gvol / mybox->V;
+    }
 
     // Finally, accumulate density onto the relevant species field
     for ( int b=0 ; b<numBlocks ; b++ ) {
@@ -345,10 +362,30 @@ void LinearMolec::calcDensity() {
 }
 
 
+// Computes the contribution to the Hamiltonian 
+// for this molecule style. 
+std::complex<double> LinearMolec::calcHTerm() {
+    std::complex<double> ht = 0.0;
+
+    if ( nmolecs > 0.0 ) {
+        ht = (std::complex<double>)( -nmolecs * log( Q ) );
+    }
+    else if ( activity > 0.0 ) {
+        ht = (std::complex<double>)( -activity*mybox->V*Q );
+    }
+    else {
+        die("Invalid conditions to calcHTerm()");
+    }
+
+    return ht;
+}
+
+
 // Once smearing is implemented, smear functions need to 
 // be included in the linear coefficients
 void LinearMolec::computeLinearTerms() {
     nmolecs = mybox->C * phi * mybox->V * mybox->Nr / (double(Ntot));
+    std::cout << " nSites = " << nmolecs * double(Ntot) << " nmolecs = " << nmolecs << std::endl;
 
     double alpha = double(Ntot) / double(mybox->Nr);
 
@@ -371,7 +408,8 @@ void LinearMolec::computeLinearTerms() {
 
     // Find the Helfand potential and add this molecules contribution
     for ( int i=0 ; i<mybox->Potentials.size(); i++ ) {
-        if ( mybox->Potentials[i]->printStyle() == "Helfand" ) {
+        std::string pstyle = mybox->Potentials[i]->printStyle();
+        if ( pstyle == "Helfand" || pstyle == "Edwards" ) {
             thrust::host_vector<thrust::complex<double>> Atmp(mybox->M);
             Atmp = mybox->Potentials[i]->d_Akpl;
 
