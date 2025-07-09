@@ -629,6 +629,8 @@ std::string FTS_Box::returnFTSstyle() {
 
 void FTS_Box::modifyBox(std::istringstream& iss) {
 
+    std::ofstream otp("sweep_data.dat", std::ios_base::app);
+
     std::cout << "Made it into modifyBox!" << std::endl;
     
     std::string word;
@@ -640,6 +642,13 @@ void FTS_Box::modifyBox(std::istringstream& iss) {
 
     else if ( word == "molecule" ) {
 
+        otp << Heff.real() << " " ;
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+            otp << Molecs[i]->nSites << " " << Molecs[i]->activity << " " ;
+        }
+
+        otp << std::endl;
+
         int molecInd;
         iss >> molecInd;  // 1-indexed
 
@@ -649,5 +658,7 @@ void FTS_Box::modifyBox(std::istringstream& iss) {
 
         Molecs[molecInd-1]->modifyMolecule(iss);
     }
+
+    otp.close();
 
 }
