@@ -28,6 +28,7 @@ class Box {
         float *L, *d_L, *Lh, *d_Lh;         // [Dim] Box dimensions, half-box dimensions
 
         double V;                           // Box volume
+        double Vfree;                       // Box volume not occupied by interfaces, particles
         int M;                              // Total number of grid points
         double gvol;                        // Grid volume
         int M_Grid, M_Block;                // GPU Configuration parameters
@@ -47,6 +48,9 @@ class Box {
             thrust::device_vector<thrust::complex<double>>&, thrust::device_vector<thrust::complex<double>>);
 
         void cufftWrapperSingle(cuComplex*, cuComplex*, const int);
+
+        cuDoubleComplex sumCpxDoubleDeviceArray(cuDoubleComplex*, int, int);
+
 
         Box();
         Box(std::istringstream&);
