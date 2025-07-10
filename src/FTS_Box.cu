@@ -18,6 +18,7 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream&, FTS_Box*);
 // then populating species densities
 void FTS_Box::doTimeStep(int step) {
 
+    // std::cout << "doing time step" << std::endl;
     // Update the potential fields
     for ( int i=0 ; i<Potentials.size(); i++ ) {
         int ti = time(0);
@@ -25,6 +26,9 @@ void FTS_Box::doTimeStep(int step) {
         fieldUpdateTimer += time(0) - ti;
     }
     
+    // std::cout << "potentials updated" << std::endl;
+
+
     // Zero the species densities and rebuilt the fields
     for ( int i=0 ; i<Species.size(); i++ ) {
         int ti = time(0);
@@ -33,6 +37,8 @@ void FTS_Box::doTimeStep(int step) {
         speciesTimer += time(0) - ti;
     }
 
+    // std::cout << "species fields zeroed" << std::endl;
+
     // Recalculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         int ti = time(0);
@@ -40,6 +46,7 @@ void FTS_Box::doTimeStep(int step) {
         moleculeTimer += time(0) - ti;
     }
 
+    // std::cout << "densities calculated" << std::endl;
 
     // If using predictor-corrector scheme, repeat above with predicted
     // densities and forces
@@ -67,6 +74,7 @@ void FTS_Box::doTimeStep(int step) {
         }        
     }
 
+    // std::cout << "PC steps finished" << std::endl;
 
     /////////////////
     // I/O section //
@@ -79,6 +87,8 @@ void FTS_Box::doTimeStep(int step) {
         }
     }
     
+    // std::cout << "write densField finished" << std::endl;
+
     // Write the species densities
     if ( chemFieldFreq > 0 && step % chemFieldFreq == 0 ) {
         for ( int i=0 ; i<Potentials.size(); i++ ) {
@@ -89,25 +99,19 @@ void FTS_Box::doTimeStep(int step) {
         }
     }
 
+    // std::cout << "write chemField finished" << std::endl;
 
     // Write log data
     if ( step % logFreq == 0 ) {
         writeData(step);
-
-        // thrust::complex<double> n0, n1;
-        // n0 = thrust::reduce(Molecs[0]->d_cDensity.begin(), Molecs[0]->d_cDensity.end(), thrust::complex<double>(0.0),
-        //                         thrust::plus<thrust::complex<double>>()) * gvol ;
-
-        // n1 = thrust::reduce(Molecs[1]->d_cDensity.begin(), Molecs[1]->d_cDensity.end(), thrust::complex<double>(0.0),
-        //                         thrust::plus<thrust::complex<double>>()) * gvol ;
-        
-        // std::cout << "Test nmolecs: " << Molecs[0]->nSites << " " << Molecs[1]->nSites << " n0, n1: " << n0 << " " << n1 << std::endl;
     }
 
+    // std::cout << "write log finished" << std::endl;
 }
 
 
 void FTS_Box::NVT(int nsteps) {
+
 
     for ( int i=0 ; i<nsteps ; i++ ) {
         doTimeStep(i);
@@ -128,6 +132,7 @@ void FTS_Box::writeData(int step) {
 
     computeHamiltonian();
 
+
     if ( std::isnan(Heff.real()) ) {
         die("Found Heff = NaN, quitting!");
     }
@@ -143,10 +148,12 @@ void FTS_Box::writeData(int step) {
       OTP << fabs(Hold - real(Heff)) << " " ;
       std::cout << fabs(Hold - real(Heff)) << " " ;
     }
+
     for ( int i=0 ; i<Potentials.size() ; i++ ) {
         OTP << Potentials[i]->Hterm.real() << " " ;
         std::cout << Potentials[i]->Hterm.real() << " " ;
     }
+
 
     // Prints either -n*log(Q) or -z*Q
     for ( int i=0 ; i<Molecs.size(); i++ ) {
@@ -189,10 +196,16 @@ void FTS_Box::finishInitialization() {
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         Molecs[i]->calcDensity();
 
-        outline += "Q[" + std::to_string(i) + "] ";
+        if ( Molecs[i]->molec_type != "HParticle" ) {
+            outline += "Q[" + std::to_string(i) + "] ";
 
-        if ( Molecs[i]->activity > 0.0 ) {
-            outline += "nsites[" + std::to_string(i) + "] ";
+            if ( Molecs[i]->activity > 0.0 ) {
+                outline += "nsites[" + std::to_string(i) + "] ";
+            }
+        }
+
+        else {
+            outline += "-I*integ(wpl*rho_HNP) " ;
         }
 
     }
@@ -418,6 +431,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
     M_Block = 512;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
+    cudaMalloc(&d_cpxGabe, M*sizeof(cuDoubleComplex));
+    cudaMalloc(&d_cpxAtmn, M*sizeof(cuDoubleComplex));
+
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
 
     double Rg = pow( (Nr-1.0)/6.0, 0.5);
@@ -531,7 +547,7 @@ void FTS_Box::computeHamiltonian() {
 
     // accumulate the -n*log(Q) terms
     for ( int i=0 ; i<Molecs.size(); i++ ) {
-        Heff += (std::complex<double>)( -Molecs[i]->nmolecs * log( Molecs[i]->Q));
+        Heff += Molecs[i]->calcHTerm();
     }
 }
 

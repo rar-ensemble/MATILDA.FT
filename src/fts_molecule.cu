@@ -4,6 +4,7 @@
 
 #include "fts_molecule.h"
 #include "fts_molecule_linear.h"
+#include "fts_moleculeHParticle.h"
 #include "include_libs.h"
 #include "FTS_Box.h"
 
@@ -28,6 +29,10 @@ FTS_Molec::FTS_Molec(std::istringstream &iss, FTS_Box* bx) {
     }
     else if ( s1 == "activity" ) {
         iss >> activity;
+    }
+    else {
+        std::string LW = s1 + " is not a valid way to define the number of particles/molecules";
+        die(LW.c_str());
     }
 
     std::cout << "Molecule genereated with: " << input_command << std::endl;
@@ -54,6 +59,9 @@ FTS_Molec* FTS_MolecFactory(std::istringstream &iss, FTS_Box* box) {
 		return new LinearMolec(iss, box);
     }
 	
+    else if ( s1 == "HParticle" ) {
+        return new ParticleMolec(iss, box);
+    }
 	else {
         std::string s2 = s1 + " is not a valid FTS_Molec"; 
         die(s2.c_str());

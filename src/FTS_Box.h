@@ -28,6 +28,7 @@ class FTS_Box : public Box {
         double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
         int PCflag;         // Flag for using predictor-corrector methods
         
+        cuDoubleComplex *d_cpxGabe, *d_cpxAtmn; // [M] temp storage for device complex arrays
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
         std::vector<FTS_Molec*> Molecs;         // Calculates properties of each species

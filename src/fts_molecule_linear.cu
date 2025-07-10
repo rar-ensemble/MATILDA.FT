@@ -89,10 +89,15 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
 
     // Determine integer block Species
     for ( int j=0 ; j<numBlocks; j++ ) {
+        intSpecies[j] = -55;
         for ( int i=0 ; i<mybox->Species.size(); i++ ) {
             if ( blockSpecies[j] == mybox->Species[i].fts_species ) {
                 intSpecies[j] = i;
             }
+        }
+        if ( intSpecies[j] < 0 ) {
+            std::string lastWords = blockSpecies[j] + " species not found!";
+            die(lastWords.c_str());
         }
     }
 

@@ -49,7 +49,7 @@ class Box {
 
         void cufftWrapperSingle(cuComplex*, cuComplex*, const int);
 
-        cuDoubleComplex sumCpxDoubleDeviceArray(cuDoubleComplex*, int, int);
+        std::complex<double> sumCpxDoubleDeviceArray(cuDoubleComplex*, int, int);
 
 
         Box();

@@ -60,6 +60,7 @@ class FTS_Molec {
         FTS_Box* mybox;
 
         virtual void computeLinearTerms() = 0;
+        std::complex<double> Hterm;
         
         FTS_Molec();
         FTS_Molec(std::istringstream &iss, FTS_Box*);
