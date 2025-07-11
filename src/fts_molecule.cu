@@ -35,8 +35,8 @@ FTS_Molec::FTS_Molec(std::istringstream &iss, FTS_Box* bx) {
         die(LW.c_str());
     }
 
-    std::cout << "Molecule genereated with: " << input_command << std::endl;
-    std::cout << "  Now has phi, nmolecs, activity: " << phi << " " << nmolecs << " " << activity << std::endl;
+    // std::cout << "Molecule genereated with: " << input_command << std::endl;
+    // std::cout << "  Now has phi, nmolecs, activity: " << phi << " " << nmolecs << " " << activity << std::endl;
 
     int M = mybox->M;
 

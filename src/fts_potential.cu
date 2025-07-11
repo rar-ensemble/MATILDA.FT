@@ -61,7 +61,7 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 // 'value' sets a uniform constant
 // 'random' sets random values with amplitude \in [0, Amp]
 // 'sin' sets to a sine wave (REAL PART ONLY)
-void FTS_Potential::initializeFields(
+void FTS_Potential::initializeField(
     std::istringstream &iss,                        // Input file command stream
     thrust::host_vector<thrust::complex<double>> &w // Field to be initialized (may be wpl or wmi)
     ) {
@@ -101,6 +101,12 @@ void FTS_Potential::initializeFields(
             w[i] = I * amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
         }
 
+    }
+
+    else if ( s1 == "readDatFile" ) {
+        std::string s2;
+        iss >> s2;
+        mybox->readDatFile(s2, wpl);
     }
 
     else {

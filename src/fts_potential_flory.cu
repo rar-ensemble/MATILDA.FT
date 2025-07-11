@@ -74,44 +74,7 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     while (iss.tellg() != -1 ) {
         iss >> s1;
         if ( s1 == "initialize" ) {
-            iss >> s1;
-            if ( s1 == "value" ) {
-                double rVal, iVal;
-                iss >> rVal;
-                iss >> iVal;
-                thrust::fill(wmi.begin(), wmi.end(), std::complex<double>(rVal, iVal));
-            }
-            // Two floats expected: amplitude of noise on real part and imag part
-            else if ( s1 == "random" ) {
-                double rAmp, iAmp;
-                iss >> rAmp;
-                iss >> iAmp;
-                // Fill host field with random noise
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    wmi[i] = std::complex<double>(rAmp * ran2(), iAmp * ran2() );
-                }
-                
-            }
-            
-            // Expects an int and two doubles [int dir] [double amplitude] [double period]
-            else if ( s1 == "sin" || s1 == "sine" ) {
-                double amp, period;
-                int dir;
-                iss >> dir;
-                iss >> amp;
-                iss >> period; 
-
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    double r[3];
-                    mybox->get_r(i, r);
-                    wmi[i] = amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
-                }
-
-            }
-
-            else {
-                die("Invalid initialize option on potential Flory");
-            }
+            initializeField(iss, wmi);
         }
 
         else if ( s1 == "updateScheme" ) {

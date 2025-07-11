@@ -46,7 +46,7 @@ class FTS_Potential {
         std::string printCommand();
         std::string printStyle();
         virtual void writeFields(int) = 0;
-        void initializeFields(std::istringstream&, thrust::host_vector<thrust::complex<double>>&);
+        void initializeField(std::istringstream&, thrust::host_vector<thrust::complex<double>>&);
         thrust::host_vector<thrust::complex<double>> wpl;       // w_plus for host
         thrust::device_vector<thrust::complex<double>> d_wpl;   // w_plus for device
         thrust::device_vector<thrust::complex<double>> d_Akpl;  // Linear coefficient for 1S, ETD updates

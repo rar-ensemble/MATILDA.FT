@@ -40,52 +40,9 @@ PotentialEdwards::PotentialEdwards(std::istringstream& iss, FTS_Box* p_box) : FT
     while (iss.tellg() != -1 ) {
         iss >> s1;
         if ( s1 == "initialize" ) {
-
-            iss >> s1;
-            if ( s1 == "value" ) {
-                double rVal, iVal;
-                iss >> rVal;
-                iss >> iVal;
-                thrust::fill(wpl.begin(), wpl.end(), std::complex<double>(rVal, iVal));
-                d_wpl = wpl;
-            }
-            // Two floats expected: amplitude of noise on real part and imag part
-            else if ( s1 == "random" ) {
-                double rAmp, iAmp;
-                iss >> rAmp;
-                iss >> iAmp;
-                // Fill host field with random noise
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    wpl[i] = std::complex<double>(rAmp * ran2(), iAmp * ran2() );
-                }
-                
-                // transfer to device
-                d_wpl = wpl;
-            }
-            
-            // Expects an int and two doubles [int dir] [double amplitude] [double period]
-            else if ( s1 == "sin" || s1 == "sine" ) {
-                double amp, period;
-                int dir;
-                iss >> dir;
-                iss >> amp;
-                iss >> period; 
-
-                std::complex<double> I(0.0,1.0);
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    double r[3];
-                    mybox->get_r(i, r);
-                    wpl[i] = I * amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
-                }
-
-                // transer to device
-                d_wpl = wpl;
-            }
-
-            else {
-                die("Invalid initialize option on potential edwards");
-            }
-        }
+            initializeField(iss, wpl);
+        }        
+        
 
         else if ( s1 == "updateScheme" ) {
             iss >> updateScheme;
