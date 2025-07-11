@@ -7,6 +7,7 @@
 #include "fts_potential_incompress.h"
 #include "fts_potential_edwards.h"
 #include "fts_potential_flory.h"
+#include "fts_potentialParticle.h"
 #include "include_libs.h"
 #include <istream>
 void die(const char*);
@@ -22,17 +23,16 @@ FTS_Potential::FTS_Potential(std::istringstream &iss, FTS_Box* p_box) : mybox(p_
 FTS_Potential::~FTS_Potential() {}
 
 FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
-//    std::stringstream::pos_type pos = iss.tellg();
-//    std::cout << "Found position: " << pos << std::endl;
+
     std::string s1;
 	iss >> s1 ;
-//	iss.seekg(pos);
-	if (s1 == "Helfand" || s1 == "helfand"){
-		return new PotentialHelfand(iss, box);
+
+    if ( s1 == "Edwards" || s1 == "edwards" ) {
+        return new PotentialEdwards(iss, box);
     }
 
-    else if ( s1 == "Edwards" || s1 == "edwards" ) {
-        return new PotentialEdwards(iss, box);
+    else if (s1 == "Helfand" || s1 == "helfand"){
+		return new PotentialHelfand(iss, box);
     }
 
     else if ( s1 == "incompress" || s1 == "Incompress" || s1 == "incompressible" ) {
@@ -41,6 +41,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 
     else if ( s1 == "Flory" || s1 == "flory" ) {
         return new PotentialFlory(iss, box);
+    }
+
+    else if ( s1 == "particle" || s1 == "Particle" ) {
+        return new PotentialParticle(iss, box);
     }
 	
 	else {
