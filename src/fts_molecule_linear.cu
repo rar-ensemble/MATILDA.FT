@@ -435,7 +435,7 @@ void LinearMolec::modifyMolecule(std::istringstream& iss) {
 // Once smearing is implemented, smear functions need to 
 // be included in the linear coefficients
 void LinearMolec::computeLinearTerms() {
-    nmolecs = mybox->C * phi * mybox->V * mybox->Nr / (double(Ntot));
+    nmolecs = mybox->C * phi * mybox->Vfree * mybox->Nr / (double(Ntot));
     std::cout << " nSites = " << nmolecs * double(Ntot) << " nmolecs = " << nmolecs << std::endl;
 
     double alpha = double(Ntot) / double(mybox->Nr);
@@ -559,4 +559,11 @@ void LinearMolec::computeLinearTerms() {
 
     }// numBlocks > 1
 
+}
+
+void LinearMolec::recomputeNmolecs() {
+    if ( activity > 0.0 ) {
+        nmolecs = mybox->C * phi * mybox->Vfree * mybox->Nr / (double(Ntot));
+        std::cout << " recomputed nSites = " << nmolecs * double(Ntot) << " nmolecs = " << nmolecs << std::endl;
+    }
 }

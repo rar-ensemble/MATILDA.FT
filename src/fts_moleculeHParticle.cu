@@ -42,12 +42,10 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
 
     int dim = mybox->returnDimension();
 
-    std::cout << "fts box has " << mybox->Molecs.size() << " molecules at start of generating particle molec" << std::endl;
-
+    
     particleNum = nmolecs;
     
     iss >> particleSpecies;
-    std::cout << "particleSpecies=" << particleSpecies <<std::endl;  
     // determine integer species
     intSpecies.resize(1);
     d_intSpecies.resize(1);
@@ -56,48 +54,42 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
             intSpecies[0] = i;
         }
     }
-    std::cout << "integer species= " << intSpecies[0] <<std::endl; 
     d_intSpecies = intSpecies;
 
     //resize density arrays
     density.resize(mybox->M);
-    std::cout << "density array resized" << std::endl;
     d_density.resize(mybox->M);
      
     //need to resize R, xi, center arrays based on particleNum
     Rp.resize(particleNum);
-    std::cout << "rp array resized" << std::endl;
     d_Rp.resize(particleNum);
 
     xi.resize(particleNum);
-    std::cout << "xi array resized" << std::endl;   
     d_xi.resize(particleNum);
 
-    //    center.resize(particleNum*mybox->returnDimension()); RAR
-        center.resize(particleNum*3);
-    std::cout << "center array resized" << std::endl;   
-    // d_center.resize(particleNum*mybox->returnDimension()); RAR
+    center.resize(particleNum*3);
+    
     d_center.resize(particleNum*3);
     
     Vnptot = 0; //zero total NP volume 
     //read input file 
     std::string s1;
     iss >> s1;
-    std::cout << "looking for file" <<std::endl;
     if (s1 == "file") {
         iss >> s1;
-        std::cout << "Filename: " << s1 <<std::endl;
+    
         std::ifstream in2(s1);
+    
         if (not in2.is_open()){
             std::cout << "File" << s1 << " does not exist."<<std::endl;
             die("");
         }
-        std::cout << "opening file: " << s1 <<std::endl;  
         // Store the contents into a vector of strings
         int npCounter = 0;
             
         std::string line;
-        while (std::getline(in2, line)) {
+        for ( int j=0 ; j<particleNum; j++ ) {
+            std::getline(in2, line);
             std::istringstream iss(line);
             std::string word;
                 std::vector<std::string> outputs;
@@ -110,20 +102,21 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
             center[(3*npCounter)+1] = stof(outputs[4]);
             center[(3*npCounter)+2] = stof(outputs[5]);
             npCounter += 1;
-            }
         }
+    }
 
+    Vnptot = 0.0;
     //loop to compute volume 
     for (int j=0; j<particleNum; j++ ) {
-        std::cout << "Particle Number " << j << std::endl;
-        std::cout << "R = " << Rp[j] << std::endl;
-        std::cout << "xi = " << xi[j] << std::endl;
-        std::cout << "x center = " << center[(3*j)] << std::endl;
-        std::cout << "y center = " << center[(3*j)+1] << std::endl;
-        std::cout << "z center = " << center[(3*j)+2] << std::endl;
-        float Vnp = 4.0 * PI * Rp[j] * Rp[j];
+        // std::cout << "Particle Number " << j << std::endl;
+        // std::cout << "R = " << Rp[j] << std::endl;
+        // std::cout << "xi = " << xi[j] << std::endl;
+        // std::cout << "x center = " << center[(3*j)] << std::endl;
+        // std::cout << "y center = " << center[(3*j)+1] << std::endl;
+        // std::cout << "z center = " << center[(3*j)+2] << std::endl;
+        float Vnp = PI * Rp[j] * Rp[j];
         if ( dim == 3 ) {
-            Vnp *= Rp[j] / 3.0;
+            Vnp *= 4.0 * Rp[j] / 3.0;
         }
     
         Vnptot += Vnp; // sum volume of all particles        
@@ -136,16 +129,10 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
     //calculate particle volume fraction
     phiNP = Vnptot / mybox->V;
     
-    std::cout << "phiNP  = " << phiNP << std::endl;
-    //update free volume available in box
-    // mybox->Vfree -= Vnptot;            
-
-    // here we want to use our erfc function to calculate the density
-
+    
     thrust::fill(d_NPdensity.begin(), d_NPdensity.end(), 0.0);
     thrust::fill(density.begin(), density.end(), 0.0);
     // Loop over particles
-    double psum = 0.0;
     for (int j = 0; j < particleNum; j++ ) {
 
         // Loop over grid points
@@ -167,15 +154,33 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
             dr_abs = sqrt(mdr2);
             // density[i] += mybox->Nr * mybox->rho0 * 0.5 * erfc( ( dr_abs-Rp[j] ) / xi[j] );    
 			density[i] += mybox->Nr * mybox->C * 0.5 * erfc( ( dr_abs-Rp[j] ) / xi[j] );    
-            psum += density[i].real() / mybox->Nr / mybox->C;
-        }    //Zero NP density field
+            
+        }
     }
-	std::cout << "Computed NP vol: " << Vnptot << ", integrated field: " << psum << " " << mybox->integTComplexD(density)/(mybox->Nr*mybox->C) << std::endl;
-    std::cout << "C: " << mybox->C << " Nr: " << mybox->Nr << " dv: " << mybox->gvol << std::endl;
+    double gvol = 1.0;
+    for ( int j=0 ; j<mybox->returnDimension() ; j++ ) {
+        gvol *= mybox->L[j] / double(mybox->Nx[j]);
+    }
+    
+    double psum = 0.0;
+    for ( int i=0 ; i<mybox->M ; i++ ) {
+        psum += density[i].real();
+    }
 
+    double NPvol = psum * gvol / mybox->Nr / mybox->C;
+    
+    // std::cout << "  Integrated NP density/Nr/C: " << NPvol << std::endl;
+    // std::cout << "  HParticle updated mybox->Vfree from " << mybox->Vfree ;
+
+    mybox->Vfree = mybox->Vfree - NPvol;
+    // std::cout << " to " << mybox->Vfree << std::endl;
+
+    if ( mybox->Vfree < 0.0 ) {
+        die("moleculeHParticle made free volume < 0.0");
+    }
 
     // RAR debug
-    mybox->writeTComplexGridData("test-npDens.dat", density);
+    // mybox->writeTComplexGridData("test-npDens.dat", density);
 
     //transfer density to device
     d_NPdensity = density;
@@ -280,12 +285,9 @@ std::complex<double> ParticleMolec::calcHTerm() {
 } 
 
 
-void ParticleMolec::modifyMolecule(std::istringstream& iss) {
-
-}
+void ParticleMolec::modifyMolecule(std::istringstream& iss) {}
 
 
+void ParticleMolec::computeLinearTerms() { }
 
-void ParticleMolec::computeLinearTerms() {
-
-}
+void ParticleMolec::recomputeNmolecs() { }

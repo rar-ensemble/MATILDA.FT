@@ -46,6 +46,7 @@ class ParticleMolec : public FTS_Molec {
 		void computeLinearTerms() override;
 		std::complex<double> calcHTerm() override;
 		void modifyMolecule(std::istringstream&) override;
+		void recomputeNmolecs(void) override;
 
 };
 

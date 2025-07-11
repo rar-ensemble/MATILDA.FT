@@ -43,6 +43,7 @@ class LinearMolec : public FTS_Molec {
         std::complex<double> calcHTerm() override;
         void computeLinearTerms() override;
         void modifyMolecule(std::istringstream&) override;
+        void recomputeNmolecs(void) override;
 };
 
 #endif
