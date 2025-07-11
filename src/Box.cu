@@ -327,3 +327,40 @@ std::complex<double> Box::sumCpxDoubleDeviceArray(
     
     return totalSum;
 }
+
+
+void Box::readDatFile( std::string name, thrust::host_vector<thrust::complex<double>>& w) {
+    std::ifstream inp(name);
+    
+    if ( !inp.is_open() ) {
+        std::string LW = "Failed to open " + name;
+        die(LW.c_str());
+    }
+
+    std::string word, line;
+
+    double xd, wr, wi;
+    for ( int i=0 ; i<M; i++ ) {
+        // Read line, convert to string stream
+        getline(inp, line);
+        std::istringstream iss(line);
+
+        for ( int j=0 ; j<Dim ; j++ ) {
+            iss >> xd;
+        }
+
+        iss >> wr;
+        iss >> wi;
+
+        w[i] = std::complex<double>(wr, wi);
+
+
+        // The 2D versions of the files have a blank line
+        // after each stack of y values
+        if ( Dim == 2 && (i+1)%Nx[0] == 0 ) {
+            getline(inp, line);
+        }
+    }
+
+    inp.close();
+}

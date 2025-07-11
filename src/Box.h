@@ -82,6 +82,9 @@ class Box {
 
         virtual void modifyBox(std::istringstream&) = 0;
 
+        void readDatFile(std::string, thrust::host_vector<thrust::complex<double>>&);
+        // void readDatFile(std::string, float*);
+
 };
 
 #endif // BOX
