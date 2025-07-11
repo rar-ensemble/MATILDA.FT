@@ -280,7 +280,6 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
     // Some default values
     logFreq = 100;
-    maxSteps = 10000;
     chemFieldFreq = 0;
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
@@ -348,8 +347,6 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { iss >> logFreq; }
-
-            else if ( firstWord == "maxSteps" || firstWord == "maxSteps" ) { iss >> maxSteps; }
 
             else if ( firstWord == "molecule" ) {
                 Molecs.push_back(FTS_MolecFactory(iss, this));
