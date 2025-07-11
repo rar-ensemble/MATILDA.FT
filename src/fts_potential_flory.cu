@@ -35,6 +35,17 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     actsOn.push_back(typeI);
     actsOn.push_back(typeJ);
 
+    int itest = -1, jtest = -1;
+    // Assign species I and J
+    for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
+        if ( actsOn[0] == mybox->Species[i].fts_species ) { itest = i; }
+        else if ( actsOn[1] == mybox->Species[i].fts_species ) { jtest = i; }
+    }
+    if ( itest < 0 || jtest < 0 ) {
+        std::string LW = actsOn[0] + " or "  + actsOn[1] + " species not found for potential Flory";
+        die(LW);
+    }
+
     iss >> chiN;
 
     // Set time steps for plus and minus fields

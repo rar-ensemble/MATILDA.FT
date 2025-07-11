@@ -40,7 +40,6 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     while (iss.tellg() != -1 ) {
         iss >> s1;
         if ( s1 == "initialize" ) {
-            std::cout << "caught initialize!" << std::endl;
             iss >> s1;
             if ( s1 == "value" ) {
                 double rVal, iVal;

@@ -50,6 +50,60 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 	return 0;
 }
 
+
+// initializes the fields according to one of several options.
+// Receives the field because different potentials may init
+// either wpl or wmi (e.g., Flory initializes wmi, Helfand wpl)
+// 'value' sets a uniform constant
+// 'random' sets random values with amplitude \in [0, Amp]
+// 'sin' sets to a sine wave (REAL PART ONLY)
+void FTS_Potential::initializeFields(
+    std::istringstream &iss,                        // Input file command stream
+    thrust::host_vector<thrust::complex<double>> &w // Field to be initialized (may be wpl or wmi)
+    ) {
+
+    std::string s1;
+    iss >> s1;
+    if ( s1 == "value" ) {
+        double rVal, iVal;
+        iss >> rVal;
+        iss >> iVal;
+        thrust::fill(w.begin(), w.end(), std::complex<double>(rVal, iVal));
+    }
+    // Two floats expected: amplitude of noise on real part and imag part
+    else if ( s1 == "random" ) {
+        double rAmp, iAmp;
+        iss >> rAmp;
+        iss >> iAmp;
+        // Fill host field with random noise
+        for ( int i=0 ; i<mybox->M ; i++ ) {
+            w[i] = std::complex<double>(rAmp * ran2(), iAmp * ran2() );
+        }
+        
+    }
+
+    // Expects an int and two doubles [int dir] [double amplitude] [double period]
+    else if ( s1 == "sin" || s1 == "sine" ) {
+        double amp, period;
+        int dir;
+        iss >> dir;
+        iss >> amp;
+        iss >> period; 
+
+        std::complex<double> I(0.0,1.0);
+        for ( int i=0 ; i<mybox->M ; i++ ) {
+            double r[3];
+            mybox->get_r(i, r);
+            w[i] = I * amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
+        }
+
+    }
+
+    else {
+        die("Invalid initialize option on potential edwards");
+    }    
+}
+
 std::string FTS_Potential::printCommand() {
     return input_command;
 }
