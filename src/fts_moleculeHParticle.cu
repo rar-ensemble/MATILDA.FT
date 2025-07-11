@@ -179,12 +179,11 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
         die("moleculeHParticle made free volume < 0.0");
     }
 
-    // RAR debug
-    // mybox->writeTComplexGridData("test-npDens.dat", density);
 
     //transfer density to device
     d_NPdensity = density;
     int is = intSpecies[0];
+
     // Also need to accumulate density onto the relevant species fields
     thrust::transform(d_NPdensity.begin(), d_NPdensity.end(),  mybox->Species[is].d_density.begin(), mybox->Species[is].d_density.begin(), thrust::plus<thrust::complex<double>>());
 }
