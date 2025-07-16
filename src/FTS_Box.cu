@@ -145,8 +145,8 @@ void FTS_Box::writeData(int step) {
         OTP << Heff.imag() << " " ;
     }
     else {
-      OTP << fabs(Hold - real(Heff)) << " " ;
-      std::cout << fabs(Hold - real(Heff)) << " " ;
+      OTP << error << " " ;
+      std::cout << error << " " ;
     }
 
     for ( int i=0 ; i<Potentials.size() ; i++ ) {
@@ -188,6 +188,14 @@ void FTS_Box::finishInitialization() {
         Species[i].buildPotentialField();
     }
 
+
+    // Initalize tolerance criteria
+    initTolerances();
+
+
+
+
+    // Set up output files and their headers
     for ( int i=0 ; i<Potentials.size() ; i++ ) {
         outline = outline + "H_" + Potentials[i]->printStyle() + " " ;
     }
@@ -284,6 +292,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
+    tolMetric = "Heff";
     PCflag = 0;
     totSteps = 0;
     idum = time(0);
@@ -392,7 +401,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if ( firstWord == "tolerance" ) {
+                iss >> tolMetric;
                 iss >> tolerance;
+
             }
 
             else {
@@ -614,28 +625,6 @@ std::complex<double> FTS_Box::integComplexD(std::complex<double> *dat) {
 }
 
 
-// Check convergence of SCFT simulation
-int FTS_Box::converged(int step) {
-
-    // Immediately return if not an SCFT calculation
-    if ( ftsStyle != "scft" ) return 0;
-    
-    // Check if H has been updated
-    if ( step % logFreq != 0 ) return 0;
-    
-    // Check if Hamiltonian change is less than the tolerance
-    if ( fabs(Hold - real(Heff)) < tolerance ) {
-        std::cout << "SCFT converged on step " << step << " deltaH: " << fabs(Hold - real(Heff)) << std::endl;
-        std::cout << Hold << " " << real(Heff) << std::endl;
-        return 1;
-    }
-
-    else {
-        Hold = real(Heff);
-        return 0;
-    }
-}
-
 
 std::string FTS_Box::returnFTSstyle() {
     return ftsStyle;
@@ -676,3 +665,89 @@ void FTS_Box::modifyBox(std::istringstream& iss) {
     otp.close();
 
 }
+
+
+
+// Check convergence of SCFT simulation
+int FTS_Box::converged(int step) {
+
+    // Immediately return if not an SCFT calculation
+    if ( ftsStyle != "scft" ) return 0;
+    
+    // Check if H has been updated
+    if ( step % logFreq != 0 || step < logFreq ) return 0;
+    
+    error = convergenceCheck();
+
+    if ( error < tolerance ) {
+        std::cout << "SCFT converged on step " << step << " using " << tolMetric << " < " << tolerance << std::endl;
+        return 1;
+    }
+    else {
+        return 0;
+    }
+
+}
+
+
+// The detailed calcs for checking convergence
+double FTS_Box::convergenceCheck() {
+
+    if ( tolMetric == "Heff" ) {
+        double change = fabs(Heff.real() - Hold);
+        Hold = Heff.real();
+        return change;
+    }
+
+    else if (tolMetric == "phi" ) {
+
+        double maxchange = -4321123.2;
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+
+            double ncur = Molecs[i]->nSites;
+            
+            double deltan = fabs(ncur - oldValues[i]);
+
+            oldValues[i] = ncur;
+            
+            if ( deltan > maxchange ) {
+                maxchange = deltan;
+            }
+        }
+
+        double dphi = maxchange / rho0 / V;
+        return dphi;
+        
+    }// if tolMetric == phi
+
+    else {
+        return 43123482.0;
+    }
+}
+
+void FTS_Box::initTolerances() {
+    if ( tolMetric == "Heff" ) {
+        return;
+    }
+
+    else if ( tolMetric == "phi" ) {
+        std::cout << "Using phi tolerance" << std::endl;
+        oldValues.resize(Molecs.size());
+
+        // Initialize 'old values' to arbitrary large value
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+            oldValues[i] = 6.666E6;
+        }
+    }
+    else if ( tolMetric == "density" ) {
+        die("density field tolerance checks not yet set up");
+    }
+    else if ( tolMetric == "potential" ) {
+        die("potential field tolerance checks not yet set up");
+    }
+    else {
+        std::string LW = tolMetric + " is not a valid tolerance option";
+        die(LW);
+    }
+}
+

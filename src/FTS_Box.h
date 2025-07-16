@@ -25,9 +25,19 @@ class FTS_Box : public Box {
         double C;           // System concentration
         int chemFieldFreq;  // Frequency to write potential fields
         std::complex<double> Heff;  // Effective Hamiltonian
-        double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
         int PCflag;         // Flag for using predictor-corrector methods
         
+
+        // Data for tolerance checks
+        double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
+        double error;
+        std::string tolMetric;    // Metric to use for convergence
+        std::vector<std::complex<double>> tolField, oldValues;
+        int tolIndex;       // index for field/potential/phi styles
+        void initTolerances(void);
+        double convergenceCheck(void);
+
+
         cuDoubleComplex *d_cpxGabe, *d_cpxAtmn; // [M] temp storage for device complex arrays
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
