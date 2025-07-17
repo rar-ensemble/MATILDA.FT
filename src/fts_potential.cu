@@ -88,17 +88,18 @@ void FTS_Potential::initializeField(
 
     // Expects an int and two doubles [int dir] [double amplitude] [double period]
     else if ( s1 == "sin" || s1 == "sine" ) {
-        double amp, period;
+        double real_amp, imag_amp, period;
         int dir;
         iss >> dir;
-        iss >> amp;
+        iss >> real_amp;
+        iss >> imag_amp;
         iss >> period; 
 
         std::complex<double> I(0.0,1.0);
         for ( int i=0 ; i<mybox->M ; i++ ) {
             double r[3];
             mybox->get_r(i, r);
-            w[i] = I * amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
+            w[i] = (real_amp + I * imag_amp) * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
         }
 
     }
