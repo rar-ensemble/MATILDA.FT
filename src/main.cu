@@ -19,18 +19,29 @@ std::vector<Box*> box;
 
 Box* BoxFactory(std::istringstream&);
 
-// To be replaced by 'box' run options
-void run_fts_sim(void);
-
 
 int main(int argc, char** argv)
 {
 	int nBoxes = 0;
 
+	int devCount, curDevice;
+	cudaGetDevice(&curDevice);
+	cudaGetDeviceCount(&devCount);
+
+
 	// Store start time
 	main_t_in = int(time(0));
 	init_t_in = main_t_in;
 
+	// Default input file name "input"
+	std::string input_file = "input";
+
+
+
+
+	/////////////////////
+	// PARSE ARGUMENTS //
+	/////////////////////
 
 	// Convert arguments to strings
 	std::vector<std::string> string_vec;
@@ -41,14 +52,39 @@ int main(int argc, char** argv)
 		string_vec.push_back(arg);
 	}
 
-	// Default input file name "input"
-	std::string input_file = "input";
+	int argIndex = 1;
+	while ( argIndex < string_vec.size() ) {
+		// non-default input file flag
+		if ( string_vec[argIndex] == "-in" ) {
+			input_file = string_vec[argIndex+1];
+			argIndex += 2;
+			std::cout << "Operating from input file " << input_file << std::endl;
+		}
 
-	// Check for non-default input file name
-	if ( string_vec.size() >= 3 && string_vec[1] == "-in" ) {
-		input_file = string_vec[2];
+		// manual GPU selection
+		else if ( string_vec[argIndex] == "-device" ) {
+			int deviceIndex = stoi( string_vec[argIndex+1] );
+			argIndex += 2;
+			if ( deviceIndex >= devCount ) {
+				std::string LW = "Device " + std::to_string(deviceIndex) + " not found; only detecting " + \
+					std::to_string(devCount) + " devices";
+				die(LW);
+			}
+			cudaSetDevice(deviceIndex);
+			cudaGetDevice(&curDevice);
+			if ( curDevice != deviceIndex) { die("Failed to set CUDA device"); }
+			else { std::cout << "Device manually set to " << curDevice << std::endl; }
+
+		}
+
+		
+		else {
+			std::string LW = string_vec[argIndex] + " is not a valid argument";
+			die(LW);
+		}
 	}
-	
+
+
 	
 	// open input file
 	std::ifstream in2(input_file);
