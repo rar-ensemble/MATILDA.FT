@@ -1,0 +1,37 @@
+box fts scft
+#Set the dimension to be 2
+Dim 2
+#Number of grid points in each of the "Dim" directions.
+grid 128 128
+#Name of the chemical species, typically a letter (e.g., A, B, etc).
+species A
+species B
+#density 
+rho0 1.0
+#Box dimensions
+boxLengths 32.0 32.0
+#Length of the reference polymer chain used to non-dimensionalize the units of the simulation.
+#Use the length of longest chain
+Nr 16
+#molecule [string "linear"] [float volume fraction] [int number of blocks] [block 1 length] [block 1 species] [block 2 length] [block 2 species]...
+molecule linear 0.8 3 4 A 8 B 4 A
+molecule linear 0.2 1 8 A
+
+#Flory potential
+RAND_SEED 368897
+potential Flory A B 32.0 0.2 0.1 initialize readfile final_potential_pls_mns_test.dat updateScheme EM
+potential Helfand 32.0 0.05 readfile final_potential_pls_mns_test.dat updateScheme EM
+
+#Total steps
+maxSteps 20001
+tolerance 0.0
+#LOG FREQ
+logFreq 20001
+#Number of time integration steps between writing the chemical potential fields.
+chemFieldFreq 20001
+#Number of time integration steps between writing the density fields.
+densityFieldFreq 20001
+startstep 0
+
+endBox
+

@@ -62,3 +62,15 @@ src/wmi_bkp.dat
 src/wmi_Flory1.dat
 src/wpl_Flory1.dat
 src/wpl_Helfand0.dat
+
+# --- Whitelist rules for new structure ---
+!MATILDA.FT/
+!MATILDA.FT/**
+
+# Optional: whitelist internal subfolders
+!MATILDA.FT/examples/
+!MATILDA.FT/src/
+# --- Unignore src files in new structure ---
+!MATILDA.FT/src/*.cu
+!MATILDA.FT/src/*.h
+!MATILDA.FT/src/*
