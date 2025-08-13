@@ -8,7 +8,7 @@
 
 std::vector<std::string> quoteDB = { 
   "'You don't believe in God? Well, whiskey will do' \n--Adia Victoria",
-  "'They say every sin is deadly, but I believe they may be wrong. I'm guilty of all seven and don't feel too bad at all' \n--Drive-by Truckers",
+  "'They say every sin is deadly, but I believe they may be wrong. \n I'm guilty of all seven and don't feel too bad at all' \n--Drive-by Truckers",
   "'A guitar is a poor substitute for a football for the girls in my high school.' \n--Drive-by Truckers",
   "'That's telekinesis, Kyle!' \n--Tenacious D",
   "'I gotta start payin better attention to life' \n--John Kruk",
@@ -25,9 +25,9 @@ std::vector<std::string> quoteDB = {
   "'I will eat your soul' \n--Aphex Twin",
   "'Triangle man, triangle man, triangle man hates person man; they have a fight, triangle wins.' \n--They Might Be Giants",
   "'Bite my shiny metal ass' \n--Bender",
-  "'Libertarians are like house cats: convinced of their fierce independence while dependent on a system they neither appreciate nor understand' \n--Unknown",
+  "'Libertarians are like house cats: convinced of their fierce independence while \n relying on a system they neither appreciate nor understand' \n--Unknown",
   "'I'm against protesting, but I don't know how to show it' \n--Mitch Hedberg",
-  "'Think about how stupid the average person is...and then realize that half of them are stupider than that' \n--George Carlin",
+  "'Think about how stupid the average person is...and then realize \n that half of them are stupider than that' \n--George Carlin",
   "'When a friend asks for help, ya help 'em' \n--Letterkenny",
   "'Well first of all, I'd have to be a good person to remain one...' \n--Drew Morgan",
   "'If you stands for nothing, you'll fall for anythings.' \n--Squirrely Dan",
@@ -49,6 +49,11 @@ std::vector<std::string> quoteDB = {
   "'I believe in peace, bitch' \n--Tori Amos",
   "'There are 5000 people in Letterkenney.\n\nThese are their problems. \n",
   "'Strange women lying in ponds distributing swords is no basis for a system of government.'\n\n--Monty Python",
-  "'Would I be a good messiah with my low self-esteem? If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
+//  "John Kruk: You know what I found out at the Franklin Institute? \n \
+//Tom McCarthy: You went to the Franklin Institute? \n \
+//JK: I did. 25 lbs of pressure if someone is attacking you, and you can rip their ear off. \n \
+//TM: (Loses it) \n \
+//JK: It's the same amount of pressure to open a pickle jar.\n\n--Orioles at Phillies, 8/4/2025",
+  "'Would I be a good messiah with my low self-esteem? \n If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif

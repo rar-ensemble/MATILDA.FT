@@ -122,6 +122,16 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
     d_bond_fft = bond_fft;
 
 
+    // Allocate temp storage data
+    W.resize(mybox->M);
+    qf.resize(mybox->M);
+    hf.resize(mybox->M);
+    a.resize(mybox->M);
+    expW.resize(mybox->M);
+    norm.resize(mybox->M);
+    q_qdag.resize(mybox->M);
+    temp.resize(mybox->M);
+    thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
 }
 
 struct NegExponential {
@@ -133,16 +143,6 @@ struct NegExponential {
 
 void LinearMolec::calcPropagators() {
     
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
-
-    thrust::device_vector<thrust::complex<double>> qf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> hf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> a(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
-
-    // To normalize FTs
-    thrust::device_vector<thrust::complex<double>> norm(mybox->M);
-    thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
 
     //////////////////////////////////
     // Calculate forward propagator //
@@ -290,10 +290,6 @@ void LinearMolec::calcDensity() {
         factor = activity;
     }
 
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
-    thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
-    thrust::device_vector<thrust::complex<double>> temp(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
 
     // Zero all block density fields
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);

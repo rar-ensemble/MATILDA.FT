@@ -647,7 +647,9 @@ void FTS_Box::modifyBox(std::istringstream& iss) {
 
         otp << Heff.real() << " " ;
         for ( int i=0 ; i<Molecs.size() ; i++ ) {
-            otp << Molecs[i]->nSites << " " << Molecs[i]->activity << " " ;
+            if ( Molecs[i]->activity > 0.0 ) {
+                otp << Molecs[i]->nSites << " " << Molecs[i]->activity << " " ;
+            }
         }
 
         otp << std::endl;
