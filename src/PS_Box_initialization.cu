@@ -42,6 +42,7 @@ void PS_Box::readInput(std::ifstream& inp) {
     pmeorder = 1;
     verbose = false;
     boxStyle = "ps";
+    firstAllocDone = 0;
 
     // Some default values
     logFreq = 100;
@@ -505,35 +506,54 @@ void PS_Box::createDefaultGroups() {
 // This can also be used for the intial allocation 
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
-    std::cout << "  (Re)allocating for " << newns << " sites on the host..." ;
+    std::cout << "  (Re)allocating for " << newns << " sites on the host..." ; 
+    fflush(stdout);
     x.resize(newns*Dim);
-   
-   
-    // free if already allocated
-    v = (float*) realloc(v, newns * Dim * sizeof(float)); 
-    f = (float*) realloc(f, newns * Dim * sizeof(float)); 
-
-    // // free if already allocated
-    // if ( f != NULL )  { f = (float*) realloc(f, newns * Dim * sizeof(float)); 
-    // std::cout << "freed and reup" << std::endl; }
-    // else { f = (float*) realloc(f, newns * Dim * sizeof(float)); }
-
-    nBonds = (int* ) realloc(nBonds, newns * sizeof(int));
-    bondedTo = (int* ) realloc(bondedTo, newns*MAXBONDS * sizeof(int));
-    bondType = (int* ) realloc(bondType, newns*MAXBONDS * sizeof(int));
+       
+    std::cout << " here1 " << newns * Dim * sizeof(float) << std::endl;
     
+    if ( firstAllocDone == 0 ) { 
+        std::cout << " first allocation using malloc..." << std::endl; 
+        v = (float*) malloc(newns*Dim*sizeof(float)); 
+        f = (float*) malloc(newns*Dim*sizeof(float)); 
+
+        nBonds = (int*) malloc(newns * sizeof(int));
+        bondedTo = (int*) malloc(newns * MAXBONDS * sizeof(int));
+        bondType = (int*) malloc(newns * MAXBONDS * sizeof(int));
+
+        nAngles = (int*) malloc(newns * sizeof(int));
+        angleType = (int*) malloc(newns * MAXANGLES * sizeof(int));
+        angleGroup = (int*) malloc(newns * MAXANGLES * sizeof(int));
+
+        if ( doCharges ) {
+            charges = (float*) malloc( newns * sizeof(float));
+        }
+    }
+    
+    else { 
+        v = (float*) realloc(v, newns * Dim * sizeof(float)); 
+        f = (float*) realloc(v, newns * Dim * sizeof(float)); 
+
+        nBonds = (int* ) realloc(nBonds, newns * sizeof(int));
+        bondedTo = (int* ) realloc(bondedTo, newns*MAXBONDS * sizeof(int));
+        bondType = (int* ) realloc(bondType, newns*MAXBONDS * sizeof(int));
+                
+        nAngles =    (int*) realloc(nAngles,    newns*sizeof(int));
+        angleType =  (int*) realloc(angleType,  newns*MAXANGLES*sizeof(int));
+        angleGroup = (int*) realloc(angleGroup, newns*MAXANGLES*3*sizeof(int));
+
+        if ( doCharges ) {
+            charges = (float*) realloc(charges, newns*sizeof(float));
+        }
+
+    }
+
+    std::cout << " here2" << std::endl;
 
     intSpecies.resize(newns);
     mID.resize(newns);
 
-    nAngles =    (int*) realloc(nAngles,    newns*sizeof(int));
-    angleType =  (int*) realloc(angleType,  newns*MAXANGLES*sizeof(int));
-    angleGroup = (int*) realloc(angleGroup, newns*MAXANGLES*3*sizeof(int));
-
-    if ( doCharges ) {
-        charges = (float*) realloc(charges, newns*sizeof(float));
-    }
-    
+    firstAllocDone = 1;
     std::cout << "done!" << std::endl;
 }
 
@@ -546,9 +566,9 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     std::cout << "Allocating for " << nsAlloc << " sites on the device..." ;
     fflush(stdout);
 
-    if ( d_states != NULL ) {
-        cudaFree(d_states);
-    }
+    // if ( d_states != NULL ) {
+    //     cudaFree(d_states);
+    // }
 
     cudaMalloc(&d_states, nsAlloc * Dim * sizeof(curandState));
     d_initDeviceRNG<<<nsGrid, nsBlock>>>(RANDSEED, d_states, nstot);
@@ -701,11 +721,13 @@ void PS_Box::readDataConfig(std::string inpName) {
 	(void)!fscanf(inp, "%d", &nBondsTot);  (void)!fgets(tt, 120, inp);
 	(void)!fscanf(inp, "%d", &nAnglesTot);  (void)!fgets(tt, 120, inp);
 
+
 	(void)!fgets(tt, 120, inp);
 
 	(void)!fscanf(inp, "%d", &nTypes);  (void)!fgets(tt, 120, inp);
 	(void)!fscanf(inp, "%d", &nBondTypes);  (void)!fgets(tt, 120, inp);
 	(void)!fscanf(inp, "%d", &nAngleTypes);  (void)!fgets(tt, 120, inp);
+
 
 	// Read in box shape
 	(void)!fgets(tt, 120, inp);
@@ -724,12 +746,13 @@ void PS_Box::readDataConfig(std::string inpName) {
 		Lh[i] = 0.5f * L[i];
 		V *= L[i];
 	}
+    std::cout << "about to allocate for " << nstot <<  std::endl;
 
 
 	// Allocate memory for positions //
 	allocHostParticleArrays(nstot);
 
-	printf("Particle memory allocated on host!\n");
+    std::cout << "Particle memory allocated on host in readDataConfig!" << std::endl;
 
 	(void)!fgets(tt, 120, inp);
 
@@ -889,9 +912,11 @@ void PS_Box::readDataConfig(std::string inpName) {
 void PS_Box::enableCharges() {
     if ( !doCharges ) {
         doCharges = 1;
-        allocHostParticleArrays(nstot);
-        for ( int i=0 ; i<nstot; i++ ) {
-            charges[i] = 0.0;
+        if ( nstot > 0 ) { 
+            allocHostParticleArrays(nstot);
+            for ( int i=0 ; i<nstot; i++ ) {
+                charges[i] = 0.0;
+            }
         }
     }    
 }

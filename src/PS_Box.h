@@ -50,6 +50,9 @@ class PS_Box : public Box {
         int n_P_comps;      // Number of independent pressure components (3 or 6)
         int nMolecules;     // Number of molecules in the box, not sure needed/used
 
+        int firstAllocDone; // Flag for first host memory alloc vs realloc
+        // firstAllocDone = 0 prior to first call of allocHostParticleArrays
+
         bool verbose;       // Flag to print tons of info to screen. Useful for debugging.
         
         curandState* d_states; // [Dim*nstot] State var. for particle-level RNG
@@ -69,6 +72,7 @@ class PS_Box : public Box {
         float* d_dxf;      // float version of grid spacing
         
         thrust::host_vector<float> x;       // [nstot*Dim] particle positions 
+        // float *x;
         float *d_x;                         // [nstot*Dim] device particle positions  
 
         float *f, *d_f;                     // [nstot*Dim]
