@@ -273,7 +273,7 @@ __global__ void d_fillDensityGrid(
 // density field. 
 __global__ void d_fillChargeDensityGrid(
     float* rho,             // [M] density field
-    float* rhoq,             // [M] density field
+    float* rhoq,            // [M] density field
     const int* sites,       // [ns] indices of particles in the group
     const float* q,         // [nstot] charges of all particles
     const int* gridInds,    // [ns*gridPerPartic] indices of grids for each partic
