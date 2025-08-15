@@ -16,6 +16,8 @@ void die(const char*);
 double ran2(void);
 
 __global__ void d_initDeviceRNG(unsigned int, curandState*, int);
+__global__ void d_calcGridWeights(float*, int*, const float*, const int*, 
+const float*, const int, const int, const int, const int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 PS_Potential* PSPotentialFactory(std::istringstream&, PS_Box*);
@@ -474,6 +476,20 @@ void PS_Box::finishInitialization() {
 
     totSteps = 0;
 
+    
+    // Compute grid weights and fill the grid as a final 
+    // step before leaving initialization.
+    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx, 
+            d_dxf, nstot, pmeorder, M, Dim );
+    
+    for ( int i=0 ; i<psGroup.size(); i++ ) {
+        // zero density, grid force fields
+        psGroup[i].zeroFields();
+        // Fill density fields
+        psGroup[i].makeDensityField();
+    }
+    check_cudaError("density field generation in PS_Box::finishInit");
+
 
     if ( verbose ) {
         std::cout << "\n" ;
@@ -507,13 +523,13 @@ void PS_Box::createDefaultGroups() {
 // ONLY AFFECTS HOST ARRAYS
 void PS_Box::allocHostParticleArrays(int newns) {
     std::cout << "  (Re)allocating for " << newns << " sites on the host..." ; 
-    fflush(stdout);
+    
     x.resize(newns*Dim);
        
-    std::cout << " here1 " << newns * Dim * sizeof(float) << std::endl;
     
+    // Initial allocation needs to be done with malloc
     if ( firstAllocDone == 0 ) { 
-        std::cout << " first allocation using malloc..." << std::endl; 
+        std::cout << " first allocation using malloc..." ;
         v = (float*) malloc(newns*Dim*sizeof(float)); 
         f = (float*) malloc(newns*Dim*sizeof(float)); 
 
@@ -530,6 +546,7 @@ void PS_Box::allocHostParticleArrays(int newns) {
         }
     }
     
+    // subsequent resizing done with realloc
     else { 
         v = (float*) realloc(v, newns * Dim * sizeof(float)); 
         f = (float*) realloc(v, newns * Dim * sizeof(float)); 
@@ -548,7 +565,6 @@ void PS_Box::allocHostParticleArrays(int newns) {
 
     }
 
-    std::cout << " here2" << std::endl;
 
     intSpecies.resize(newns);
     mID.resize(newns);

@@ -135,9 +135,13 @@ void PS_Box::doTimeStep(int step) {
 void PS_Box::NVT(int maxSteps) {
     std::cout << "RUNNING NVT?!?" << std::endl;
     
+
     std::cout << "Initial values:" << std::endl;
     writeData(-1);
 
+
+
+    // Primary loop over steps
     for ( int i=0 ; i<maxSteps; i++ ) {
         doTimeStep(i);
 

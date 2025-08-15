@@ -104,13 +104,22 @@ float NBCharge::CalcEnergy() {
     mybox->cufftWrapperSingle(d_cpxAlex, d_cpxAlex, -1);
     d_cpxToFloat<<<Grid, Block>>>(d_Gabe, d_cpxAlex, M);
 
+
+
+
     // Alex = rhoq * Gabe
     d_multiplyFloatByFloat<<<Grid, Block>>>(d_Alex, d_rhoq, d_Gabe, M);
 
+    // integrate the field, divide by 2
     energy = 0.5 * mybox->gvol * mybox->sumDeviceArray(d_Alex, mybox->M_Block, M);
 
+ 
     return this->energy;
 }
+
+
+
+
 
 void NBCharge::CalcForces() {
     float *d_rhoq;

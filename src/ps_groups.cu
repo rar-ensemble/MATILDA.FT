@@ -61,9 +61,11 @@ PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     if ( inp == "charges" ) {
         name = "charges";
 
+        nsites = 0;
         for ( int i=0 ; i<mybox->nstot; i++ ) {
             if ( mybox->charges[i] != 0.0 ) nsites++;
         }
+
 
         this->allocateGroupMemory(nsites);
 
