@@ -8,11 +8,11 @@
 
 std::vector<std::string> quoteDB = { 
   "'You don't believe in God? Well, whiskey will do' \n--Adia Victoria",
-  "'They say every sin is deadly, but I believe they may be wrong. \n I'm guilty of all seven and don't feel too bad at all' \n--Drive-by Truckers",
+  "'They say every sin is deadly, but I believe they may be wrong. \nI'm guilty of all seven and don't feel too bad at all' \n--Drive-by Truckers",
   "'A guitar is a poor substitute for a football for the girls in my high school.' \n--Drive-by Truckers",
   "'That's telekinesis, Kyle!' \n--Tenacious D",
   "'I gotta start payin better attention to life' \n--John Kruk",
-  "'You dumb bastard! It's not a schooner, it's a sailboat!' \n--Mallrats",
+  "'You dumb bastard. It's not a schooner, it's a sailboat!' \n--Mallrats",
   "'Place well thy protection lest the Earth rise up and smite thee' \n--Devil's Lake Trial-and-Error School of Rock Climbing",
   "'Ain't this place a geographical oddity! Two weeks from everywhere!' \n--Oh Brother Where Art Thou",
   "'Yes, we're being condescending. Yes, that means we're talking down to you. \n--Puscifer",
@@ -25,7 +25,7 @@ std::vector<std::string> quoteDB = {
   "'I will eat your soul' \n--Aphex Twin",
   "'Triangle man, triangle man, triangle man hates person man; they have a fight, triangle wins.' \n--They Might Be Giants",
   "'Bite my shiny metal ass' \n--Bender",
-  "'Libertarians are like house cats: convinced of their fierce independence while \n relying on a system they neither appreciate nor understand' \n--Unknown",
+  "'Libertarians are like house cats: convinced of their fierce independence while \nrelying on a system they neither appreciate nor understand' \n--Unknown",
   "'I'm against protesting, but I don't know how to show it' \n--Mitch Hedberg",
   "'Think about how stupid the average person is...and then realize \n that half of them are stupider than that' \n--George Carlin",
   "'When a friend asks for help, ya help 'em' \n--Letterkenny",
@@ -47,13 +47,16 @@ std::vector<std::string> quoteDB = {
   "'Crazy. Toys in the attic, I am crazy.' \n--Pink Floyd",
   "'You're spare parts, aren't ya bud?' \n--Wayne of Letterkenny",
   "'I believe in peace, bitch' \n--Tori Amos",
-  "'There are 5000 people in Letterkenney.\n\nThese are their problems. \n",
+  "'There are 5000 people in Letterkenney.\n\nThese are their problems.' \n",
   "'Strange women lying in ponds distributing swords is no basis for a system of government.'\n\n--Monty Python",
-//  "John Kruk: You know what I found out at the Franklin Institute? \n \
-//Tom McCarthy: You went to the Franklin Institute? \n \
-//JK: I did. 25 lbs of pressure if someone is attacking you, and you can rip their ear off. \n \
-//TM: (Loses it) \n \
-//JK: It's the same amount of pressure to open a pickle jar.\n\n--Orioles at Phillies, 8/4/2025",
+  "John Kruk: You know what I found out at the Franklin Institute? \n\
+Tom McCarthy: You went to the Franklin Institute? \n\
+JK: I did. 25 lbs of pressure if someone is attacking you, and you can rip their ear off. \n\
+TM: (Loses it) \n\
+JK: It's the same amount of pressure to open a pickle jar.\n\n--Orioles at Phillies, 8/4/2025",
+  "John Kruk: I don't care what he [Tom's son] eats. Since he's a Mets fan, I hope he \n\
+chokes a little bit.\nBut since he's your son, I hope it's not fatal.\n\
+Tom McCarthy: Thank you, John...\n\n--Phillies broadcast, 5/4/2025",
   "'Would I be a good messiah with my low self-esteem? \n If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
