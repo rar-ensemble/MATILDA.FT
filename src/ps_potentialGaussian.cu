@@ -66,36 +66,36 @@ void NBGauss::initializePotential() {
     std::cout << "  Gaussian initialization completed" << std::endl;
 
 
-    std::complex<float> *tp;
-    tp = (std::complex<float>*) malloc(M*sizeof(std::complex<float>));
+    // std::complex<float> *tp;
+    // tp = (std::complex<float>*) malloc(M*sizeof(std::complex<float>));
 
-    for ( int j=0 ; j<Dim ; j++ ) {
+    // for ( int j=0 ; j<Dim ; j++ ) {
         
-        for ( int i=0 ; i<M ; i++ ) {
-            tp[i] = fk[i*Dim+j];
-        }
+    //     for ( int i=0 ; i<M ; i++ ) {
+    //         tp[i] = fk[i*Dim+j];
+    //     }
         
-        cudaMemcpy(mybox->d_cpxAlex, tp, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
-        check_cudaError("gaussian test");
+    //     cudaMemcpy(mybox->d_cpxAlex, tp, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    //     check_cudaError("gaussian test");
         
-        mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxGabe, 1);
-        check_cudaError("gaussian test 1");
+    //     mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxGabe, 1);
+    //     check_cudaError("gaussian test 1");
 
-        d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_Alex, mybox->d_cpxGabe, M);
-        check_cudaError("gaussian test 2");
+    //     d_cpxToFloat<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_Alex, mybox->d_cpxGabe, M);
+    //     check_cudaError("gaussian test 2");
 
-        cudaMemcpy(mybox->alex, mybox->d_Alex, M*sizeof(float), cudaMemcpyDeviceToHost);
-        check_cudaError("gaussian test 3");
+    //     cudaMemcpy(mybox->alex, mybox->d_Alex, M*sizeof(float), cudaMemcpyDeviceToHost);
+    //     check_cudaError("gaussian test 3");
 
-        std::string tName = "Gauss-force-" + std::to_string(j) + ".dat";
-        mybox->writeFieldFloat(tName.c_str(), mybox->alex);
+    //     std::string tName = "Gauss-force-" + std::to_string(j) + ".dat";
+    //     mybox->writeFieldFloat(tName.c_str(), mybox->alex);
 
 
-    }
+    // }
 
-    std::string potName = "Gauss-potential-" + grpI + "-" + grpJ + ".dat";
-    mybox->writeFieldFloat(potName.c_str(), ur);
-    free(tp);
+    // std::string potName = "Gauss-potential-" + grpI + "-" + grpJ + ".dat";
+    // mybox->writeFieldFloat(potName.c_str(), ur);
+    // free(tp);
 
 
 }//initializePotential()
