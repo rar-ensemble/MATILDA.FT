@@ -289,6 +289,7 @@ void PS_Box::writeFields() {
     if ( verbose ) std::cout << "  here: ps_box:writefields" << std::endl;
     for (int i=0 ; i<psGroup.size(); i++ ) {
         psGroup[i].writeDensityField();
+        psGroup[i].writeDensityFieldBinary();
         
         check_cudaError("writeFields in ps_box");
     }    
