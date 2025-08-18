@@ -328,6 +328,51 @@ std::complex<double> Box::sumCpxDoubleDeviceArray(
     return totalSum;
 }
 
+// Initializes binary output file. Should be called after
+// initialization (assumes Dim and all Nx values defined)
+void Box::initBinaryDataFile(std::string name) {
+    std::ofstream otp(name, std::ios::binary);
+
+    if ( !otp.is_open() ) {
+        die("Failed to initialize output binary file!");
+    }
+
+    otp.write(reinterpret_cast<char*>(&Dim), sizeof(int) );
+
+    int *nxt = new int[Dim];
+    for ( int i=0 ; i<Dim ; i++ ) { nxt[i] = Nx[i]; }
+
+    otp.write(reinterpret_cast<char*>(nxt), Dim*sizeof(int));
+
+    delete(nxt);
+
+    otp.write(reinterpret_cast<char*>(L), Dim*sizeof(float));
+}
+
+
+// Writes a frame of data to the binary file
+void Box::writeBinaryData(std::string name, float *dat) {
+    std::ofstream otp(name, std::ios::app|std::ios::binary);
+    if ( !otp.is_open() ) {
+        die("Failed to open output binary file!");
+    }
+
+    otp.write(reinterpret_cast<char*>(dat), M*sizeof(float));
+
+    otp.close();
+}
+
+// Writes a frame of data to the binary file
+void Box::writeBinaryData(std::string name, double *dat) {
+    std::ofstream otp(name, std::ios::app|std::ios::binary);
+    if ( !otp.is_open() ) {
+        die("Failed to open output binary file!");
+    }
+
+    otp.write(reinterpret_cast<char*>(dat), M*sizeof(double));
+
+    otp.close();
+}
 
 void Box::readDatFile( std::string name, thrust::host_vector<thrust::complex<double>>& w) {
     std::ifstream inp(name);

@@ -73,6 +73,10 @@ class Box {
         virtual void writeTime() = 0;
         virtual int converged(int) = 0;
 
+        void initBinaryDataFile(std::string);
+        void writeBinaryData(std::string, float*);
+        void writeBinaryData(std::string, double*);
+
         virtual void NVT(int) = 0;
 
         virtual void writeData(int) = 0;
