@@ -26,7 +26,7 @@ NBCharge::NBCharge(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box
 // uk will store the Green's function for Poisson's function
 // real-space functions will not be defined
 void NBCharge::initializePotential() {
-    std::cout << "Initializing charge potential..." << std::endl;
+    std::cout << "Initializing charge potential..." ; fflush(stdout);
 
     Iind = mybox->findGroupInteger(grpI);
     
@@ -63,6 +63,7 @@ void NBCharge::initializePotential() {
     cudaMemcpy(d_fk, fk, M*Dim*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
     check_cudaError("sending force array to device in Gauss potential");
 
+    std::cout << "Done!" << std::endl;
 
 }//initializePotential()
 
