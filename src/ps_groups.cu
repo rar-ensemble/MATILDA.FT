@@ -199,6 +199,14 @@ void PS_Group::enableForce() {
 }
 
 
+// Writes density field in a binary format
+void PS_Group::writeDensityFieldBinary() {
+    std::string nm = std::string("density-") + name + std::string(".bin");
+    cudaMemcpy(rho, d_rho, mybox->M*sizeof(float), cudaMemcpyDeviceToHost);
+
+    mybox->writeBinaryData(nm, rho);
+}
+
 
 // Copies density field to host, calls
 // subroutine to write thrust float vector

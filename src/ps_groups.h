@@ -53,6 +53,7 @@ class PS_Group {
         void allocateGroupMemory(int);              // Allocates arrays
         void makeDensityField();                    // Populates the grid-based density
         void writeDensityField();                   // Writes output file for grid-based density
+        void writeDensityFieldBinary();             // Writes binary output file for grid-based density
         int isGroup(std::string);                   // Checks whether group name matches string
         int hasForce();                             // 0/1 if group does not/does have forces
         void enableForce();                         // Turns on forces, allocates memory
