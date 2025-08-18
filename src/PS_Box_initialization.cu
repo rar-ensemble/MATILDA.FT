@@ -70,7 +70,7 @@ void PS_Box::readInput(std::ifstream& inp) {
         std::istringstream iss(line);
         
         while ( iss >> firstWord ) {
-            // std::cout << "Line read: " << line << std::endl;
+            
 
             if ( firstWord == "endBox" ) {
                 break;
@@ -465,9 +465,22 @@ void PS_Box::finishInitialization() {
     // die("potentials written?");
 
 
+    // INITIALIZE BINARY FILES
     GSDinit();
     writeGSDtraj();
     // die("initialization finished, GSD written?");
+
+
+    // init grid binary data files
+    std::cout << "Initializing binary files..." ;
+    for ( int i=0 ; i<psGroup.size() ; i++ ) {
+        std::cout << psGroup[i].returnName() << "..." ; fflush(stdout);
+        std::string nm = std::string("density-") + psGroup[i].returnName() + std::string(".bin");
+        initBinaryDataFile(nm);
+    }
+    std::cout << "done!" << std::endl;
+
+
 
 
     // Initialize the output stream
