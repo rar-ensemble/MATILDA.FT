@@ -550,9 +550,9 @@ void PS_Box::allocHostParticleArrays(int newns) {
         bondedTo = (int*) malloc(newns * MAXBONDS * sizeof(int));
         bondType = (int*) malloc(newns * MAXBONDS * sizeof(int));
 
-        nAngles = (int*) malloc(newns * sizeof(int));
-        angleType = (int*) malloc(newns * MAXANGLES * sizeof(int));
-        angleGroup = (int*) malloc(newns * MAXANGLES * sizeof(int));
+        nAngles =    (int*) malloc(newns * sizeof(int));
+        angleType =  (int*) malloc(newns * MAXANGLES * sizeof(int));
+        angleGroup = (int*) malloc(newns * 3 * MAXANGLES * sizeof(int));
 
         if ( doCharges ) {
             charges = (float*) malloc( newns * sizeof(float));

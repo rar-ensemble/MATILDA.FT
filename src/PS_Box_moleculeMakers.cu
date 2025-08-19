@@ -98,7 +98,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                 int t1;
                 iss >> t1;
                 blockAngleType[j] = t1;
-                std::cout << "block ang type: " << j << " " << blockAngleType[j] << std::endl;
+                std::cout << "  block ang type: " << j << " " << blockAngleType[j] << std::endl;
                 angleFlag = 1;
             }
         }
@@ -152,7 +152,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             }
         }
     }
-
+    std::cout << "   MAX ANGLE INDEX: " << 3 * nstot * MAXANGLES << std::endl;
 
 
 
@@ -250,19 +250,19 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     int i2 = ind;
                     int i3 = ind+1;
 
-                    // std::cout << "ivals: " << i1 << " " << i2 << " " << i3 << std::endl;
+                    // std::cout << "  ivals: " << i1 << " " << i2 << " " << i3 << std::endl;
 
                     int n1 = nAngles[i1];
                     int n2 = nAngles[i2];
                     int n3 = nAngles[i3];
 
-                    //std::cout << "n vals: " << n1 << " " << n2 << " " << n3 << std::endl;
+                    // std::cout << "  n vals: " << n1 << " " << n2 << " " << n3 << std::endl;
 
                     int index1 = i1*MAXANGLES*3+3*n1;
                     int index2 = i2*MAXANGLES*3+3*n2;
                     int index3 = i3*MAXANGLES*3+3*n3;
 
-                    // std::cout << "index: " << index1 << " " << index2 << " " << index3 << std::endl;
+                    // std::cout << "  index: " << index1 << " " << index2 << " " << index3 << std::endl;
 
                     
                     angleGroup[index1+0] = i1;
@@ -285,6 +285,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
                     nAngles[i2]++;
                     nAngles[i3]++;
 
+                    
                 }// blockAngleType[j]
 
 
