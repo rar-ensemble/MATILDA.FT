@@ -57,6 +57,8 @@ JK: It's the same amount of pressure to open a pickle jar.\n\n--Orioles at Phill
   "John Kruk: I don't care what he [Tom's son] eats. Since he's a Mets fan, I hope he \n\
 chokes a little bit.\nBut since he's your son, I hope it's not fatal.\n\
 Tom McCarthy: Thank you, John...\n\n--Phillies broadcast, 5/4/2025",
+  "'It's better to keep your mouth closed and let people think you are\na fool than to open it\
+ and remove all doubt.'\n--Unknown",
   "'Would I be a good messiah with my low self-esteem? \n If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
