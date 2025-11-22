@@ -647,6 +647,9 @@ float PS_Box::sumDeviceArray(
     
     return totalSum;
 }
+void PS_Box::findSpinodal(std::istringstream& iss) {
+    die("Invalid simulation type for a particle simulation!");
+}
 
 void PS_Box::modifyBox(std::istringstream& iss) {
     return;

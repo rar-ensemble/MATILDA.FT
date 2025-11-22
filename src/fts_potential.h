@@ -34,6 +34,9 @@ class FTS_Potential {
         std::vector<std::string> actsOn;
 
         FTS_Potential(std::istringstream&, FTS_Box *);
+        int wplAllocated(void);
+        int wmiAllocated(void);
+        
         virtual ~FTS_Potential();
         bool zeroMean = false;
 
@@ -50,10 +53,12 @@ class FTS_Potential {
         thrust::host_vector<thrust::complex<double>> wpl;       // w_plus for host
         thrust::device_vector<thrust::complex<double>> d_wpl;   // w_plus for device
         thrust::device_vector<thrust::complex<double>> d_Akpl;  // Linear coefficient for 1S, ETD updates
+        int wplAlloc_flag;
 
         thrust::host_vector<thrust::complex<double>> wmi;       // w_minus for host
         thrust::device_vector<thrust::complex<double>> d_wmi;   // w_minus for device
         thrust::device_vector<thrust::complex<double>> d_Akmi;  // Linear coefficient for 1S, ETD updates        
+        int wmiAlloc_flag;
 };
 
 #endif

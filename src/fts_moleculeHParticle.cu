@@ -44,6 +44,7 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
 
     
     particleNum = nmolecs;
+    nSites = particleNum;
     
     iss >> particleSpecies;
     // determine integer species

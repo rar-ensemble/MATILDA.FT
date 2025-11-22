@@ -17,7 +17,7 @@ FTS_Potential::FTS_Potential(std::istringstream &iss, FTS_Box* p_box) : mybox(p_
     input_command = iss.str();
 
     mybox = p_box;
-
+    wplAlloc_flag = wmiAlloc_flag = 0;
 }
 
 FTS_Potential::~FTS_Potential() {}
@@ -121,4 +121,14 @@ std::string FTS_Potential::printCommand() {
 
 std::string FTS_Potential::printStyle() {
     return potentialStyle;
+}
+
+int FTS_Potential::wplAllocated() {
+    if ( wplAlloc_flag ) return 1;
+    else return 0;
+}
+
+int FTS_Potential::wmiAllocated() {
+    if ( wmiAlloc_flag ) return 1;
+    else return 0;
 }

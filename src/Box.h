@@ -81,6 +81,8 @@ class Box {
 
         virtual void writeData(int) = 0;
 
+        virtual void findSpinodal(std::istringstream&) = 0;
+
         virtual void doTimeStep(int) = 0;
 
         virtual void modifyBox(std::istringstream&) = 0;

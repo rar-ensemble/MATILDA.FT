@@ -58,10 +58,12 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     wpl.resize(mybox->M,ivalue);
     d_wpl.resize(mybox->M, ivalue);
     d_Akpl.resize(mybox->M, ivalue);
+    wplAlloc_flag = 1;
 
     wmi.resize(mybox->M,ivalue);
     d_wmi.resize(mybox->M, ivalue);
     d_Akmi.resize(mybox->M, ivalue);
+    wmiAlloc_flag = 1;
     
     d_rhoI.resize(mybox->M, ivalue);
     d_rhoJ.resize(mybox->M, ivalue);
@@ -75,6 +77,9 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
         iss >> s1;
         if ( s1 == "initialize" ) {
             initializeField(iss, wmi);
+            std::string temp_cmd = "value " + std::to_string(0.0) + " " + std::to_string(-1.5);
+            std::istringstream iss2(temp_cmd);
+            initializeField(iss2, wpl);
         }
 
         else if ( s1 == "updateScheme" ) {

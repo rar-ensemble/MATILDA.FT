@@ -182,6 +182,8 @@ class PS_Box : public Box {
         void finishInitialization();          // Finishes initializing box after reading input
         void modifyBox(std::istringstream&) override;
 
+        void findSpinodal(std::istringstream&) override;
+
         // Writes thrust::host_vector array
         void writeFieldTFloat(const char*, thrust::host_vector<float>);        
         void writeFieldFloat(const char*, const float*);

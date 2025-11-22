@@ -1,7 +1,5 @@
 // Copyright (c) 2024 University of Pennsylvania
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
-
-
 #define MAIN
 #include "timing.h"
 #include "random.h"
@@ -131,6 +129,13 @@ int main(int argc, char** argv)
 				box.at(0)->NVT(runSteps);
 			}
 
+			else if ( word == "findspinodal" || word == "findSpinodal" ) {
+				if ( box.at(0)->returnBoxStyle() != "fts" ) {
+					die("invalid box style trying to run const 'vt' simulation");
+				}
+
+				box.at(0)->findSpinodal(iss);
+			}
 
 			else {  
 				std::string lastWords = word + " is an invalid global command!";

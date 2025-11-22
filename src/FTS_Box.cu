@@ -110,6 +110,7 @@ void FTS_Box::doTimeStep(int step) {
 }
 
 
+
 void FTS_Box::NVT(int nsteps) {
 
 
@@ -633,8 +634,6 @@ std::string FTS_Box::returnFTSstyle() {
 void FTS_Box::modifyBox(std::istringstream& iss) {
 
     std::ofstream otp("sweep_data.dat", std::ios_base::app);
-
-    std::cout << "Made it into modifyBox!" << std::endl;
     
     std::string word;
     iss >> word;

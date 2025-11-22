@@ -30,6 +30,7 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     wpl.resize(mybox->M,ivalue);
     d_wpl.resize(mybox->M, ivalue);
     d_Akpl.resize(mybox->M, ivalue);
+    wplAlloc_flag = 1;
 
     d_rho_total.resize(mybox->M, ivalue);
     d_dHdw.resize(mybox->M, ivalue);

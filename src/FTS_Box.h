@@ -61,6 +61,12 @@ class FTS_Box : public Box {
         void modifyBox(std::istringstream&) override;
 
         void NVT(int) override;
+        
+        void findSpinodal(std::istringstream&) override;
+        void storePotentials(std::complex<double>*, std::complex<double>*, double*, double*, const int);
+        void restorePotentials(std::complex<double>*, std::complex<double>*, double*, double*, const int);
+        void shuffleStorage(std::complex<double>*, std::complex<double>*, double*, double*);
+
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);
         void writeComplexGridData(std::string, std::vector<std::complex<double>>);
