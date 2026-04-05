@@ -32,6 +32,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	ps_integrator.cu ps_integratorGJF.cu \
 	ps_deviceBonds.cu ps_potential.cu ps_potentialGaussian.cu ps_deviceAngles.cu \
 	ps_potentialCharges.cu ps_potentialMaierSaupe.cu\
+	ps_potentialBias.cu \
 	ps_potentialErf2.cu ps_potentialErfG.cu
 
 # Box_fftWrappers.cu
