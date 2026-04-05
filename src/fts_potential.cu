@@ -66,7 +66,7 @@ void FTS_Potential::initializeField(
     thrust::host_vector<thrust::complex<double>> &w // Field to be initialized (may be wpl or wmi)
     ) {
 
-    std::string s1;
+    std::string s1, phase_name;
     iss >> s1;
     if ( s1 == "value" ) {
         double rVal, iVal;
@@ -103,6 +103,46 @@ void FTS_Potential::initializeField(
         }
 
     }
+
+    // Bias into a known ordered phase
+    else if ( mybox->known_phase(s1, phase_name) ) {
+        double* wtmp = new double [mybox->M];
+
+        double Ao;
+        int dir = 0;
+        int n_periods = 1;
+
+        iss >> Ao;
+        std::cout << "phase read as " << s1 << " Ao: " << Ao << std::endl;
+
+        // parse optional arguments
+        while ( iss.tellg() != -1 ) {
+            iss >> s1;
+            if ( s1 == "dir" ) {
+                iss >> dir;
+            }
+            else if ( s1 == "n_periods" ) {
+                iss >> n_periods;
+            }
+            else {
+                std::string err_msg = s1 + " is not a valid initialize option in fts_potential";
+                die(s1.c_str());
+            }
+        } // while (!iss)
+
+        // Make the biased field as a double
+        mybox->make_bias_field(wtmp, Ao, phase_name, dir, n_periods);
+
+        // Place biased field into w 
+        for ( int i=0 ; i<mybox->M ; i++ ) {
+            w[i] = wtmp[i];
+        }
+
+
+        delete wtmp;
+
+    }
+
 
     else if ( s1 == "readDatFile" ) {
         std::string s2;
