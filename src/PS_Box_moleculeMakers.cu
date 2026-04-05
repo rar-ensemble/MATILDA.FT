@@ -43,7 +43,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     iss >> numBlocks; 
     
     std::vector<int> Nblocks(numBlocks);
-    std::vector<int> blockBondType(numBlocks,0);
+    std::vector<int> blockBondType(numBlocks,1);
     std::vector<int> blockAngleType(numBlocks,0);
     std::vector<int> drudeFlag(numBlocks,0);
     std::vector<int> chargeFlag(numBlocks,0);
