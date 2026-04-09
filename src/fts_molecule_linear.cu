@@ -509,13 +509,14 @@ void LinearMolec::computeLinearTerms() {
 
                     int Nbetween = 0;
                     for ( int k=j+1 ; k<numBlocks ; k++ ) {
+
                         // does this potential act on block k?
                         if ( blockSpecies[k] != mybox->Potentials[i]->actsOn[0] &&
                              blockSpecies[k] != mybox->Potentials[i]->actsOn[1] ) {
                             continue;
                         }
 
-                        std::cout << "potential " << i << "accumulating species " << blockSpecies[j] << " and " << blockSpecies[k] << std::endl;
+                        std::cout << "potential " << i << " accumulating species " << blockSpecies[j] << " and " << blockSpecies[k] << std::endl;
 
                         double fC = double(N[k]) / double(Ntot);
                         double fB = double(Nbetween) / double(Ntot);
@@ -548,6 +549,7 @@ void LinearMolec::computeLinearTerms() {
 
                         // accumulate Nbetween
                         Nbetween += N[k];
+
                     }// k=j+1:numBlocks
                 }// j=0:numBlocks
             }// if potentialStyle == "Flory"

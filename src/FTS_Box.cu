@@ -178,11 +178,13 @@ void FTS_Box::writeData(int step) {
 
 void FTS_Box::finishInitialization() {
     
-    Potentials[0]->wpl = Potentials[0]->d_wpl;
+    // Potentials[0]->wpl = Potentials[0]->d_wpl;
+    // no idea why this was here?
 
     std::string outline;
     outline = "# step H error ";
     
+    std::cout << "    zeroing density" << std::endl;
     // Zero the species densities
     for ( int i=0 ; i<Species.size(); i++ ) {
         Species[i].zeroDensity();
@@ -190,6 +192,7 @@ void FTS_Box::finishInitialization() {
     }
 
 
+    std::cout << "    init'ing tolerances" << std::endl;
     // Initalize tolerance criteria
     initTolerances();
 
@@ -201,9 +204,12 @@ void FTS_Box::finishInitialization() {
         outline = outline + "H_" + Potentials[i]->printStyle() + " " ;
     }
 
+    std::cout << "    first density calculation" << std::endl;
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
+        std::cout << "      " << i << " molecule density starting" << std::endl;
         Molecs[i]->calcDensity();
+        std::cout << "      " << i << " molecule density calc'd" << std::endl;
 
         if ( Molecs[i]->molec_type != "HParticle" ) {
             outline += "Q[" + std::to_string(i) + "] ";
@@ -471,7 +477,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
-
+    std::cout << "  going into finish init..." << std::endl;
     finishInitialization();
 }
 
