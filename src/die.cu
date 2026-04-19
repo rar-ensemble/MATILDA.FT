@@ -13,7 +13,7 @@ void die(const char* msg) {
 void check_cudaError(const char* tag) {
 	cudaError_t cudaReturn = cudaGetLastError();
 	if (cudaReturn != cudaSuccess) {
-		char cherror[90];
+		char cherror[350];
 		sprintf(cherror, "Cuda failed with error \"%s\" while %s ran\n", cudaGetErrorString(cudaReturn), tag);
 		die(cherror);
 	}
