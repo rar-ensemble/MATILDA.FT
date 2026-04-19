@@ -60,6 +60,11 @@ class PS_Box : public Box {
         float Upe;          // Total potential energy
         float Ubond, Uangle;// Stores bond and angle energy
 
+        // Pre-allocated device scratch arrays for computeThermoProps()
+        float *d_thermoE;       // [nstot]
+        float *d_bondVirScratch; // [nstot*n_P_comps]
+        float *d_angleVirScratch;// [nstot*n_P_comps]
+
         // Data for gsd, lammpstrj file storage
         std::string gsd_name, trajFileName, datFileName, initDataFileName;
 
@@ -164,6 +169,7 @@ class PS_Box : public Box {
         void NVT(int) override;
         void forces(void);
         void computeThermoProps(void);
+        void logNetForce(int step);     // Diagnostic: print Σf per dim
 
         void enableCharges(void); // allocates memory, sets flags for charges
 

@@ -12,6 +12,7 @@ void die(const char*);
 double ran2(void);
 void random_unit_vec(double*, int);
 
+
 __global__ void d_calcGridWeights(float*, int*, const float*, const int*, 
 const float*, const int, const int, const int, const int);
 __global__ void d_bonds(float*, const int*, const int*, const int*,
@@ -30,6 +31,20 @@ const int*, const int*, const int*, const int*, const float*, const float*,
 const int, const int, const int);
 
 __global__ void sumArrayKernel(float*, float*, int);
+
+// Diagnostic: copy one stride-Dim component of d_f into a contiguous array
+// so sumDeviceArray can reduce it.  Used by logNetForce().
+__global__ void d_extractForceComp(
+    float* out,             // [nstot] contiguous output
+    const float* f,         // [Dim*nstot] forces
+    const int dir,          // component to extract (0, 1, or 2)
+    const int Dim,
+    const int N             // nstot
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N) return;
+    out[id] = f[id * Dim + dir];
+}
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 
@@ -88,6 +103,10 @@ void PS_Box::doTimeStep(int step) {
     // COMPUTE FORCES //
     ////////////////////
     forces();
+
+    // Diagnostic: net force on COM should be exactly zero every step.
+    // Any nonzero value identifies the potential/bond/angle contributing drift.
+    if ( verbose && (step % logFreq == 0) ) { logNetForce(step); }
 
 
     // Second integration step
@@ -161,8 +180,8 @@ void PS_Box::NVT(int maxSteps) {
 // Assumes forces have been zeroed and 
 // initialized before entering this routine.
 void PS_Box::forces() {
-    
-    // 1. bonded forces; 
+
+    // 1. bonded forces;
     if ( verbose ) { std::cout << "Into bonds..." ; fflush(stdout); }
     
     d_bonds<<<nsGrid, nsBlock>>>(d_f, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
@@ -203,49 +222,50 @@ void PS_Box::forces() {
 
 // Computes the total potential energy of the system
 void PS_Box::computeThermoProps() {
-    float *d_e;
-    cudaMalloc(&d_e, nstot * sizeof(float));
-    
-    float *d_bondVir;
-    cudaMalloc(&d_bondVir, nstot*n_P_comps * sizeof(float));
-    
     // Computes the energy and virial for each particle
-    d_bondStressEnergy<<<nsGrid, nsBlock>>>(d_e, d_bondVir,
+    d_bondStressEnergy<<<nsGrid, nsBlock>>>(d_thermoE, d_bondVirScratch,
         d_x, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
         d_bondStyle, d_L, d_Lh, nstot, MAXBONDS, n_P_comps, Dim);
 
-    // Sums over the particle energies. 
+    // Sums over the particle energies.
     // Prefactor 0.5 corrects for double-counting
-    Ubond = 0.5 * sumDeviceArray(d_e, blockSize, nstot);
+    Ubond = 0.5 * sumDeviceArray(d_thermoE, blockSize, nstot);
 
-
-    float *d_angleVir;
-    cudaMalloc(&d_angleVir, nstot*n_P_comps * sizeof(float));
-
-    d_anglesStressEnergy<<<nsGrid, nsBlock>>>(d_e, d_angleVir,
-        d_x, d_angleK, d_angleTheq, d_angleStyle, d_nAngles, 
+    d_anglesStressEnergy<<<nsGrid, nsBlock>>>(d_thermoE, d_angleVirScratch,
+        d_x, d_angleK, d_angleTheq, d_angleStyle, d_nAngles,
         d_angleType, d_angleGroup, d_L, d_Lh, nstot, MAXANGLES, n_P_comps, Dim);
 
     // Sums over the particle energies
     // Division by 3 corrects triple-counting
-    Uangle = sumDeviceArray(d_e, blockSize, nstot) / 3.0;
-
-
+    Uangle = sumDeviceArray(d_thermoE, blockSize, nstot) / 3.0;
 
     Upe = 0.0;
-    // 2a. Grid forces
     for ( int i=0 ; i<potentials.size(); i++ ) {
         Upe += potentials[i]->CalcEnergy();
     }
 
     Upe += Ubond;
     Upe += Uangle;
-
-    cudaFree(d_e);
-    cudaFree(d_bondVir);
-    cudaFree(d_angleVir);
-
 }
+
+
+// Sums d_f per dimension and prints.  Called after forces() in doTimeStep.
+// For a conservative force field with Newton's 3rd law satisfied, each
+// component should be exactly zero (to float round-off).
+void PS_Box::logNetForce(int step) {
+    float netF[3] = {0.0f, 0.0f, 0.0f};
+
+    for ( int j=0 ; j<Dim ; j++ ) {
+        d_extractForceComp<<<nsGrid, nsBlock>>>(d_thermoE, d_f, j, Dim, nstot);
+        netF[j] = sumDeviceArray(d_thermoE, blockSize, nstot);
+    }
+    check_cudaError("logNetForce");
+
+    std::cout << "step " << step << " netF =";
+    for ( int j=0 ; j<Dim ; j++ ) std::cout << " " << netF[j];
+    std::cout << std::endl;
+}
+
 
 // Write Hamiltonian terms to output file
 void PS_Box::writeData(int step) {
@@ -397,7 +417,11 @@ void PS_Box::writeTime() {
 
 
 
-PS_Box::~PS_Box() {}
+PS_Box::~PS_Box() {
+    cudaFree(d_thermoE);
+    cudaFree(d_bondVirScratch);
+    cudaFree(d_angleVirScratch);
+}
 
 PS_Box::PS_Box(std::istringstream& iss ) : Box(iss) {
     std::string s1;
@@ -646,7 +670,9 @@ float PS_Box::sumDeviceArray(
     // Cleanup
     cudaFree(d_output);
     free(h_output);
-    
+
+    check_cudaError("PS_Box::sumDevArray end");
+
     return totalSum;
 }
 void PS_Box::findSpinodal(std::istringstream& iss) {

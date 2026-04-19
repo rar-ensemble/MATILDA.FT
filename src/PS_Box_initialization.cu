@@ -642,8 +642,11 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     cudaMalloc(&d_Alex, M * sizeof(float));
     cudaMalloc(&d_cpxGabe, M * sizeof(cuComplex));
     cudaMalloc(&d_cpxAlex, M * sizeof(cuComplex));
-    
 
+    // Pre-allocated scratch arrays for computeThermoProps()
+    cudaMalloc(&d_thermoE,        nsAlloc * sizeof(float));
+    cudaMalloc(&d_bondVirScratch, nsAlloc * n_P_comps * sizeof(float));
+    cudaMalloc(&d_angleVirScratch,nsAlloc * n_P_comps * sizeof(float));
 
     std::cout << "done!" << std::endl;
 }

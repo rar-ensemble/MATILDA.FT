@@ -201,6 +201,21 @@ double Box::get_kD(int id, double* k) {
 }
 
 // For given id \in [0,M), defines position vector for that grid point
+void Box::get_r(int id, float *r) {
+    
+    int i, *n;
+    n = new int[Dim];
+
+    this->unstack2(id, n);
+   
+    for (i = 0; i < Dim; i++) {
+        r[i] = float(n[i]) * dx[i];
+    }
+
+    delete n;
+}
+
+// For given id \in [0,M), defines position vector for that grid point
 void Box::get_r(int id, double *r) {
     
     int i, *n;
@@ -261,6 +276,183 @@ float Box::pbc_dr2(float* dr, const float* ri, const float* rj) {
 
     return mdr2;
 }
+
+// checks to see if provided phase is known
+int Box::known_phase(std::string phase, std::string& name) {
+    if ( phase == "L" || phase == "LAM" ) {
+        name = "L";
+        return 1;
+    }
+    else if ( phase == "G" || phase == "GYR" ) {
+        name = "G";
+        return 1;
+    }
+    else if ( phase == "BCC" || phase == "SPH" || phase == "S" ) {
+        name = "S";
+        return 1;
+    }
+    else if ( phase == "C" || phase == "CYL" || phase == "H" || phase == "HEX" ) {
+        name = "H";
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+// Populates a double vector with a biased field. This is meant
+// to be called from a wrapper function that deals with the need
+// for w being complex or float precision
+void Box::make_bias_field(
+    double *w,                  // [M] field to be populated
+    const double Ao,            // Prefactor for the field
+    const std::string phase,    // phase identifier
+	const int dir,              // direction for the phase (-1 if not needed)
+	const int n_periods         // number of periods
+) {
+
+    for ( int ind=0 ; ind < this->M ; ind++ ) {
+        float r[3];
+
+        get_r(ind, r);
+
+        w[ind] = 0.0;
+
+        // Initial lamellar fields, forces
+        if (phase == "L") {
+            float sin_arg = 2.0f * PI * float(n_periods) / L[dir];
+            w[ind] = Ao * sin(sin_arg * r[dir]);
+
+            // for (int j = 0; j < Dim; j++) {
+            //     if (j == dir)
+            //         fr[ind * Dim + j] = Ao * sin_arg * cos(sin_arg * r[dir]);
+            //     else
+            //         fr[ind * Dim + j] = 0.f;
+            // }
+        }
+
+        // BCC phase
+        // Assumes same number of periods in each direction
+        else if ( phase == "BCC" ) {
+
+            // Unit cell size
+            float a0 = dx[0] / float(n_periods);
+            
+            float sr[3], dr[3], mdr2;
+
+            for ( int ix=0 ; ix<n_periods ; ix++ ) {
+                for ( int iy=0 ; iy<n_periods ; iy++ ) {
+                    for ( int iz=0 ; iz<n_periods ; iz++ ) {
+
+                        /////////////////////////////////////
+                        // Position of ``corner'' particle //
+                        /////////////////////////////////////
+                        sr[0] = ix * a0;
+                        sr[1] = iy * a0;
+                        sr[2] = iz * a0;
+
+                        // Distance from particle to current position
+                        mdr2 = pbc_dr2(r, sr, dr);
+
+                        float stdDev = 2.0;
+                        float variance = stdDev * stdDev;
+                        float expArg = -mdr2 / 2.0 / variance;
+
+                        // Gaussian potential with std dev of 2 hard-coded for now
+                        w[ind] += -Ao * exp( expArg ); 
+
+                        // fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+                        // fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+                        // fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
+
+
+
+                        ////////////////////////////////////////////
+                        // Position of ``body-centered'' particle //
+                        ////////////////////////////////////////////
+                        sr[0] = ix * a0 + 0.5 * a0;
+                        sr[1] = iy * a0 + 0.5 * a0;
+                        sr[2] = iz * a0 + 0.5 * a0;
+
+                        // Distance from particle to current position		
+                        mdr2 = pbc_dr2(r, sr, dr);
+
+                        // Gaussian potential with std dev of 2 hard-coded for now
+                        expArg = -mdr2 / 2.0 / variance;
+
+                        w[ind] += -Ao * exp( expArg ); 
+
+                        // fr[ind * Dim + 0] += -Ao * exp( expArg ) / variance * dr[0];
+                        // fr[ind * Dim + 1] += -Ao * exp( expArg ) / variance * dr[1];
+                        // fr[ind * Dim + 2] += -Ao * exp( expArg ) / variance * dr[2];
+
+                    }            
+                }            
+            }
+        }// if phase == 1
+
+        // CYL phase
+        // Assumes the same number of periods in both directions of the 
+        // hexagonal plane of the cylinders. 
+        // dir is interpretted as the direction of the cylinders
+        // For 2D, this should be set to 2
+        else if (phase == "C") {
+            float dim1_arg, dim2_arg;
+            int dim1 = 0, dim2 = 1;
+
+            if (dir == dim1)
+                dim1 = 2;
+            else if (dir == dim2)
+                dim2 = 2;
+
+            dim1_arg = 2.0f * PI * float(n_periods) / L[dim1];
+            dim2_arg = 2.0f * PI * float(n_periods) / L[dim2];
+
+            w[ind] = Ao * cos(dim1_arg * r[dim1]) * cos(dim2_arg * r[dim2]);
+
+            // if (Dim == 3)
+            //     fr[ind * Dim + dir] = 0.0f;
+
+            // fr[ind * Dim + dim1] = Ao * dim1_arg * sin(dim1_arg * r[dim1]) * cos(dim2_arg * r[dim2]);
+            // fr[ind * Dim + dim2] = Ao * dim2_arg * sin(dim2_arg * r[dim2]) * cos(dim1_arg * r[dim1]);
+
+        }
+
+        // GYR phase
+        // Assumes same number of periods in each direction
+        else if (phase == "G") {
+            if (Dim != 3) {
+                return;
+            }
+
+            float args[3], cos_dir[3], sin_dir[3];
+            for (int j = 0; j < Dim; j++) {
+                args[j] = 2.0f * PI * float(n_periods) / L[j];
+
+                cos_dir[j] = cos(args[j] * r[j]);
+                sin_dir[j] = sin(args[j] * r[j]);
+            }
+
+            float e_term = sin_dir[0] * cos_dir[1] + sin_dir[1] * cos_dir[2]
+                + sin_dir[2] * cos_dir[0];
+
+            w[ind] = Ao * (e_term * e_term - 1.44);
+
+            // fr[ind * Dim + 0] = -Ao * e_term * args[0] *
+            //     (cos_dir[0] * cos_dir[1] - sin_dir[2] * sin_dir[0]);
+
+            // fr[ind * Dim + 1] = -Ao * e_term * args[1] *
+            //     (cos_dir[1] * cos_dir[2] - sin_dir[0] * sin_dir[1]);
+
+            // fr[ind * Dim + 2] = -Ao * e_term * args[2] *
+            //     (cos_dir[2] * cos_dir[0] - sin_dir[1] * sin_dir[2]);
+        }
+
+    }// ind=0:M
+}
+
+
+
 
 
 

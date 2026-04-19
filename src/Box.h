@@ -59,10 +59,14 @@ class Box {
         double get_kD(int, double*);        // Subroutine to compute wavevector corresponding to grid index
         float get_kD(int, float*);        // Subroutine to compute wavevector corresponding to grid index
         void get_r(int, double*);           // Subroutine to compute position corresponding to grid index
+        void get_r(int, float*);           // Subroutine to compute position corresponding to grid index
+
         void get_rf(int, float*);           // Subroutine to compute position corresponding to grid index
         // template<typename T> T pbc_dr2(T*, const T*, const T*);
         float pbc_dr2(float*, const float*, const float*);
         double pbc_dr2(double*, const double*, const double*);
+
+        void make_bias_field(double*, const double, const std::string, const int, const int);
         
         void unstack2(int, int*);
         int returnDimension(void);
@@ -76,6 +80,8 @@ class Box {
         void initBinaryDataFile(std::string);
         void writeBinaryData(std::string, float*);
         void writeBinaryData(std::string, double*);
+
+        int known_phase(std::string, std::string&);
 
         virtual void NVT(int) = 0;
 

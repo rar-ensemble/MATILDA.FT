@@ -117,9 +117,11 @@ void PS_Group::accumulateGridForceComp(
     int MGrid = mybox->M_Grid;
     int MBlock = mybox->M_Block;
     int dim = mybox->returnDimension();
-    int ndof = dim * mybox->M;
-
-    d_floatVecPlusEqFloatComp<<<MGrid, MBlock>>>(d_gridForce, d_fx, dir, dim, ndof);  
+    int M = mybox->M;
+    // Guard must be M (not dim*M): MGrid*MBlock ≈ M threads are launched, each
+    // handling one grid point.  Passing dim*M let the few extra padding threads
+    // (id ∈ [M, MGrid*MBlock)) slip past the guard and write past d_gridForce.
+    d_floatVecPlusEqFloatComp<<<MGrid, MBlock>>>(d_gridForce, d_fx, dir, dim, M);
 
 }// accumulateGridForces()
 

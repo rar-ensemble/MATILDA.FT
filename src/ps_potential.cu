@@ -7,7 +7,9 @@
 #include "ps_potentialCharges.h"
 #include "ps_potentialErf2.h"
 #include "ps_potentialErfG.h"
+#include "ps_potentialMaierSaupe.h"
 #include "PS_Box.h"
+
 
 
 // Allocates memory for:
@@ -63,7 +65,7 @@ void PS_Potential::CalcForces() {
     mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
 
     check_cudaError("Potential first fft");
-    
+
 
     for ( int j=0 ; j<Dim ; j++ ) {
         // Alex = fk[j] * FT(rhoJ), j \in [x,y,z]
@@ -82,13 +84,13 @@ void PS_Potential::CalcForces() {
         if ( Iind == Jind ) {
             // Gabe now contains the forces that act on particles I
             mybox->psGroup[Iind].accumulateGridForceComp(d_Gabe, j);
-        }    
+        }
     }
     check_cudaError("Potential first force accumulation");
 
-    // Group does not act on itself // 
+    // Group does not act on itself //
     if ( Iind != Jind ) {
-        
+
         ///////////////////////////////////////////////
         // Forces acting on type J arise from type I //
         ///////////////////////////////////////////////
@@ -209,8 +211,6 @@ PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
     cudaMalloc(&d_uk,   M * sizeof(cuComplex));
     cudaMalloc(&d_fk,   M*Dim * sizeof(cuComplex));
     cudaMalloc(&d_virk, M*nPC * sizeof(cuComplex));
-    cudaMalloc(&d_fI,   M*Dim * sizeof(cuComplex));
-    cudaMalloc(&d_fJ,   M*Dim * sizeof(cuComplex));
     
     return;
 }
@@ -273,9 +273,9 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
 // 	if (s1 == "fieldphase" || s1 == "biasfield"){
 // 		return new BiasField(iss);
 // 	}
-// 	if (s1 == "maiersaupe"){
-// 		return new MaierSaupe(iss);
-// 	}
+    else if (s1 == "maiersaupe") {
+        return new NBMaier(iss, box);
+    }
 // 	if (s1 == "charges"){
 // 		return new Charges(iss);
 // 	}
