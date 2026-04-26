@@ -46,6 +46,23 @@ __global__ void d_extractForceComp(
     out[id] = f[id * Dim + dir];
 }
 
+
+// Diagnostic: copy one stride-Dim component of d_f into a contiguous array
+// so sumDeviceArray can reduce it.  Used by logNetForce().
+__global__ void d_extractCpxForceComp(
+    cuComplex* out,             // [nstot] contiguous output
+    const cuComplex* f,         // [Dim*nstot] forces
+    const int dir,          // component to extract (0, 1, or 2)
+    const int Dim,
+    const int N             // nstot
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N) return;
+    out[id] = f[id * Dim + dir];
+}
+
+
+
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 
 // Executes the commands for a given time step
