@@ -333,7 +333,7 @@ void Box::make_bias_field(
 
         // BCC phase
         // Assumes same number of periods in each direction
-        else if ( phase == "BCC" ) {
+        else if ( phase == "S" ) {
 
             // Unit cell size
             float a0 = dx[0] / float(n_periods);
@@ -446,6 +446,10 @@ void Box::make_bias_field(
 
             // fr[ind * Dim + 2] = -Ao * e_term * args[2] *
             //     (cos_dir[2] * cos_dir[0] - sin_dir[1] * sin_dir[2]);
+        }
+
+        else {
+            die("PHASE NOT FOUND in Box.cu");
         }
 
     }// ind=0:M
