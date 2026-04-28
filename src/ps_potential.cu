@@ -8,6 +8,7 @@
 #include "ps_potentialErf2.h"
 #include "ps_potentialErfG.h"
 #include "ps_potentialMaierSaupe.h"
+#include "ps_potentialBias.h"
 #include "PS_Box.h"
 
 
@@ -266,6 +267,9 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
     }
     else if ( s1 == "erfG" ) { 
         return new NBErfG(iss,box);
+    }
+    else if ( s1 == "bias" ) {
+        return new BiasField(iss,box);
     }
 // 	if (s1 == "gaussian_erf"){
 // 		return new GaussianErf(iss);
