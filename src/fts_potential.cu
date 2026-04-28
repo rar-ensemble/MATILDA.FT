@@ -126,7 +126,7 @@ void FTS_Potential::initializeField(
             }
             else {
                 std::string err_msg = s1 + " is not a valid initialize option in fts_potential";
-                die(s1.c_str());
+                die(err_msg.c_str());
             }
         } // while (!iss)
 
