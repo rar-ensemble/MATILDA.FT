@@ -26,7 +26,10 @@ public:
     int dir;            // Direction (if relevant)
     std::string phase;  // Phase to bias towards
 
-    
+    float *fr, *d_fr;       // [M*Dim] real-space gradient potential
+    float *fx, *d_fx;       // [M] real-space gradient in -x
+    float *fy, *d_fy;       // [M] real-space gradient in -y
+    float *fz, *d_fz;       // [M] real-space gradient in -z (if DIm > 2)
 };
 
 

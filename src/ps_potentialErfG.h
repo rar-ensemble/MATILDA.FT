@@ -10,15 +10,14 @@ class NBErfG : public PS_Potential {
     protected:
 
     public:
-        NBErfG();      // Default constructor
-        NBErfG(std::istringstream&, PS_Box*);  // Actual used constructor
-        ~NBErfG();     // Default destructor
+        NBErfG();
+        NBErfG(std::istringstream&, PS_Box*);
+        ~NBErfG();
         void initializePotential(void) override;
-        
-        float Ao;   // potential prefactor
-        float Rp;   // Particle radius
-        float xi;   // Particle interface width
-        float sigma;// Variance for the Gaussian
+
+        float Ao;    // potential prefactor
+        float Rp;    // step-function radius
+        float sig2;  // Gaussian smearing variance (sigma²)
 };
 
 #endif

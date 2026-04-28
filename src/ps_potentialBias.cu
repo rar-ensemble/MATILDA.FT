@@ -5,6 +5,7 @@
 #include "ps_potentialBias.h"
 #include "PS_Box.h"
 
+__global__ void d_extractCpxForceComp(cuComplex*, const cuComplex*, const int, const int, const int);
 
 
 /*  Field Phase pairstyle
@@ -22,40 +23,63 @@ BiasField::BiasField(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, b
 
     // Record the species acted upon
     iss >> grpI ;
+    grpJ = grpI;
 
     // Prefactor for the bias
     iss >> Ao ;
 
     // String phase to bias towards
-    iss >> phase;
+    std::string s1;
+    iss >> s1;
 
-    // To add: BCC
-    // This list of phases should go in the Box.cu routine at some point
-    // and checked against that global list. Make it a string vector like
-    // the quotes database
-    if ( phase != "L" && phase != "LAM" && 
-         phase != "G" && phase != "GYR" && 
-         phase != "BCC" && phase != "SPH" && phase != "S" &&
-         phase != "C" && phase != "CYL" && phase != "H" && phase != "HEX" ) {
-            die("Invalid phase provided to potential bias!");
-         }
+    // Store phase name into known shorthand
+    mybox->known_phase(s1, phase);
 
-    // Save the number of periods
-    iss >> n_periods;
+
+    // Default is one period
+    n_periods = 1;
 
     // default direction is x direction
     dir = 0;
 
-    std::string temp_str;
     
-    if ( iss.tellg() == -1 ) {
-        iss >> temp_str;
+    // parse optional arguments
+    while ( iss.tellg() != -1 ) {
+        std::string temp_str;
 
-        if ( temp_str == "dir" || temp_str == "direction" ) {
+        iss >> temp_str;
+        if ( temp_str == "dir" ) {
             iss >> dir;
         }
-    }
+        else if ( temp_str == "n_periods" ) {
+            iss >> n_periods;
+        }
+        else {
+            std::string err_msg = temp_str + " is not a valid initialize option in fts_potential";
+            die(err_msg.c_str());
+        }
+    } // while (!iss)
 
+    int M = mybox->M;
+    int Dim = mybox->returnDimension();
+
+    // allocate real-space force arrays
+    cudaMalloc(&d_fr, M*Dim * sizeof(float));
+    fr = (float*) malloc( M*Dim * sizeof(float));
+
+
+    cudaMalloc(&d_fx, M * sizeof(float));
+    fx = (float*) malloc( M * sizeof(float));
+
+    if ( Dim >= 2 ) {
+        cudaMalloc(&d_fy, M * sizeof(float));
+        fy = (float*) malloc( M * sizeof(float));        
+    }
+    
+    if ( Dim == 3 ) {
+        cudaMalloc(&d_fz, M * sizeof(float));
+        fz = (float*) malloc( M * sizeof(float));        
+    }
 }
 
 
@@ -67,69 +91,144 @@ void BiasField::initializePotential() {
 
 
     std::complex<float> I(0.0, 1.0);
-    float kv[3], k2;
+    float kv[3];
     int Dim = mybox->returnDimension();
     int M = mybox->M;
+    int Grid = mybox->M_Grid;
+    int Block = mybox->M_Block;
 
-    // printf("Setting up FieldPhase pair style..."); fflush(stdout);
+    // Define potential, force on host IN K-SPACE
+    double *urDD = new double[M];
+    mybox->make_bias_field(urDD, Ao, phase, dir, n_periods);
+    
+    for ( int i=0; i<M; i++ ) {
+        ur[i] = urDD[i];
+    }
+    delete[] urDD;
 
-	// if ( phase == 1 && Dim != 3 ) {
-	// 	die("BCC bias only compatible with 3D simulations!");
-	// }
+    if ( mybox->verbose ) { 
+        std::string bname = "ur-" + phase + ".dat";
+        mybox->writeFieldFloat(bname.c_str(), ur); 
+        bname = "ur-" + phase + ".vtk";
+        mybox->writeFieldVTK(bname.c_str(), ur);
+    }
 
-    // init_device_biasfield<<<M_Grid, M_Block>>>(this->d_u, this->d_f,
-    //     phase, initial_prefactor, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
+    // Copy u(r) to device
+    cudaMemcpy(this->d_ur, this->ur, M * sizeof(float), cudaMemcpyHostToDevice);
 
-    // init_device_biasfield<<<M_Grid, M_Block>>>(this->d_master_u, this->d_master_f,
-    //     phase, 1.0f, dir, n_periods, d_L, d_dx, M, d_Nx, Dim);
 
-    // cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(this->u, this->d_u, M * sizeof(float), cudaMemcpyDeviceToHost); 
+    // Place in complex array
+    d_floatToCpx<<<Grid, Block>>>(mybox->d_cpxAlex, d_ur, M);
 
-    // write_grid_data("biasfield_map.dat", this->u);
+    // take d_cpxAlex = u(r) to k-space, place in uk
+    mybox->cufftWrapperSingle(mybox->d_cpxAlex, d_uk, 1);
 
-    // printf("done!\n"); fflush(stdout);
+    // Copy FT(u(r)) back to host
+    cudaMemcpy(uk, d_uk, M * sizeof(std::complex<float>), cudaMemcpyDeviceToHost);
+
+    // Take spectral FT on host
+    for (int i = 0; i < M; i++) {
+        float k2 = mybox->get_kD(i, kv);
+        float k  = sqrtf(k2);
+
+        for (int j = 0; j < Dim; j++) {
+            fk[i*Dim + j] = -I * kv[j] * uk[i];
+        }
+    }
+
+    // Send k-space force to device
+    cudaMemcpy(d_fk, fk, M * Dim * sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    check_cudaError("NB_bias_potential: memory allocation");
+
+    
+    ///////////////////////////////////////////////////
+    // Inverse FFT, store components in d_fx, fy, fz //
+    ///////////////////////////////////////////////////
+
+    // Extract x component
+    d_extractCpxForceComp<<<Grid, Block>>>(mybox->d_cpxGabe, d_fk, 0, Dim, M);
+    mybox->cufftWrapperSingle(mybox->d_cpxGabe, mybox->d_cpxAlex, -1);
+    d_cpxToFloat<<<Grid, Block>>>(d_fx, mybox->d_cpxAlex, M);
+    // Copy back to host
+    cudaMemcpy(fx, d_fx, M*sizeof(float), cudaMemcpyDeviceToHost);
+    
+    if ( mybox->verbose ) { 
+        std::string bname = "fx-" + phase + ".dat";
+        mybox->writeFieldFloat(bname.c_str(), fx); 
+        bname = "fx-" + phase + ".vtk";
+        mybox->writeFieldVTK(bname.c_str(), fx);
+    }
+
+    // Extract y component
+    if ( Dim >= 2 ) {
+        d_extractCpxForceComp<<<Grid, Block>>>(mybox->d_cpxGabe, d_fk, 1, Dim, M);
+        mybox->cufftWrapperSingle(mybox->d_cpxGabe, mybox->d_cpxAlex, -1);
+        d_cpxToFloat<<<Grid, Block>>>(d_fy, mybox->d_cpxAlex, M);
+        // Copy back to host
+        cudaMemcpy(fy, d_fy, M*sizeof(float), cudaMemcpyDeviceToHost);
+        
+        if ( mybox->verbose ) { 
+            std::string bname = "fy-" + phase + ".dat";
+            mybox->writeFieldFloat(bname.c_str(), fy); 
+            bname = "fy-" + phase + ".vtk";
+            mybox->writeFieldVTK(bname.c_str(), fy);
+        }
+    }
+
+    if ( Dim == 3 ) {
+        d_extractCpxForceComp<<<Grid, Block>>>(mybox->d_cpxGabe, d_fk, 2, Dim, M);
+        mybox->cufftWrapperSingle(mybox->d_cpxGabe, mybox->d_cpxAlex, -1);
+        d_cpxToFloat<<<Grid, Block>>>(d_fz, mybox->d_cpxAlex, M);
+        // Copy back to host
+        cudaMemcpy(fz, d_fz, M*sizeof(float), cudaMemcpyDeviceToHost);        
+        if ( mybox->verbose ) { 
+            std::string bname = "fz-" + phase + ".dat";
+            mybox->writeFieldFloat(bname.c_str(), fz); 
+            bname = "fz-" + phase + ".vtk";
+            mybox->writeFieldVTK(bname.c_str(), fz);
+        }
+    }
+
+    // die("end of biasfield initiali potential");
+
 }
 
+
+// Accumulate the forces from the bias field on group Iind
 void BiasField::CalcForces() {
 
+    int Dim = mybox->returnDimension();
 
-    // // X-component of the force
-    // d_prepareFieldForce<<<M_Grid, M_Block>>>(d_cpx1, d_cpx2,
-    //     d_all_rho, this->d_f, type1, type2, 0, Dim, M);
-    // d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1,
-    //     d_all_rho, d_all_fx, type1, M);
-    // d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx2,
-    //     d_all_rho, d_all_fx, type2, M);
+    // Accumulate the forces from the fields
+    mybox->psGroup[Iind].accumulateGridForceComp(d_fx, 0);
 
+    if ( Dim >= 2 ) {
+        mybox->psGroup[Iind].accumulateGridForceComp(d_fy, 1);
+    }
 
-
-
-    // // Y-component of the force
-    // d_prepareFieldForce<<<M_Grid, M_Block>>>(d_cpx1, d_cpx2,
-    //     d_all_rho, this->d_f, type1, type2, 1, Dim, M);
-    // d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1,
-    //     d_all_rho, d_all_fy, type1, M);
-    // d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx2,
-    //     d_all_rho, d_all_fy, type2, M);
-
-
-    // if (Dim == 3) {
-    //     // Z-component of the force
-    //     d_prepareFieldForce<<<M_Grid, M_Block>>>(d_cpx1, d_cpx2,
-    //         d_all_rho, this->d_f, type1, type2, 2, Dim, M);
-    //     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx1,
-    //         d_all_rho, d_all_fz, type1, M);
-    //     d_accumulateGridForce<<<M_Grid, M_Block>>>(d_cpx2,
-    //         d_all_rho, d_all_fz, type2, M);
-    // }
-
+    if ( Dim == 3 ) {
+        mybox->psGroup[Iind].accumulateGridForceComp(d_fz, 2);
+    }
 
 }
 
-float BiasField::CalcEnergy() {
 
-	return -67.0f;
+// Computes the energy of the density with the bias field as
+// Ao * \int dr \, w(r) \, \rho_I(r)
+float BiasField::CalcEnergy() {
+    float *d_rhoI;
+    int Grid = mybox->M_Grid;
+    int Block = mybox->M_Block;
+    int M = mybox->M;
+
+    // Alex = rhoI * u(r)
+    d_rhoI = mybox->psGroup[Iind].d_rho;
+    d_multiplyFloatByFloat<<<Grid, Block>>>(mybox->d_Alex, d_rhoI, d_ur, M);
+
+    energy = mybox->gvol * mybox->sumDeviceArray(mybox->d_Alex, Block, M);
+
+    return energy;
+
 }
 
 BiasField::BiasField() {
