@@ -396,7 +396,7 @@ void Box::make_bias_field(
         // hexagonal plane of the cylinders. 
         // dir is interpretted as the direction of the cylinders
         // For 2D, this should be set to 2
-        else if (phase == "C") {
+        else if (phase == "H") {
             float dim1_arg, dim2_arg;
             int dim1 = 0, dim2 = 1;
 
