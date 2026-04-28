@@ -7,6 +7,8 @@
 #include "gsd.h"
 #include <algorithm>
 #include <map>
+#include <cstdint>
+#include <cstring>
 
 void die(const char*);
 double ran2(void);
@@ -360,6 +362,59 @@ void PS_Box::writeFieldTFloat(const char* name, thrust::host_vector<float> dat) 
     fclose(otp);
 }
 
+// Host endianness check; legacy VTK BINARY requires big-endian payloads.
+static inline bool hostIsLittleEndian() {
+    uint16_t x = 0x0001;
+    return *reinterpret_cast<uint8_t*>(&x) == 0x01;
+}
+
+static inline float byteSwapFloat(float v) {
+    uint32_t i;
+    std::memcpy(&i, &v, 4);
+    i = ((i >> 24) & 0x000000ffu) |
+        ((i >>  8) & 0x0000ff00u) |
+        ((i <<  8) & 0x00ff0000u) |
+        ((i << 24) & 0xff000000u);
+    std::memcpy(&v, &i, 4);
+    return v;
+}
+
+// Write scalar field as a legacy VTK STRUCTURED_POINTS file (BINARY).
+// Opens in ParaView directly and via pyvista.read() / vtk in Python.
+void PS_Box::writeFieldVTK(const char* name, const float* dat) {
+    FILE* otp = fopen(name, "wb");
+    if ( otp == NULL ) { die("Failed to open output file in writeFieldVTK!"); }
+
+    int nx = Nx[0];
+    int ny = (Dim >= 2) ? Nx[1] : 1;
+    int nz = (Dim >= 3) ? Nx[2] : 1;
+    double sx = dx[0];
+    double sy = (Dim >= 2) ? dx[1] : 1.0;
+    double sz = (Dim >= 3) ? dx[2] : 1.0;
+
+    fprintf(otp, "# vtk DataFile Version 3.0\n");
+    fprintf(otp, "MATILDA.FT field\n");
+    fprintf(otp, "BINARY\n");
+    fprintf(otp, "DATASET STRUCTURED_POINTS\n");
+    fprintf(otp, "DIMENSIONS %d %d %d\n", nx, ny, nz);
+    fprintf(otp, "ORIGIN 0 0 0\n");
+    fprintf(otp, "SPACING %g %g %g\n", sx, sy, sz);
+    fprintf(otp, "POINT_DATA %d\n", M);
+    fprintf(otp, "SCALARS field float 1\n");
+    fprintf(otp, "LOOKUP_TABLE default\n");
+
+    if ( hostIsLittleEndian() ) {
+        float* buf = new float[M];
+        for ( int i = 0; i < M; i++ ) buf[i] = byteSwapFloat(dat[i]);
+        fwrite(buf, sizeof(float), M, otp);
+        delete[] buf;
+    } else {
+        fwrite(dat, sizeof(float), M, otp);
+    }
+
+    fclose(otp);
+}
+
 // write field of array vectors
 void PS_Box::writeFieldFloat(const char* name, const float* dat) {
     int i, j, * nn;
@@ -471,7 +526,7 @@ int PS_Box::findGroupInteger(std::string testLabel) {
             break;
         }
     }
-    if ( id < 0 ) die("Species label not found!");
+    if ( id < 0 ) die("Group label not found!");
 
     return id;
 }
