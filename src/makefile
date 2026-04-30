@@ -30,8 +30,8 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	fts_potential_incompress.cu fts_moleculeHParticle.cu fts_potentialParticle.cu \
 	FTS_BoxFindSpinodal.cu \
 	PS_Box.cu PS_Box_initialization.cu PS_Box_gsdUtils.cu PS_Box_moleculeMakers.cu \
-    ps_species.cu ps_grid_utils.cu ps_groups.cu \
-	ps_integrator.cu ps_integratorGJF.cu \
+	ps_species.cu ps_grid_utils.cu ps_groups.cu \
+	ps_integrator.cu ps_integratorGJF.cu ps_integratorEM.cu \
 	ps_deviceBonds.cu ps_potential.cu ps_potentialGaussian.cu ps_deviceAngles.cu \
 	ps_potentialCharges.cu ps_potentialMaierSaupe.cu\
 	ps_potentialBias.cu \

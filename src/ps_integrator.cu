@@ -4,6 +4,7 @@
 
 #include "ps_integrator.h"
 #include "ps_integratorGJF.h"
+#include "ps_integratorEM.h"
 #include "PS_Box.h"
 
 
@@ -52,9 +53,9 @@ Integrator* IntegratorFactory(std::istringstream& iss, PS_Box* bx){
 	iss >> s1 >> s1;
 	iss.seekg(pos);
 
-    // if (s1 == "VV") {
-    //     return new VV(iss);
-    // }
+    if (s1 == "EM") {
+        return new EM(iss, bx);
+    }
     if (s1 == "GJF") {
         return new GJF(iss, bx);
     }
@@ -63,5 +64,3 @@ Integrator* IntegratorFactory(std::istringstream& iss, PS_Box* bx){
 	die(s1 + " is not a valid Integrator");
     return 0;
 }
-
-int Integrator::using_GJF = 0;
