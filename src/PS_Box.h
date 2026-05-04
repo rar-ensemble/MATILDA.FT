@@ -13,6 +13,7 @@
 #include "ps_groups.h"
 #include "ps_integrator.h"
 #include "ps_potential.h"
+#include "ps_neighborList.h"
 
 class PS_Box : public Box {
     protected:
@@ -144,7 +145,8 @@ class PS_Box : public Box {
         std::vector<PS_Group> psGroup;          // Vector of particle groups
         
         std::vector<Integrator*> integrators;   // Time integration schemes
-        std::vector<PS_Potential*> potentials;   // 
+        std::vector<PS_Potential*> potentials;
+        std::vector<PS_NeighborList*> neighborLists;
 
 
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays

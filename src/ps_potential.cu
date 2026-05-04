@@ -9,6 +9,7 @@
 #include "ps_potentialErfG.h"
 #include "ps_potentialMaierSaupe.h"
 #include "ps_potentialBias.h"
+#include "ps_potentialLangevin.h"
 #include "PS_Box.h"
 
 
@@ -252,13 +253,10 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
  	std::string s1;
  	iss >> s1;
     
-    // std::transform(s1.begin(), s1.end(), s1.begin(), ::tolower);
-// 	if (s1 == "erf"){
-// 		return new Erf(iss);
-// 	}
- 	if (s1 == "gaussian"){
- 		return new NBGauss(iss, box);
- 	}
+
+    if ( s1 == "bias" ) {
+        return new BiasField(iss,box);
+    }
     else if ( s1 == "charges" ) {
         return new NBCharge(iss, box);
     }
@@ -268,22 +266,17 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
     else if ( s1 == "erfG" ) { 
         return new NBErfG(iss,box);
     }
-    else if ( s1 == "bias" ) {
-        return new BiasField(iss,box);
+ 	else if (s1 == "gaussian"){
+ 		return new NBGauss(iss, box);
+ 	}
+    else if ( s1 == "Langevin" || s1 == "langevin" ) {
+        return new Langevin(iss,box);
     }
-// 	if (s1 == "gaussian_erf"){
-// 		return new GaussianErf(iss);
-// 	}
-// 	if (s1 == "fieldphase" || s1 == "biasfield"){
-// 		return new BiasField(iss);
-// 	}
     else if (s1 == "maiersaupe") {
         return new NBMaier(iss, box);
     }
-// 	if (s1 == "charges"){
-// 		return new Charges(iss);
-// 	}
 	
- 	die("Unsupported potential");
+    std::string last_words = "ps_potential.cu: " + s1 + " is not a supported potential";
+ 	die(last_words.c_str());
  	return 0;
  }

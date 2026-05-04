@@ -242,6 +242,10 @@ void PS_Box::readInput(std::ifstream& inp) {
                 potentials.push_back( PSPotentialFactory(iss, this) );
             }
 
+            else if ( firstWord == "neighbor_list" ) {
+                neighborLists.push_back( new PS_NeighborList(iss, this) );
+            }
+
 
             else if (firstWord == "randSeed" || firstWord == "RAND_SEED" || firstWord == "RANDSEED") {
                 iss >> idum;        // Set CPU RNG to have seed = RANDSEED

@@ -16,8 +16,6 @@ GJF::~GJF(){
 
 GJF::GJF(std::istringstream& iss, PS_Box* box) : Integrator(iss, box) {
 
-    using_GJF = 1;
-
 	int nDOF = mybox->nstot * mybox->returnDimension();
 
 	cudaMalloc(&d_xOld, nDOF * sizeof(float));
@@ -29,6 +27,7 @@ void GJF::Integrate_2(){
 
 	int grid = mybox->psGroup[group_index].Grid;
 	int block = mybox->psGroup[group_index].Block;
+
 
     d_GJF_integrator<<<grid, block>>>(mybox->d_x, d_xOld, d_noiseOld, mybox->d_f,
 		d_gjf_a, d_gjf_b, d_gjf_noiseMag, d_gjf_bdt2_over_m, d_gjf_bdt_over_2m,
@@ -72,6 +71,8 @@ void GJF::finishInitialization() {
 		h_noiseMag[i]    = root2dt / sqrtf(Di);
 		h_bdt2_over_m[i] = b * delt2 / m;
 		h_bdt_over_2m[i] = b * delt / (2.0f * m);
+
+		//std::cout << "GJF parameters type " << i << ": " << h_a[i] << " " << h_b[i] << " " << h_noiseMag[i] << " " << h_bdt2_over_m[i] << " " << h_bdt_over_2m[i] << std::endl;
 	}
 
 	cudaMalloc(&d_gjf_a,           nTypes * sizeof(float));

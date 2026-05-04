@@ -82,10 +82,14 @@ void PS_Box::doTimeStep(int step) {
     }
 
     
+    // Rebuild neighbor lists
+    for ( int i=0 ; i<neighborLists.size(); i++ )
+        neighborLists[i]->build();
+
     // Update grid weights
     if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
         "calcing weights..." << std::endl; }
-    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx, 
+    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx,
         d_dxf, nstot, pmeorder, M, Dim );
     check_cudaError("Weights calculated in PS_Box");
 
@@ -493,6 +497,7 @@ PS_Box::~PS_Box() {
     cudaFree(d_thermoE);
     cudaFree(d_bondVirScratch);
     cudaFree(d_angleVirScratch);
+    for ( int i=0 ; i<neighborLists.size(); i++ ) delete neighborLists[i];
 }
 
 PS_Box::PS_Box(std::istringstream& iss ) : Box(iss) {
