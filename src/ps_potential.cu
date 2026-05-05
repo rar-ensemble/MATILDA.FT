@@ -10,6 +10,7 @@
 #include "ps_potentialMaierSaupe.h"
 #include "ps_potentialBias.h"
 #include "ps_potentialLangevin.h"
+#include "ps_potentialDPD.h"
 #include "PS_Box.h"
 
 
@@ -271,6 +272,9 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
  	}
     else if ( s1 == "Langevin" || s1 == "langevin" ) {
         return new Langevin(iss,box);
+    }
+    else if ( s1 == "dpd" ) {
+        return new DPD(iss, box);
     }
     else if (s1 == "maiersaupe") {
         return new NBMaier(iss, box);

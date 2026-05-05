@@ -145,7 +145,7 @@ __global__ void d_buildNeighborList(
 PS_NeighborList::PS_NeighborList(std::istringstream& iss, PS_Box* box)
     : mybox(box), maxNeighbors(64)
 {
-    std::string grpName;
+
     iss >> grpName >> rcut;
 
     // Optional maxNeighbors override
@@ -154,7 +154,9 @@ PS_NeighborList::PS_NeighborList(std::istringstream& iss, PS_Box* box)
     if (!iss.fail()) maxNeighbors = tmp;
 
     rcut2 = rcut * rcut;
+}
 
+void PS_NeighborList::initializeNList() {
     groupInd = mybox->findGroupInteger(grpName);
     nsites   = mybox->psGroup[groupInd].nsites;
 

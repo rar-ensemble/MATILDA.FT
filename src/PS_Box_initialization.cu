@@ -420,6 +420,9 @@ void PS_Box::finishInitialization() {
         integrators[i]->findGroup();
     }
 
+    for ( int i=0 ; i<neighborLists.size(); i++ ) {
+        neighborLists[i]->initializeNList();
+    }
 
     // Complete initialization of species variables
     nTypes = species.size();

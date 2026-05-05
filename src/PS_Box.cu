@@ -531,7 +531,10 @@ int PS_Box::findGroupInteger(std::string testLabel) {
             break;
         }
     }
-    if ( id < 0 ) die("Group label not found!");
+    if ( id < 0 ) {
+        std::string last_words = "PS_Box.cu: Group label not found: " + testLabel;
+        die(last_words);
+    }
 
     return id;
 }
