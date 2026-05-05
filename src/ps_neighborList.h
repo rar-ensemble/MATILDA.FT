@@ -11,10 +11,12 @@ class PS_Box;
 
 class PS_NeighborList {
 public:
+    void initializeNList();
     PS_NeighborList(std::istringstream& iss, PS_Box* box);
     ~PS_NeighborList();
     void build();
 
+    std::string grpName;
     int   groupInd;
     float rcut, rcut2;
     int   maxNeighbors;
