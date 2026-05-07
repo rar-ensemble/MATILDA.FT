@@ -78,10 +78,15 @@ void PS_Box::doTimeStep(int step) {
         if ( verbose ) { std::cout << "Integrate 1..." ; fflush(stdout); }
         integrators[i]->Integrate_1();
         if ( verbose ) { std::cout << "done!" << std::endl; }
+        // cudaDeviceSynchronize() required here: check_cudaError alone only catches
+        // launch errors, not async execution errors.  Without the sync, execution
+        // errors from Integrate_1 stay pending and are falsely attributed to Thrust's
+        // sort_by_key in the neighbor list build below.
+        cudaDeviceSynchronize();
         check_cudaError("Integration step 1");
     }
 
-    
+
     // Rebuild neighbor lists
     for ( int i=0 ; i<neighborLists.size(); i++ )
         neighborLists[i]->build();
@@ -193,6 +198,7 @@ void PS_Box::NVT(int maxSteps) {
     writeData(maxSteps);
     writeFields();
     writeGSDtraj(); 
+    writeDataConfig("final.input.data");
 
     writeTime();
     giveQuote();
@@ -548,19 +554,19 @@ void PS_Box::writeDataConfig(std::string filename) {
 
     out << "Created by MATILDA.FT\n\n" ;
 
-    out << nstot << " atoms" << std::endl;
-    out << nBondsTot << " bonds" << std::endl;
-    out << nAnglesTot << " angles" << std::endl;
+    out << nstot << " atoms" << "\n";
+    out << nBondsTot << " bonds" << "\n";
+    out << nAnglesTot << " angles" << "\n";
 
     // blank line
-    out << std::endl;
+    out << "\n";
 
     // Find number of particle species
     int max = -342332;
     for ( int i=0 ; i<nstot ; i++ ) {
         if ( intSpecies[i] > max ) max = intSpecies[i];
     }
-    out << max+1 << " atom types" << std::endl;
+    out << max+1 << " atom types" << "\n";
 
     // Find number of bond types
     max = -1;
@@ -568,7 +574,7 @@ void PS_Box::writeDataConfig(std::string filename) {
         for ( int j=0 ; j<nBonds[i]; j++ ) 
             if ( bondType[i*MAXBONDS+j] > max ) max = bondType[i*MAXBONDS+j];
     }
-    out << max+1 << " bond types" << std::endl;
+    out << max+1 << " bond types" << "\n";
 
     // Find number of angle types
     max = -1;
@@ -576,31 +582,31 @@ void PS_Box::writeDataConfig(std::string filename) {
         for ( int j=0 ; j<nAngles[i]; j++ ) 
             if ( angleType[i*MAXANGLES+j] > max ) max = angleType[i*MAXBONDS+j];
     }
-    out << max+1 << " angle types" << std::endl;
+    out << max+1 << " angle types" << "\n";
 
 
     // blank line
-    out << std::endl;
+    out << "\n";
 
     // Box dimensions
-    out << "0.0 " << L[0] << " xlo xhi" << std::endl;
-    out << "0.0 " << L[1] << " ylo yhi" << std::endl;
-    if ( Dim > 2 ) out << "0.0 " << L[2] << " zlo zhi" << std::endl;
-    else out << "0.0 1.0 zlo zhi" << std::endl;
+    out << "0.0 " << L[0] << " xlo xhi" << "\n";
+    out << "0.0 " << L[1] << " ylo yhi" << "\n";
+    if ( Dim > 2 ) out << "0.0 " << L[2] << " zlo zhi" << "\n";
+    else out << "0.0 1.0 zlo zhi" << "\n";
 
 
 
     // blank line
-    out << std::endl;
+    out << "\n";
 
-    out << "Masses\n" << std::endl;
+    out << "Masses\n" << "\n";
     for ( int i=0 ; i<species.size(); i++ ) {
-        out << i+1 << " " << species[i].mass << std::endl;
+        out << i+1 << " " << species[i].mass << "\n";
     }
 
 
     // blank line
-    out << std::endl;
+    out << "\n";
 
 
     // Write out particle coordinates and types
@@ -617,24 +623,24 @@ void PS_Box::writeDataConfig(std::string filename) {
             out << x[i*Dim+j] << " " ;
         if ( Dim < 3 )
             out << "0.0 " ;
-        out << std::endl;
+        out << "\n";
 
     }// i=0 ; i<nstot
 
 
     // blank line
-    out << std::endl;
+    out << "\n";
 
 
     // Write out bond list and types
-    out << "Bonds\n" << std::endl;
+    out << "Bonds\n" << "\n";
     int bondCounter = 0;
     for ( int i=0 ; i<nstot ; i++ ) {
 
         for ( int j=0 ; j<nBonds[i]; j++ ) {
             // Only write each bond once (when i < bondedTo)
             if ( i < bondedTo[i*MAXBONDS+j] ) {
-                out << bondCounter+1 << " " << bondType[i*MAXBONDS+j]+1 << " " << i+1 << " " << bondedTo[i*MAXBONDS+j]+1 << std::endl;
+                out << bondCounter+1 << " " << bondType[i*MAXBONDS+j]+1 << " " << i+1 << " " << bondedTo[i*MAXBONDS+j]+1 << "\n";
                 
                 bondCounter++;
             }
@@ -642,7 +648,7 @@ void PS_Box::writeDataConfig(std::string filename) {
     }
 
     if ( nAnglesTot > 0 ) {
-        out << "\nAngles\n" << std::endl;
+        out << "\nAngles\n" << "\n";
         int angleCounter=0;
         for ( int i=0 ; i<nstot; i++ ) {
 
@@ -652,7 +658,7 @@ void PS_Box::writeDataConfig(std::string filename) {
                     out << angleCounter+1 << " " << angleType[i*MAXANGLES+j]+1 << " " << \
                         angleGroup[3*(i*MAXANGLES+j) + 0]+1 << " " << \
                         angleGroup[3*(i*MAXANGLES+j) + 1]+1 << " " << \
-                        angleGroup[3*(i*MAXANGLES+j) + 2]+1 << std::endl;
+                        angleGroup[3*(i*MAXANGLES+j) + 2]+1 << "\n";
                 }
             }
         }
