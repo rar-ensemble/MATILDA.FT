@@ -30,8 +30,10 @@ private:
     int   nCellsX, nCellsY, nCellsZ, nCells;
     float cellWidthX, cellWidthY, cellWidthZ;
 
-    int*  d_cellID;         // [nsites] cell index for each (sorted) particle
-    int*  d_particleID;     // [nsites] global particle IDs (sorted by cellID)
+    int*  d_cellID;         // [nsites] unsorted cell indices (CUB sort input)
+    int*  d_particleID;     // [nsites] unsorted global particle IDs (CUB sort input)
+    int*  d_cellID_sorted;      // [nsites] sorted cell indices (CUB sort output)
+    int*  d_particleID_sorted;  // [nsites] global IDs sorted by cellID (CUB sort output)
     int*  d_cellStart;      // [nCells]
     int*  d_cellEnd;        // [nCells]
 };

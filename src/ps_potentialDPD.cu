@@ -46,6 +46,7 @@ void DPD::initializePotential() {
 }
 
 float DPD::CalcEnergy() {
+    this->energy = 0.0f;
     return 0.0f;
 }
 

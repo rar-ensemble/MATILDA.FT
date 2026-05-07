@@ -84,6 +84,7 @@ void Langevin::CalcForces() {
 
 // Returns 0 energy because these forces do not arise from a conservative potential
 float Langevin::CalcEnergy() {
+    this->energy = 0.0f;
     return 0.0f;
 }
 
