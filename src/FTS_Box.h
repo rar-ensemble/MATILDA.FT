@@ -25,9 +25,20 @@ class FTS_Box : public Box {
         double C;           // System concentration
         int chemFieldFreq;  // Frequency to write potential fields
         std::complex<double> Heff;  // Effective Hamiltonian
-        double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
         int PCflag;         // Flag for using predictor-corrector methods
         
+
+        // Data for tolerance checks
+        double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
+        double error;
+        std::string tolMetric;    // Metric to use for convergence
+        std::vector<std::complex<double>> tolField, oldValues;
+        int tolIndex;       // index for field/potential/phi styles
+        void initTolerances(void);
+        double convergenceCheck(void);
+
+
+        cuDoubleComplex *d_cpxGabe, *d_cpxAtmn; // [M] temp storage for device complex arrays
         
         std::vector<FTS_Species> Species;       // Contains the density of each species
         std::vector<FTS_Molec*> Molecs;         // Calculates properties of each species
@@ -39,7 +50,7 @@ class FTS_Box : public Box {
         std::string returnFTSstyle();
         void readInput(std::ifstream&);
         void doTimeStep(int);
-        void initializeSim() override;
+        void finishInitialization();
         void writeSpeciesDensityFields();
         void writeData(int) override;
         void computeHamiltonian();
@@ -47,6 +58,14 @@ class FTS_Box : public Box {
         void writeTime() override;
         void initSmearGaussian(thrust::host_vector<thrust::complex<double>>&, const double, const double);
         int converged(int) override;
+        void modifyBox(std::istringstream&) override;
+
+        void NVT(int) override;
+        
+        void findSpinodal(std::istringstream&) override;
+        void storePotentials(std::complex<double>*, std::complex<double>*, double*, double*, const int);
+        void restorePotentials(std::complex<double>*, std::complex<double>*, double*, double*, const int);
+        void shuffleStorage(std::complex<double>*, std::complex<double>*, double*, double*);
 
         std::complex<double> integComplexD(std::complex<double>*);
         thrust::complex<double> integTComplexD(thrust::host_vector<thrust::complex<double>>);

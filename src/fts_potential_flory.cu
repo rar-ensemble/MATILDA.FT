@@ -35,6 +35,17 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     actsOn.push_back(typeI);
     actsOn.push_back(typeJ);
 
+    int itest = -1, jtest = -1;
+    // Assign species I and J
+    for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
+        if ( actsOn[0] == mybox->Species[i].fts_species ) { itest = i; }
+        else if ( actsOn[1] == mybox->Species[i].fts_species ) { jtest = i; }
+    }
+    if ( itest < 0 || jtest < 0 ) {
+        std::string LW = actsOn[0] + " or "  + actsOn[1] + " species not found for potential Flory";
+        die(LW);
+    }
+
     iss >> chiN;
 
     // Set time steps for plus and minus fields
@@ -47,10 +58,12 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     wpl.resize(mybox->M,ivalue);
     d_wpl.resize(mybox->M, ivalue);
     d_Akpl.resize(mybox->M, ivalue);
+    wplAlloc_flag = 1;
 
     wmi.resize(mybox->M,ivalue);
     d_wmi.resize(mybox->M, ivalue);
     d_Akmi.resize(mybox->M, ivalue);
+    wmiAlloc_flag = 1;
     
     d_rhoI.resize(mybox->M, ivalue);
     d_rhoJ.resize(mybox->M, ivalue);
@@ -63,44 +76,10 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     while (iss.tellg() != -1 ) {
         iss >> s1;
         if ( s1 == "initialize" ) {
-            iss >> s1;
-            if ( s1 == "value" ) {
-                double rVal, iVal;
-                iss >> rVal;
-                iss >> iVal;
-                thrust::fill(wmi.begin(), wmi.end(), std::complex<double>(rVal, iVal));
-            }
-            // Two floats expected: amplitude of noise on real part and imag part
-            else if ( s1 == "random" ) {
-                double rAmp, iAmp;
-                iss >> rAmp;
-                iss >> iAmp;
-                // Fill host field with random noise
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    wmi[i] = std::complex<double>(rAmp * ran2(), iAmp * ran2() );
-                }
-                
-            }
-            
-            // Expects an int and two doubles [int dir] [double amplitude] [double period]
-            else if ( s1 == "sin" || s1 == "sine" ) {
-                double amp, period;
-                int dir;
-                iss >> dir;
-                iss >> amp;
-                iss >> period; 
-
-                for ( int i=0 ; i<mybox->M ; i++ ) {
-                    double r[3];
-                    mybox->get_r(i, r);
-                    wmi[i] = amp * sin(2.0 * PI * r[dir] * period / mybox->L[dir]);
-                }
-
-            }
-
-            else {
-                die("Invalid initialize option on potential Flory");
-            }
+            initializeField(iss, wmi);
+            std::string temp_cmd = "value " + std::to_string(0.0) + " " + std::to_string(-1.5);
+            std::istringstream iss2(temp_cmd);
+            initializeField(iss2, wpl);
         }
 
         else if ( s1 == "updateScheme" ) {

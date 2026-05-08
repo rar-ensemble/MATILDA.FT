@@ -4,7 +4,7 @@
 
 #include <vector>
 #include <sstream>
-
+#include <thrust/host_vector.h>
 #ifndef HERE
 #define HERE
 template<typename T>
@@ -15,12 +15,12 @@ static void die(T msg){
 
 /// Macro to read required parameters and report values or errors
 
-#define readRequiredParameter(ss,parameter) std::cout <<"Read parameter: " << #parameter; readParameter(ss, parameter);
+#define readRequiredParameter(ss,parameter) readParameter(ss,parameter); //std::cout <<"Read parameter: " << #parameter; readParameter(ss, parameter);
 
 template <typename T> 
 static void readParameter(std::istringstream& ss, T& parameter){
     if(ss >> parameter){
-        std::cout <<": " << parameter << std::endl;
+        //std::cout <<": " << parameter << std::endl;
     }
     else{
         std::cout << " Invalid Value! Exiting..." << std::endl;
@@ -29,29 +29,16 @@ static void readParameter(std::istringstream& ss, T& parameter){
 };
 
 
-extern std::vector<Group*> Groups;
-template<typename T>
-int get_group_id(T group_name){
-    for (auto group: Groups){
-        if (group->name == group_name){
-            return group->id;
-        }
+// Sends host vector h with 'size' elements to device array d
+template <typename T>
+static void sendThrustVectorToDeviceArray(thrust::host_vector<T> h, T* d, int size) {
+    T* temp;
+    temp = (T*) malloc( size * sizeof(T) );
+    for ( int i=0 ; i<size ; i++ ) {
+        temp[i] = h[i];
     }
-    die("Group"+group_name+"not found!");
-    return -1;
-};
-
-
-extern std::vector<NList*> NLists;
-template<typename T>
-int get_nlist_id(T nlist_name){
-    for (auto nlist: NLists){
-        if (nlist->name == nlist_name){
-            return nlist->id;
-        }
-    }
-    die("NList"+nlist_name+"not found!");
-    return -1;
+    cudaMemcpy(d, temp, size * sizeof(T), cudaMemcpyHostToDevice);
+    free(temp);
 };
 
 #endif

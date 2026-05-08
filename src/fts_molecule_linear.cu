@@ -89,10 +89,15 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
 
     // Determine integer block Species
     for ( int j=0 ; j<numBlocks; j++ ) {
+        intSpecies[j] = -55;
         for ( int i=0 ; i<mybox->Species.size(); i++ ) {
             if ( blockSpecies[j] == mybox->Species[i].fts_species ) {
                 intSpecies[j] = i;
             }
+        }
+        if ( intSpecies[j] < 0 ) {
+            std::string lastWords = blockSpecies[j] + " species not found!";
+            die(lastWords.c_str());
         }
     }
 
@@ -117,6 +122,16 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
     d_bond_fft = bond_fft;
 
 
+    // Allocate temp storage data
+    W.resize(mybox->M);
+    qf.resize(mybox->M);
+    hf.resize(mybox->M);
+    a.resize(mybox->M);
+    expW.resize(mybox->M);
+    norm.resize(mybox->M);
+    q_qdag.resize(mybox->M);
+    temp.resize(mybox->M);
+    thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
 }
 
 struct NegExponential {
@@ -128,16 +143,6 @@ struct NegExponential {
 
 void LinearMolec::calcPropagators() {
     
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
-
-    thrust::device_vector<thrust::complex<double>> qf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> hf(mybox->M);
-    thrust::device_vector<thrust::complex<double>> a(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
-
-    // To normalize FTs
-    thrust::device_vector<thrust::complex<double>> norm(mybox->M);
-    thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
 
     //////////////////////////////////
     // Calculate forward propagator //
@@ -277,12 +282,14 @@ void LinearMolec::calcDensity() {
 
 
     int M = mybox->M;
-    thrust::complex<double> factor = nmolecs / Q / mybox->V;
+    thrust::complex<double> factor;
+    if ( nmolecs > 0.0 ) {
+        factor = nmolecs / Q / mybox->V;
+    }
+    else if (activity > 0.0 ) {
+        factor = activity;
+    }
 
-    thrust::device_vector<thrust::complex<double>> W(mybox->M);
-    thrust::device_vector<thrust::complex<double>> q_qdag(mybox->M);
-    thrust::device_vector<thrust::complex<double>> temp(mybox->M);
-    thrust::device_vector<thrust::complex<double>> expW(mybox->M);
 
     // Zero all block density fields
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
@@ -334,6 +341,17 @@ void LinearMolec::calcDensity() {
         d_density = d_cDensity;
     }
     
+    if ( activity > 0.0 ) {
+        nSites = activity * mybox->V * Q.real() * Ntot;
+
+        // thrust::complex<double> ntemp;
+        // ntemp = thrust::reduce(d_cDensity.begin(), d_cDensity.end(), thrust::complex<double>(0.0),
+        //                         thrust::plus<thrust::complex<double>>()) * mybox->gvol;
+        
+        // std::cout << "nmolecs: " << nmolecs << " ntmp: " << ntemp << std::endl;
+            // this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
+            //             thrust::plus<thrust::complex<double>>()) * mybox->gvol / mybox->V;
+    }
 
     // Finally, accumulate density onto the relevant species field
     for ( int b=0 ; b<numBlocks ; b++ ) {
@@ -345,10 +363,76 @@ void LinearMolec::calcDensity() {
 }
 
 
+// Computes the contribution to the Hamiltonian 
+// for this molecule style. 
+std::complex<double> LinearMolec::calcHTerm() {
+    std::complex<double> ht = 0.0;
+
+    if ( nmolecs > 0.0 ) {
+        ht = (std::complex<double>)( -nmolecs * log( Q ) );
+    }
+    else if ( activity > 0.0 ) {
+        ht = (std::complex<double>)( -activity*mybox->V*Q );
+    }
+    else {
+        die("Invalid conditions to calcHTerm()");
+    }
+
+    return ht;
+}
+
+void LinearMolec::modifyMolecule(std::istringstream& iss) {
+
+    std::string property, how2Mod;
+    iss >> property;
+    
+    if ( property == "activity" ) {
+        iss >> how2Mod;
+
+        double change;
+        iss >> change;
+
+        std::cout << "activity changed from " << activity ;
+
+        modifyMolecParam(activity, how2Mod, change);
+        
+        // if (how2Mod == "scale" ) {
+        //     activity *= change;
+        // }
+
+        // else if ( how2Mod == "delta" ) {
+        //     activity += change;
+        // }
+
+        // else if ( how2Mod == "value" ) {
+        //     activity = change;
+        // }
+
+        std::cout << " to " << activity << std::endl;
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "phi" ) {
+        die("changes in FTS:molec:phi not yet supported");
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "nmolecs" ) {
+        die("changes in FTS:molec:nmolecs not yet supported");
+    }
+
+    else {
+        std::string lastWords = property + " is not a valid property to change in FTS:molecule";
+        die(lastWords.c_str());
+    }
+}
+
+
 // Once smearing is implemented, smear functions need to 
 // be included in the linear coefficients
 void LinearMolec::computeLinearTerms() {
-    nmolecs = mybox->C * phi * mybox->V * mybox->Nr / (double(Ntot));
+    nmolecs = mybox->C * phi * mybox->Vfree * mybox->Nr / (double(Ntot));
+    std::cout << " nSites = " << nmolecs * double(Ntot) << " nmolecs = " << nmolecs << std::endl;
 
     double alpha = double(Ntot) / double(mybox->Nr);
 
@@ -371,7 +455,8 @@ void LinearMolec::computeLinearTerms() {
 
     // Find the Helfand potential and add this molecules contribution
     for ( int i=0 ; i<mybox->Potentials.size(); i++ ) {
-        if ( mybox->Potentials[i]->printStyle() == "Helfand" ) {
+        std::string pstyle = mybox->Potentials[i]->printStyle();
+        if ( pstyle == "Helfand" || pstyle == "Edwards" ) {
             thrust::host_vector<thrust::complex<double>> Atmp(mybox->M);
             Atmp = mybox->Potentials[i]->d_Akpl;
 
@@ -424,13 +509,14 @@ void LinearMolec::computeLinearTerms() {
 
                     int Nbetween = 0;
                     for ( int k=j+1 ; k<numBlocks ; k++ ) {
+
                         // does this potential act on block k?
                         if ( blockSpecies[k] != mybox->Potentials[i]->actsOn[0] &&
                              blockSpecies[k] != mybox->Potentials[i]->actsOn[1] ) {
                             continue;
                         }
 
-                        std::cout << "potential " << i << "accumulating species " << blockSpecies[j] << " and " << blockSpecies[k] << std::endl;
+                        std::cout << "potential " << i << " accumulating species " << blockSpecies[j] << " and " << blockSpecies[k] << std::endl;
 
                         double fC = double(N[k]) / double(Ntot);
                         double fB = double(Nbetween) / double(Ntot);
@@ -463,6 +549,7 @@ void LinearMolec::computeLinearTerms() {
 
                         // accumulate Nbetween
                         Nbetween += N[k];
+
                     }// k=j+1:numBlocks
                 }// j=0:numBlocks
             }// if potentialStyle == "Flory"
@@ -470,4 +557,11 @@ void LinearMolec::computeLinearTerms() {
 
     }// numBlocks > 1
 
+}
+
+void LinearMolec::recomputeNmolecs() {
+    if ( activity > 0.0 ) {
+        nmolecs = mybox->C * phi * mybox->Vfree * mybox->Nr / (double(Ntot));
+        std::cout << " recomputed nSites = " << nmolecs * double(Ntot) << " nmolecs = " << nmolecs << std::endl;
+    }
 }

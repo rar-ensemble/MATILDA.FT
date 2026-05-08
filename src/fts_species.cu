@@ -64,6 +64,22 @@ void FTS_Species::buildPotentialField() {
 
         }
 
+        if ( box->Potentials[i]->printStyle() == "Incompress" ) {
+
+            // d_w += I * wpl from Helfand
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
+        if ( box->Potentials[i]->printStyle() == "Edwards" ) {
+
+            // d_w += I * wpl from Edwards
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
         else if ( box->Potentials[i]->printStyle() == "Flory" ) {
             if ( fts_species == box->Potentials[i]->actsOn[0] ) {
                 
@@ -87,12 +103,21 @@ void FTS_Species::buildPotentialField() {
                     d_w.begin(), plusITimes());                    
             }
         }
+
+        else if (box->Potentials[i]->printStyle() == "Particle" ) {
+            if (fts_species == box->Potentials[i]->actsOn[0] ) {
+                // AN: add C* chi* rho_exp_Nr to field...this is wpl from particle pot.
+                thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(), d_w.begin(), thrust::plus<thrust::complex<double>>()); 
+            }
+        }
+        
     }// i=0:potentials.size()
 
     // Normalize the field by Nr
     thrust::device_vector<thrust::complex<double>> invNr(box->M);
     thrust::fill(invNr.begin(), invNr.end(), 1.0/double(box->Nr));
-    thrust::transform(d_w.begin(), d_w.end(), invNr.begin(), d_w.begin(), thrust::multiplies<thrust::complex<double>>());
+    thrust::transform(d_w.begin(), d_w.end(), invNr.begin(), d_w.begin(),   
+                        thrust::multiplies<thrust::complex<double>>());
 
 
     // thrust::host_vector<thrust::complex<double>> htmp(box->M);

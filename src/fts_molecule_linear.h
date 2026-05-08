@@ -34,13 +34,28 @@ class LinearMolec : public FTS_Molec {
         // [M] Fourier transform of bond transition prob
         thrust::device_vector<thrust::complex<double>> d_bond_fft;    
 
+        // storage variables
+        thrust::device_vector<thrust::complex<double>> W;
+        thrust::device_vector<thrust::complex<double>> qf;
+        thrust::device_vector<thrust::complex<double>> hf;
+        thrust::device_vector<thrust::complex<double>> a;
+        thrust::device_vector<thrust::complex<double>> expW;
+        thrust::device_vector<thrust::complex<double>> q_qdag;
+        thrust::device_vector<thrust::complex<double>> temp;
 
+        // To normalize FTs
+        thrust::device_vector<thrust::complex<double>> norm;
+    
+        
         ~LinearMolec();
         LinearMolec(std::istringstream& iss, FTS_Box*);
 
         void calcPropagators();
         void calcDensity() override;
+        std::complex<double> calcHTerm() override;
         void computeLinearTerms() override;
+        void modifyMolecule(std::istringstream&) override;
+        void recomputeNmolecs(void) override;
 };
 
 #endif

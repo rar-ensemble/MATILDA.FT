@@ -18,6 +18,7 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream&, FTS_Box*);
 // then populating species densities
 void FTS_Box::doTimeStep(int step) {
 
+    // std::cout << "doing time step" << std::endl;
     // Update the potential fields
     for ( int i=0 ; i<Potentials.size(); i++ ) {
         int ti = time(0);
@@ -25,6 +26,9 @@ void FTS_Box::doTimeStep(int step) {
         fieldUpdateTimer += time(0) - ti;
     }
     
+    // std::cout << "potentials updated" << std::endl;
+
+
     // Zero the species densities and rebuilt the fields
     for ( int i=0 ; i<Species.size(); i++ ) {
         int ti = time(0);
@@ -33,6 +37,8 @@ void FTS_Box::doTimeStep(int step) {
         speciesTimer += time(0) - ti;
     }
 
+    // std::cout << "species fields zeroed" << std::endl;
+
     // Recalculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
         int ti = time(0);
@@ -40,6 +46,7 @@ void FTS_Box::doTimeStep(int step) {
         moleculeTimer += time(0) - ti;
     }
 
+    // std::cout << "densities calculated" << std::endl;
 
     // If using predictor-corrector scheme, repeat above with predicted
     // densities and forces
@@ -67,6 +74,7 @@ void FTS_Box::doTimeStep(int step) {
         }        
     }
 
+    // std::cout << "PC steps finished" << std::endl;
 
     /////////////////
     // I/O section //
@@ -79,6 +87,8 @@ void FTS_Box::doTimeStep(int step) {
         }
     }
     
+    // std::cout << "write densField finished" << std::endl;
+
     // Write the species densities
     if ( chemFieldFreq > 0 && step % chemFieldFreq == 0 ) {
         for ( int i=0 ; i<Potentials.size(); i++ ) {
@@ -89,36 +99,74 @@ void FTS_Box::doTimeStep(int step) {
         }
     }
 
+    // std::cout << "write chemField finished" << std::endl;
 
     // Write log data
     if ( step % logFreq == 0 ) {
         writeData(step);
     }
 
+    // std::cout << "write log finished" << std::endl;
 }
 
+
+
+void FTS_Box::NVT(int nsteps) {
+
+
+    for ( int i=0 ; i<nsteps ; i++ ) {
+        doTimeStep(i);
+
+        if ( i >= 50 && converged(i) ) {
+            break;
+        }
+
+        totSteps++;
+    }
+
+    writeTime();
+
+}
 
 // Write Hamiltonian terms to output file
 void FTS_Box::writeData(int step) {
 
     computeHamiltonian();
 
+
+    if ( std::isnan(Heff.real()) ) {
+        die("Found Heff = NaN, quitting!");
+    }
+
     OTP.open("fts_data.dat", std::ios_base::app);
-    std::string outline;
 
     OTP << step << " " << Heff.real() << " " ;
     std::cout << step << " " << Heff.real() << " " ;
     if ( ftsStyle == "cl" ) {
         OTP << Heff.imag() << " " ;
     }
-    for ( int i=0 ; i<Potentials.size() ; i++ ) {
-        OTP << Potentials[i]->Hterm << " " ;
-        std::cout << Potentials[i]->Hterm << " " ;
+    else {
+      OTP << error << " " ;
+      std::cout << error << " " ;
     }
 
+    for ( int i=0 ; i<Potentials.size() ; i++ ) {
+        OTP << Potentials[i]->Hterm.real() << " " ;
+        std::cout << Potentials[i]->Hterm.real() << " " ;
+    }
+
+
+    // Prints either -n*log(Q) or -z*Q
     for ( int i=0 ; i<Molecs.size(); i++ ) {
-        OTP << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
-        std::cout << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
+        OTP << Molecs[i]->calcHTerm().real() << " " ;
+        std::cout << Molecs[i]->calcHTerm().real() << " " ;
+        
+        if ( Molecs[i]->activity > 0.0 ) {
+            OTP << Molecs[i]->nSites << "  ";
+            std::cout << Molecs[i]->nSites << "  ";
+        }
+        // OTP << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
+        // std::cout << -Molecs[i]->nmolecs*log(Molecs[i]->Q) << " " ;
     }
 
     OTP << std::endl;
@@ -128,11 +176,15 @@ void FTS_Box::writeData(int step) {
 }
 
 
-void FTS_Box::initializeSim() {
+void FTS_Box::finishInitialization() {
     
-    Potentials[0]->wpl = Potentials[0]->d_wpl;
+    // Potentials[0]->wpl = Potentials[0]->d_wpl;
+    // no idea why this was here?
 
+    std::string outline;
+    outline = "# step H error ";
     
+    std::cout << "    zeroing density" << std::endl;
     // Zero the species densities
     for ( int i=0 ; i<Species.size(); i++ ) {
         Species[i].zeroDensity();
@@ -140,14 +192,44 @@ void FTS_Box::initializeSim() {
     }
 
 
-    thrust::host_vector<thrust::complex<double>> htmp(M);
+    std::cout << "    init'ing tolerances" << std::endl;
+    // Initalize tolerance criteria
+    initTolerances();
+
+
+
+
+    // Set up output files and their headers
+    for ( int i=0 ; i<Potentials.size() ; i++ ) {
+        outline = outline + "H_" + Potentials[i]->printStyle() + " " ;
+    }
+
+    std::cout << "    first density calculation" << std::endl;
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
+        std::cout << "      " << i << " molecule density starting" << std::endl;
         Molecs[i]->calcDensity();
+        std::cout << "      " << i << " molecule density calc'd" << std::endl;
+
+        if ( Molecs[i]->molec_type != "HParticle" ) {
+            outline += "Q[" + std::to_string(i) + "] ";
+
+            if ( Molecs[i]->activity > 0.0 ) {
+                outline += "nsites[" + std::to_string(i) + "] ";
+            }
+        }
+
+        else {
+            outline += "-I*integ(wpl*rho_HNP) " ;
+        }
+
     }
+
 
     // Initialize the output stream
     OTP.open("fts_data.dat");
+    OTP << outline << std::endl;
+    std::cout << outline << std::endl;
     OTP.close();
 
 
@@ -209,15 +291,19 @@ void FTS_Box::readInput(std::ifstream& inp) {
     M = 1;
     V = 1.0;
     rho0 = C = -1.0;
+    boxStyle = "fts";
 
     // Some default values
     logFreq = 100;
-    maxSteps = 10000;
     chemFieldFreq = 0;
     densityFieldFreq = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
+    tolMetric = "Heff";
     PCflag = 0;
+    totSteps = 0;
+    idum = time(0);
+
 
     std::string line, firstWord;
 
@@ -238,6 +324,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 break;
             }
 
+
             // Commands are alphabetical from here on
             else if ( firstWord == "boxLengths" ) {
                 if (!readDimension) 
@@ -246,9 +333,15 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 for ( int j=0 ; j<Dim ; j++ ) {
                     iss >> L[j];
                     V *= L[j];
+                    Vfree = V;
                     if ( Nx[0] > 0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }
             }
+
+            else if ( firstWord == "C" ) {
+                iss >> C;
+            }
+
 
             else if ( firstWord == "chemFieldFreq" || firstWord == "chemfieldfreq" ) { iss >> chemFieldFreq; }
 
@@ -270,8 +363,6 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if ( firstWord == "logFreq" || firstWord == "logfreq" ) { iss >> logFreq; }
-
-            else if ( firstWord == "maxSteps" || firstWord == "maxSteps" ) { iss >> maxSteps; }
 
             else if ( firstWord == "molecule" ) {
                 Molecs.push_back(FTS_MolecFactory(iss, this));
@@ -317,7 +408,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if ( firstWord == "tolerance" ) {
+                iss >> tolMetric;
                 iss >> tolerance;
+
             }
 
             else {
@@ -330,7 +423,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
         
         
         if ( firstWord == "endBox" ) {
-            std::cout << "endBox caught" << std::endl;
+            std::cout << "endBox caught in outer loop" << std::endl;
             break;
         }
 
@@ -354,17 +447,22 @@ void FTS_Box::readInput(std::ifstream& inp) {
     M_Block = 512;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
+    cudaMalloc(&d_cpxGabe, M*sizeof(cuDoubleComplex));
+    cudaMalloc(&d_cpxAtmn, M*sizeof(cuDoubleComplex));
+
     if ( rho0 > 0 && C > 0 ) { die("Cannot define both C and rho0!"); }
 
     double Rg = pow( (Nr-1.0)/6.0, 0.5);
     if ( rho0 > 0 ) {
         C = rho0/Nr;
         for ( int j=0; j<Dim ; j++ ) C *= Rg;
-        std::cout << "Using Nr = " << Nr << ", computed C = " << C << std::endl;
+        std::cout << "Using Nr = " << Nr << ", computed C = " << C << " rho0: " << C*Nr << " [Rg^-D]" << std::endl;
     }
     else if ( C > 0 ) {
-        rho0 = C * Rg * Rg * Rg / Nr;
-        std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [b^-3]" << std::endl;
+        rho0 = Nr * C;
+        // for ( int j=0 ; j<Dim ; j++ ) rho0 *= ( 1.0 / Rg );
+        
+        std::cout << "Using Nr = " << Nr << ", computed rho0 = " << rho0 << " [Rg^-D]" << std::endl;
     }
 
     simTime = time(0);
@@ -379,10 +477,13 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
+    std::cout << "  going into finish init..." << std::endl;
+    finishInitialization();
 }
 
 void FTS_Box::writeTime() {
 
+    std::cout << std::endl;
     int dt = time(0) - simTime;
     std::cout << "Total simulation time: " << dt / 60 << "m" << dt % 60 << "sec" << std::endl;
     
@@ -462,7 +563,7 @@ void FTS_Box::computeHamiltonian() {
 
     // accumulate the -n*log(Q) terms
     for ( int i=0 ; i<Molecs.size(); i++ ) {
-        Heff += (std::complex<double>)( -Molecs[i]->nmolecs * log( Molecs[i]->Q));
+        Heff += Molecs[i]->calcHTerm();
     }
 }
 
@@ -531,6 +632,49 @@ std::complex<double> FTS_Box::integComplexD(std::complex<double> *dat) {
 }
 
 
+
+std::string FTS_Box::returnFTSstyle() {
+    return ftsStyle;
+}
+
+void FTS_Box::modifyBox(std::istringstream& iss) {
+
+    std::ofstream otp("sweep_data.dat", std::ios_base::app);
+    
+    std::string word;
+    iss >> word;
+
+    if ( word == "potential" ) {
+        die("potential modifications not yet supported");
+    }
+
+    else if ( word == "molecule" ) {
+
+        otp << Heff.real() << " " ;
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+            if ( Molecs[i]->activity > 0.0 ) {
+                otp << Molecs[i]->nSites << " " << Molecs[i]->activity << " " ;
+            }
+        }
+
+        otp << std::endl;
+
+        int molecInd;
+        iss >> molecInd;  // 1-indexed
+
+        if ( molecInd > Molecs.size() ) {
+            die("Invalid molecule index - out of range!");
+        }
+
+        Molecs[molecInd-1]->modifyMolecule(iss);
+    }
+
+    otp.close();
+
+}
+
+
+
 // Check convergence of SCFT simulation
 int FTS_Box::converged(int step) {
 
@@ -538,22 +682,79 @@ int FTS_Box::converged(int step) {
     if ( ftsStyle != "scft" ) return 0;
     
     // Check if H has been updated
-    if ( step % logFreq != 0 ) return 0;
+    if ( step % logFreq != 0 || step < logFreq ) return 0;
     
-    // Check if Hamiltonian change is less than the tolerance
-    if ( fabs(Hold - real(Heff)) < tolerance ) {
-        std::cout << "SCFT converged on step " << step << " deltaH: " << fabs(Hold - real(Heff)) << std::endl;
-        std::cout << Hold << " " << real(Heff) << std::endl;
+    error = convergenceCheck();
+
+    if ( error < tolerance ) {
+        std::cout << "SCFT converged on step " << step << " using " << tolMetric << " < " << tolerance << std::endl;
         return 1;
     }
+    else {
+        return 0;
+    }
+
+}
+
+
+// The detailed calcs for checking convergence
+double FTS_Box::convergenceCheck() {
+
+    if ( tolMetric == "Heff" ) {
+        double change = fabs(Heff.real() - Hold);
+        Hold = Heff.real();
+        return change;
+    }
+
+    else if (tolMetric == "phi" ) {
+
+        double maxchange = -4321123.2;
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+
+            double ncur = Molecs[i]->nSites;
+            
+            double deltan = fabs(ncur - oldValues[i]);
+
+            oldValues[i] = ncur;
+            
+            if ( deltan > maxchange ) {
+                maxchange = deltan;
+            }
+        }
+
+        double dphi = maxchange / rho0 / V;
+        return dphi;
+        
+    }// if tolMetric == phi
 
     else {
-        Hold = real(Heff);
-        return 0;
+        return 43123482.0;
     }
 }
 
+void FTS_Box::initTolerances() {
+    if ( tolMetric == "Heff" ) {
+        return;
+    }
 
-std::string FTS_Box::returnFTSstyle() {
-    return ftsStyle;
+    else if ( tolMetric == "phi" ) {
+        std::cout << "Using phi tolerance" << std::endl;
+        oldValues.resize(Molecs.size());
+
+        // Initialize 'old values' to arbitrary large value
+        for ( int i=0 ; i<Molecs.size() ; i++ ) {
+            oldValues[i] = 6.666E6;
+        }
+    }
+    else if ( tolMetric == "density" ) {
+        die("density field tolerance checks not yet set up");
+    }
+    else if ( tolMetric == "potential" ) {
+        die("potential field tolerance checks not yet set up");
+    }
+    else {
+        std::string LW = tolMetric + " is not a valid tolerance option";
+        die(LW);
+    }
 }
+
