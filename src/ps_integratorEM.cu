@@ -57,7 +57,7 @@ __global__ void d_EM_integrator(
 
 	curandState l_state = d_states[ind];
 
-	int itype = typ[ind];
+	// int itype = typ[ind];
 
 
 	for (int j = 0; j < Dim; j++) {
