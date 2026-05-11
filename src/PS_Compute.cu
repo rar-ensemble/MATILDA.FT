@@ -2,10 +2,10 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
-#include "Compute.h"
-#include "Box.h"
+#include "ps_compute.h"
+#include "PS_Box.h"
 
-Compute::Compute(std::istringstream &iss, Box* box) {
+PS_Compute::PS_Compute(std::istringstream &iss, PS_Box* box) : mybox(box) {
     this->compute_id = this->total_computes++;
 
     // Set defaults for optional arguments
@@ -14,6 +14,6 @@ Compute::Compute(std::istringstream &iss, Box* box) {
     this->num_data_pts = 0;
 };
 
-int Compute::total_computes = 0;
+int PS_Compute::total_computes = 0;
 
-Compute::~Compute() {}
+PS_Compute::~PS_Compute() {}

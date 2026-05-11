@@ -2,16 +2,16 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 
-#ifndef _COMPUTE
-#define _COMPUTE
+#ifndef _PSCOMPUTE
+#define _PSCOMPUTE
 
 #include "include_libs.h"
 
 
-class Box;
+class PS_Box;
 
 
-class Compute {
+class PS_Compute {
 protected:
     int GRID;                   // Size of thread grid for cell operations
     int BLOCK;                  // Num of blocks per thread
@@ -22,7 +22,7 @@ protected:
     static int total_computes;  // size of computes vector: mybox->Computes.size()
 
     int num_data_pts;           // Number of data points accumulated through doCompute
-    Box* mybox;
+    PS_Box* mybox;
 
 public:
 
@@ -33,8 +33,8 @@ public:
     virtual void write_output()=0;
 
 
-    Compute(std::istringstream&, Box*);
-    virtual ~Compute();
+    PS_Compute(std::istringstream&, PS_Box*);
+    virtual ~PS_Compute();
 
 };
 
