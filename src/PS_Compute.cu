@@ -3,6 +3,7 @@
 
 
 #include "ps_compute.h"
+#include "ps_compute_sk.h"
 #include "PS_Box.h"
 
 PS_Compute::PS_Compute(std::istringstream &iss, PS_Box* box) : mybox(box) {
@@ -46,3 +47,19 @@ PS_Compute::PS_Compute(std::istringstream &iss, PS_Box* box) : mybox(box) {
 int PS_Compute::total_computes = 0;
 
 PS_Compute::~PS_Compute() {}
+
+PS_Compute* PSComputeFactory(std::istringstream &iss, PS_Box* box) {
+    std::string s1;
+    iss >> s1;
+
+    if ( s1 == "avg_sk" ) {
+        return new PS_ComputeSK(iss, box);
+    }
+
+    else {
+        std::string last_words = "Invalid compute option!";
+        die(last_words);
+    }
+
+    return 0;
+}
