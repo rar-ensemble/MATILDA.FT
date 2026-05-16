@@ -36,7 +36,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	ps_potentialCharges.cu ps_potentialMaierSaupe.cu ps_potentialLangevin.cu \
 	ps_potentialBias.cu ps_potentialErf2.cu ps_potentialErfG.cu \
 	ps_potentialDPD.cu \
-	ps_neighborList.cu ps_compute.cu \
+	ps_neighborList.cu ps_compute.cu ps_compute_sk.cu \
 
 # Box_fftWrappers.cu
 # array_utils.cu device_array_utils.cu device_bonds.cu device_grid_utils.cu device_utils.cu  field_component.cu
