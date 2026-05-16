@@ -58,6 +58,7 @@ void PS_ComputeSK::write_output() {
         sk_real[i] *= 1.0 / float(num_data_pts);
     }
 
+    mybox->writeKFieldFloat(output_name.c_str(), sk_real);
 
 }
 

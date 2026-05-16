@@ -145,6 +145,17 @@ void PS_Box::doTimeStep(int step) {
     }
 
 
+    //////////////////
+    // Run computes //
+    //////////////////
+    for ( int i=0 ; i<computes.size(); i++ ) {
+        computes[i]->do_compute(step);
+    }
+
+
+
+
+
     ///////////////
     // I/O steps //
     ///////////////
@@ -155,6 +166,10 @@ void PS_Box::doTimeStep(int step) {
         if ( verbose ) { std::cout << "log..." ; fflush(stdout); }
         writeData(step);
         if ( verbose ) std::cout << "done!" << std::endl;
+
+        for ( int i=0 ; i<computes.size(); i++ ) {
+            computes[i]->write_output();
+        }
     }
 
     // write to GSD traj file
@@ -483,6 +498,40 @@ void PS_Box::writeKFieldFloat(const char* name, const std::complex<float>* dat) 
     delete nn;
     delete kv;
 }
+
+
+// write field of array vectors
+void PS_Box::writeKFieldFloat(const char* name, const float* dat) {
+    int i, j, * nn;
+    nn = new int[Dim];
+    FILE* otp;
+    float* kv = new float [Dim];
+    float k2;
+
+    otp = fopen(name, "w");
+    if ( otp == NULL ) { die("Failed to open output file in writeFieldFloat!"); }
+
+    for (i = 0; i < M; i++) {
+        k2 = get_kD(i, kv);
+        unstack2(i, nn);
+
+        for (j = 0; j < Dim; j++)
+            fprintf(otp, "%f ", kv[j]);
+
+        fprintf(otp, "%1.8e %1.8e %1.8e\n", abs(dat[i]), sqrt(k2), dat[i] );
+
+        if (Dim == 2 && nn[0] == Nx[0] - 1)
+            fprintf(otp, "\n");
+    }
+
+    fclose(otp);
+
+    delete nn;
+    delete kv;
+}
+
+
+
 
 void PS_Box::writeTime() {
 

@@ -130,6 +130,23 @@ __global__ void d_multiplyCpxByCpx(
 }
 
 
+// out = c1 * c2^\ast
+__global__ void d_multiplyCpxByCpxConj(
+    float* out,         // [N] array to be filled
+    const cuComplex *c1,    // [N] extracting directional component from f
+    const cuComplex *c2,    // [N] array be multiplied by dir comp of fk
+    const int N             // Array dimension
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id] = c1[id].x * c2[id].x  + c1[id].y * c2[id].y;
+
+}
+
+
+
 // performs complex multiplication with rh
 __global__ void d_multiplyDoubleCpxByCpx(
     cuDoubleComplex* out,         // [N] array to be filled

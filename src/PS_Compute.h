@@ -17,8 +17,10 @@ protected:
     int BLOCK;                  // Num of blocks per thread
     int group_index;            // Index of the group
     std::string output_name;    // Name of the output file
+    std::string group;
     std::string style;          // Compute style (e.g., avg_sk, avg_rho)
     int compute_id;
+    int group_int;
     static int total_computes;  // size of computes vector: mybox->Computes.size()
 
     int num_data_pts;           // Number of data points accumulated through doCompute
@@ -28,9 +30,10 @@ public:
 
     int compute_freq;       // Frequency for calling doCompute (timesteps), default 100
     int compute_wait;       // Time to wait before calling doCompute (timesteps), default 0
-    virtual void alloc_storage()=0;
-    virtual void do_compute(void) =0;
+    
+    virtual void do_compute(int) =0;
     virtual void write_output()=0;
+    virtual void initialize_compute() = 0;
 
 
     PS_Compute(std::istringstream&, PS_Box*);

@@ -14,6 +14,7 @@
 #include "ps_integrator.h"
 #include "ps_potential.h"
 #include "ps_neighborList.h"
+#include "ps_compute.h"
 
 class PS_Box : public Box {
     protected:
@@ -147,6 +148,7 @@ class PS_Box : public Box {
         std::vector<Integrator*> integrators;   // Time integration schemes
         std::vector<PS_Potential*> potentials;
         std::vector<PS_NeighborList*> neighborLists;
+        std::vector<PS_Compute*> computes;
 
 
         void allocHostParticleArrays(int);      // Uses 'resize' to allocate host particle arrays
@@ -197,6 +199,7 @@ class PS_Box : public Box {
         void writeFieldFloat(const char*, const float*);
         void writeFieldVTK(const char*, const float*);
         void writeKFieldFloat(const char*, const std::complex<float>*);
+        void writeKFieldFloat(const char*, const float*);
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
 
