@@ -21,6 +21,7 @@ const float*, const int, const int, const int, const int);
 
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 PS_Potential* PSPotentialFactory(std::istringstream&, PS_Box*);
+PS_Compute* PSComputeFactory(std::istringstream&, PS_Box*);
 
 // Reads all of the commands from the input file from when this
 // box is created (using the 'box' command) until the 'endBox' 
@@ -141,6 +142,11 @@ void PS_Box::readInput(std::ifstream& inp) {
                     V *= L[j];
                     if ( Nx[0] > 0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }
+            }
+
+
+            else if ( firstWord == "compute" ) {
+                computes.push_back( PSComputeFactory(iss, this) );
             }
 
             else if ( firstWord == "datFileName" || firstWord == "dat_file_name" ) {
