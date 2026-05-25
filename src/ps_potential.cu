@@ -3,12 +3,13 @@
 
 
 #include "ps_potential.h"
-#include "ps_potentialGaussian.h"
+#include "ps_potentialBias.h"
+#include "ps_potentialBias_lc.h"
 #include "ps_potentialCharges.h"
 #include "ps_potentialErf2.h"
 #include "ps_potentialErfG.h"
+#include "ps_potentialGaussian.h"
 #include "ps_potentialMaierSaupe.h"
-#include "ps_potentialBias.h"
 #include "ps_potentialLangevin.h"
 #include "ps_potentialDPD.h"
 #include "PS_Box.h"
@@ -257,6 +258,9 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
 
     if ( s1 == "bias" ) {
         return new BiasField(iss,box);
+    }
+    else if ( s1 == "bias_lc" ) {
+        return new NBBiasLC(iss,box);
     }
     else if ( s1 == "charges" ) {
         return new NBCharge(iss, box);
