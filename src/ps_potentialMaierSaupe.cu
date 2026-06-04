@@ -286,54 +286,33 @@ float NBMaier::CalcEnergy() {
 
     check_cudaError("NBMaier::CalcEnergy end");
 
-    // orderParam = CalculateOrderParameter();
-    // std::cout << " UMS: " << energy << " LambdaMS: " << orderParam;
-
     return energy;
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CalculateOrderParameter
-// Returns the largest eigenvalue of the volume-averaged Q tensor * 1.5
-// ─────────────────────────────────────────────────────────────────────────────
-float NBMaier::CalculateOrderParameter() {
-    return -0.5f;
-    // int Dim = mybox->returnDimension();
-    // int DD  = Dim * Dim;
-
-    // CalcSTensors();
-    // check_cudaError("NBMaier: CalcSTensors in CalculateOrderParameter");
-
-    // d_assignFloatVal<<<1, DD>>>(d_Dim_Dim_tensor, 0.0f, DD);
-    // check_cudaError("NBMaier: zero d_Dim_Dim_tensor");
-
-    // d_SumAndAverageSTensors<<<mybox->nsGrid, mybox->nsBlock>>>(
-    //     d_ms_S, d_Dim_Dim_tensor, d_MS_pair, Dim, mybox->nstot);
-    // check_cudaError("NBMaier: SumAndAverageSTensors");
-
-    // cudaMemcpy(h_Dim_Dim_tensor, d_Dim_Dim_tensor, DD * sizeof(float),
-    //            cudaMemcpyDeviceToHost);
-
-    // return CalculateMaxEigenValue();
+void NBMaier::initBinaryOutput() {
+    std::string name;
+    name = "Sfield-" + grpI + "-" + grpJ + std::string(".bin");
+    mybox->initBinaryDataFile(name);
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CalculateMaxEigenValue
-// Solves the Dim×Dim eigenvalue problem for the averaged Q tensor.
-// Divide by nms (active MS sites, not all particles).
-// ─────────────────────────────────────────────────────────────────────────────
-// float NBMaier::CalculateMaxEigenValue() {
-//     int Dim = mybox->returnDimension();
-//     MatrixXf q(Dim, Dim);
-//     for (int i = 0; i < Dim; i++)
-//         for (int j = 0; j < Dim; j++)
-//             q(i, j) = h_Dim_Dim_tensor[i * Dim + j];
+void NBMaier::writeBinaryOutput() {
+    std::string name;
+    name = "Sfield-" + grpI + "-" + grpJ + std::string(".bin");
 
-//     q /= float(nms);
-//     return EigenSolver<MatrixXf>(q).eigenvalues().array().real().maxCoeff() * 1.5f;
-// }
+    int d = mybox->returnDimension();
+
+    cudaMemcpy(S_field, d_S_field, d*d*mybox->M*sizeof(float), cudaMemcpyDeviceToHost);
+
+    mybox->writeBinaryTensorData(name, S_field);
+}
+
+
+
+
+
+
+
 
 
 // ═════════════════════════════════════════════════════════════════════════════

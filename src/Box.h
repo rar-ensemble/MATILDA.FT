@@ -80,6 +80,8 @@ class Box {
         void initBinaryDataFile(std::string);
         void writeBinaryData(std::string, float*);
         void writeBinaryData(std::string, double*);
+        void writeBinaryTensorData(std::string, float*);
+        void writeBinaryTensorData(std::string, double*);
 
         int known_phase(std::string, std::string&);
 

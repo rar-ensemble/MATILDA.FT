@@ -18,6 +18,8 @@ class NBBiasLC : public PS_Potential {
         float *ms_u, *d_ms_u;           // [Dim*nstot] unit orientation vectors
         float *ms_S, *d_ms_S;           // [Dim²*nstot] per-particle S tensors
         float *ener, *d_ener;           // [nstot] stores energy per particle
+        float *rmin, *d_rmin;           // [Dim] min range in each direction to apply bias
+        float *rmax, *d_rmax;           // [Dim] max range in each direction to apply bias
 
         std::string filename;           // Path to lc_file specifying MS pairs
         
@@ -37,7 +39,7 @@ class NBBiasLC : public PS_Potential {
 
         float Ao;           // Gaussian potential prefactor
         float u0[3];        // Bias orientation
-        float *S0, *d_S0; // [Dim^2] Bias tensor orientation
+        float *S0, *d_S0;   // [Dim^2] Bias tensor orientation
 };
 
 // Forward declarations for device kernels defined in this file
@@ -55,10 +57,10 @@ __global__ void d_storeTensorComponent(float*, const cuComplex*, const int,
 
 
 __global__ void d_accumulateMSBiasForce(float*, const float*, const int*, const float*,
-    const float*, const float, const int, const float*, const float*, const int);
+    const float*, const float*, const float*, const float, const int, const float*, const float*, const int);
 
-__global__ void d_computeLCBiasEnergyPerPartic(float* , const float*, const float*, 
-    const int, const int);
+__global__ void d_computeLCBiasEnergyPerPartic(float* , const float*, const float*, const float*, 
+    const float*, const float*, const int, const int);
 
 __global__ void d_doubleDotTensorFields(float*, const float*, const float*, const int, const int);
 

@@ -26,10 +26,10 @@ class NBMaier : public PS_Potential {
         static int num;
         int nms;                        // Number of active MS pairs read from lc_file
 
-        float CalculateOrderParameter();
-        // float CalculateMaxEigenValue();
         void  CalcSTensors();
         void  read_lc_file(std::string);
+
+        int write_SField_freq;
 
     public:
         NBMaier();
@@ -43,6 +43,9 @@ class NBMaier : public PS_Potential {
         float Ao;           // Gaussian potential prefactor
         float sig2;         // Squared range of the Gaussian (stored as sigma^2)
         float orderParam;   // Most recent nematic order parameter (largest eigenvalue * 1.5)
+
+        void initBinaryOutput() override;
+        void writeBinaryOutput() override;
 };
 
 // Forward declarations for device kernels defined in this file

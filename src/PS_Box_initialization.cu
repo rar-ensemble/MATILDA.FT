@@ -494,6 +494,9 @@ void PS_Box::finishInitialization() {
     std::cout << "done!" << std::endl;
 
 
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        potentials[i]->initBinaryOutput();
+    }
 
 
     // Initialize the output stream

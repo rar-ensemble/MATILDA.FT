@@ -357,6 +357,9 @@ void PS_Box::writeFields() {
         
         check_cudaError("writeFields in ps_box");
     }    
+    for ( int i=0; i<potentials.size(); i++ ) {
+        potentials[i]->writeBinaryOutput();
+    }
     if ( verbose ) std::cout << "  Field written\n" << std::endl;
 }
 
@@ -815,5 +818,25 @@ void PS_Box::findSpinodal(std::istringstream& iss) {
 }
 
 void PS_Box::modifyBox(std::istringstream& iss) {
+    std::string word;
+
+    iss >> word;
+
+    if ( word == "potential" ) {
+        iss >> word;
+
+        if ( word == "remove" || word == "delete" ) {
+            int potential_id;
+            iss >> potential_id;
+
+            if ( potential_id > 0 && potential_id <= potentials.size() ) {
+                std::cout << "Removing potential " << potential_id << ", assuming potentials counted from 1" << std::endl;
+                delete potentials[potential_id-1];
+                potentials.erase( potentials.begin() + potential_id - 1 );
+            }
+        }
+    }
+
+
     return;
 }

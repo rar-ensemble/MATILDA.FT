@@ -45,6 +45,9 @@ public:
     // These are virtual so they can be overriden for non-2 body potentials
     virtual void CalcForces();      
     virtual float CalcEnergy();
+
+    virtual void initBinaryOutput();    
+    virtual void writeBinaryOutput();   
 };
 
 #endif

@@ -12,6 +12,7 @@
 #include "ps_potentialMaierSaupe.h"
 #include "ps_potentialLangevin.h"
 #include "ps_potentialDPD.h"
+#include "ps_potentialWall.h"
 #include "PS_Box.h"
 
 
@@ -247,7 +248,14 @@ void PS_Potential::ramp_check_input(std::istringstream& iss){
     //         die("Invalid keyword: " + convert);
     // }
 
+}
 
+void PS_Potential::initBinaryOutput() {
+    return;
+}
+
+void PS_Potential::writeBinaryOutput() {
+    return;
 }
 
 
@@ -283,7 +291,10 @@ PS_Potential* PSPotentialFactory(std::istringstream &iss, PS_Box* box){
     else if (s1 == "maiersaupe") {
         return new NBMaier(iss, box);
     }
-	
+    else if (s1 == "wall") {
+        return new Wall(iss, box);
+    }
+
     std::string last_words = "ps_potential.cu: " + s1 + " is not a supported potential";
  	die(last_words.c_str());
  	return 0;

@@ -570,6 +570,31 @@ void Box::writeBinaryData(std::string name, double *dat) {
     otp.close();
 }
 
+// Writes a frame of data to the binary file
+void Box::writeBinaryTensorData(std::string name, float *dat) {
+    std::ofstream otp(name, std::ios::app|std::ios::binary);
+    if ( !otp.is_open() ) {
+        die("Failed to open output binary file!");
+    }
+
+    otp.write(reinterpret_cast<char*>(dat), Dim*Dim*M*sizeof(float));
+
+    otp.close();
+}
+
+// Writes a frame of data to the binary file
+void Box::writeBinaryTensorData(std::string name, double *dat) {
+    std::ofstream otp(name, std::ios::app|std::ios::binary);
+    if ( !otp.is_open() ) {
+        die("Failed to open output binary file!");
+    }
+
+    otp.write(reinterpret_cast<char*>(dat), Dim*Dim*M*sizeof(double));
+
+    otp.close();
+}
+
+
 void Box::readDatFile( std::string name, thrust::host_vector<thrust::complex<double>>& w) {
     std::ifstream inp(name);
     
