@@ -20,4 +20,6 @@ __global__ void d_makeDoubleNoise(
     noiseField[ind].x = noiseMag * curand_normal(&l_state);
     noiseField[ind].y = 0.0;
 
+    d_states[ind] = l_state;
+
 }
