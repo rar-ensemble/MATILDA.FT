@@ -27,6 +27,8 @@ class Box {
         
         float *L, *d_L, *Lh, *d_Lh;         // [Dim] Box dimensions, half-box dimensions
 
+        std::string boxType;
+
         double V;                           // Box volume
         double Vfree;                       // Box volume not occupied by interfaces, particles
         int M;                              // Total number of grid points
@@ -35,6 +37,8 @@ class Box {
         int logFreq;                        // Frequency to print energies
         int densityFieldFreq;               // Frequency to write configs
         int totSteps;                       // Total elapsed iterations
+        int maxSteps;                       // Max number of steps to run
+        int threads;                        // number of threads per GPU block
         long int simTime;                   // Total simulation time
         long int ftTimer;                   // Time spent in FFT routine
         long int ioTimer;                   // Time in I/O routines
@@ -71,6 +75,7 @@ class Box {
         void unstack2(int, int*);
         int returnDimension(void);
         std::string returnBoxStyle(void);
+        void initCuRand(void);
         std::string printCommand();
         virtual void readInput(std::ifstream&) = 0;
         virtual void writeFields() = 0;
@@ -95,6 +100,9 @@ class Box {
 
         void readDatFile(std::string, thrust::host_vector<thrust::complex<double>>&);
         // void readDatFile(std::string, float*);
+
+        curandState* d_states;
+        int RAND_SEED;
 
 };
 

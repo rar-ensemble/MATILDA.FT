@@ -15,7 +15,6 @@ class FTS_Potential;
 
 class FTS_Box : public Box {
     protected:
-        std::string ftsStyle;              // "scft" or "cl", maybe also "hpf" in future?
     public:
         ~FTS_Box();
         FTS_Box(std::istringstream&);
@@ -25,7 +24,8 @@ class FTS_Box : public Box {
         double C;           // System concentration
         int chemFieldFreq;  // Frequency to write potential fields
         std::complex<double> Heff;  // Effective Hamiltonian
-        int PCflag;         // Flag for using predictor-corrector methods
+        bool PCflag;         // Flag for using predictor-corrector methods
+        std::string ftsStyle;              // "scft" or "cl"
         
 
         // Data for tolerance checks

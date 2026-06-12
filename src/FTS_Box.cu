@@ -50,7 +50,7 @@ void FTS_Box::doTimeStep(int step) {
 
     // If using predictor-corrector scheme, repeat above with predicted
     // densities and forces
-    if ( PCflag == 1 ) {
+    if ( PCflag == true ) {
         // Update the potential fields with corrector step
         for ( int i=0 ; i<Potentials.size(); i++ ) {
             int ti = time(0);
@@ -72,7 +72,9 @@ void FTS_Box::doTimeStep(int step) {
             Molecs[i]->calcDensity();
             moleculeTimer += time(0) - ti;
         }        
-    }
+    }// if ( predictorCorrector )
+
+
 
     // std::cout << "PC steps finished" << std::endl;
 
@@ -183,7 +185,7 @@ void FTS_Box::finishInitialization() {
 
     std::string outline;
     outline = "# step H error ";
-    
+
     std::cout << "    zeroing density" << std::endl;
     // Zero the species densities
     for ( int i=0 ; i<Species.size(); i++ ) {
@@ -232,6 +234,7 @@ void FTS_Box::finishInitialization() {
     std::cout << outline << std::endl;
     OTP.close();
 
+    std::cout << "DONE initializeSim" << std::endl;
 
 }
 
@@ -300,9 +303,13 @@ void FTS_Box::readInput(std::ifstream& inp) {
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
     tolMetric = "Heff";
-    PCflag = 0;
+    PCflag = false;
     totSteps = 0;
     idum = time(0);
+    threads = 512;
+    RAND_SEED = int(time(0));
+
+    boxType = "fts";
 
 
     std::string line, firstWord;
@@ -316,6 +323,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
             continue;
 
         std::istringstream iss(line);
+
         
         while ( iss >> firstWord ) {
 
@@ -393,10 +401,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
 
             else if (firstWord == "randSeed" || firstWord == "RAND_SEED") {
-                std::cout << idum << " Before " << std::endl;
-                fflush(stdout);
                 iss >> idum;
-                std::cout << idum << " after " << std::endl;
+                RAND_SEED = idum;
             }
 
             else if (firstWord == "rho0") {
@@ -405,6 +411,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "species" ) {
                 Species.push_back(FTS_Species(iss, this));
+            }
+
+            else if ( firstWord == "threads" ) {
+                iss >> threads;
             }
 
             else if ( firstWord == "tolerance" ) {
@@ -444,7 +454,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
         gvol *= dx[j];
     }
 
-    M_Block = 512;
+    M_Block = threads;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
     cudaMalloc(&d_cpxGabe, M*sizeof(cuDoubleComplex));
@@ -477,6 +487,9 @@ void FTS_Box::readInput(std::ifstream& inp) {
     for ( int i=0 ; i<Molecs.size() ; i++ ) {
         Molecs[i]->computeLinearTerms();
     }
+    // Initialize the RNG routine
+    initCuRand();
+
     std::cout << "  going into finish init..." << std::endl;
     finishInitialization();
 }
@@ -603,6 +616,8 @@ FTS_Box::~FTS_Box() {}
 FTS_Box::FTS_Box(std::istringstream& iss ) : Box(iss) {
     std::string s1;
     iss >> ftsStyle;
+
+    if ( ftsStyle != "scft" && ftsStyle != "cl" ) die("Invalid FTS simulation box style! Must be scft or cl.");
 
     std::cout << "Made FTS_Box with style " << ftsStyle << std::endl;
 }
