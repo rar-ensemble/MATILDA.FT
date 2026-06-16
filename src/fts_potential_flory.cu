@@ -71,8 +71,8 @@ PotentialFlory::PotentialFlory(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
     d_dHdwpl.resize(mybox->M, ivalue);
 
     if ( mybox->ftsStyle == "cl" ) {
-        d_miNoise.resize(mybox->M, ivalue);
-        d_plNoise.resize(mybox->M, ivalue);
+        d_miNoise.resize(mybox->M, 0.0);
+        d_plNoise.resize(mybox->M, 0.0);
         std::cout << "Flory noise fields for CL allocated!" << std::endl;
     }
     
