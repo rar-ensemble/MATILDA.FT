@@ -82,13 +82,24 @@ void FTS_Box::doTimeStep(int step) {
     // I/O section //
     /////////////////
 
-    // Write the species densities
+    // Accumulate CL density samples
+    if ( ftsStyle == "cl" && clSampleFreq > 0 && step % clSampleFreq == 0 ) {
+        nCLSamples++;
+        for ( int i=0 ; i<Species.size(); i++ ) {
+            Species[i].accumulateDensity();
+        }
+    }
+
+    // Write the species densities (and CL running averages)
     if ( densityFieldFreq > 0 && step % densityFieldFreq == 0 ) {
         for ( int i=0 ; i<Species.size(); i++ ) {
             Species[i].writeDensity(i);
+            if ( ftsStyle == "cl" && nCLSamples > 0 ) {
+                Species[i].writeAvgDensity(i, nCLSamples);
+            }
         }
     }
-    
+
     // std::cout << "write densField finished" << std::endl;
 
     // Write the species densities
@@ -146,6 +157,7 @@ void FTS_Box::writeData(int step) {
     std::cout << step << " " << Heff.real() << " " ;
     if ( ftsStyle == "cl" ) {
         OTP << Heff.imag() << " " ;
+        std::cout << Heff.imag() << " " ;
     }
     else {
       OTP << error << " " ;
@@ -184,7 +196,12 @@ void FTS_Box::finishInitialization() {
     // no idea why this was here?
 
     std::string outline;
-    outline = "# step H error ";
+    if ( ftsStyle == "scft" ) {
+        outline = "# step H error ";
+    }
+    else if ( ftsStyle == "cl") {
+        outline = "# step H.real H.imag ";
+    }
 
     std::cout << "    zeroing density" << std::endl;
     // Zero the species densities
@@ -300,6 +317,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
     logFreq = 100;
     chemFieldFreq = 0;
     densityFieldFreq = 0;
+    clSampleFreq = 100;
+    nCLSamples = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
     tolMetric = "Heff";
@@ -352,6 +371,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
 
 
             else if ( firstWord == "chemFieldFreq" || firstWord == "chemfieldfreq" ) { iss >> chemFieldFreq; }
+
+            else if ( firstWord == "clSampleFreq" || firstWord == "clsamplefreq" ) { iss >> clSampleFreq; }
 
             else if ( firstWord == "densityFieldFreq" || firstWord == "densityfieldfreq" ) { iss >> densityFieldFreq; }
 

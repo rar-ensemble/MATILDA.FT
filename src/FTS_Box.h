@@ -26,6 +26,9 @@ class FTS_Box : public Box {
         std::complex<double> Heff;  // Effective Hamiltonian
         bool PCflag;         // Flag for using predictor-corrector methods
         std::string ftsStyle;              // "scft" or "cl"
+
+        int clSampleFreq;   // Steps between CL density-average samples (cl only)
+        int nCLSamples;     // Running count of accumulated CL density samples
         
 
         // Data for tolerance checks
