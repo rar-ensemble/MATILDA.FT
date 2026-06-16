@@ -8,6 +8,8 @@
 __global__ void d_fts_updateEM(
     cuDoubleComplex* w, 
     const cuDoubleComplex* dHdw, 
+    const cuDoubleComplex* noise,
+    const bool doCL,
     const double delt,
     const int M
     ) {
@@ -18,6 +20,11 @@ __global__ void d_fts_updateEM(
 
     w[ind].x = w[ind].x - delt * dHdw[ind].x;
     w[ind].y = w[ind].y - delt * dHdw[ind].y;
+ 
+    if ( doCL == true ) {
+        w[ind].x += noise[ind].x;
+        w[ind].y += noise[ind].y;
+    }
 
 }
 
@@ -51,6 +58,8 @@ __global__ void d_fts_updateEMPC(
     const cuDoubleComplex* wo,       // Original field config
     const cuDoubleComplex* dHdw,    // corrected force
     const cuDoubleComplex* dHdwP,   // predicted force
+    const cuDoubleComplex* noise,   // Noise field
+    const bool doCL,                // flag for doing CL simulation
     const double delt,              // Size of time step
     const int M                     // number of grid points
     ) {
@@ -60,7 +69,13 @@ __global__ void d_fts_updateEMPC(
         return;
 
     double halfDelt = 0.5 * delt;
+
     w[ind].x = wo[ind].x - halfDelt * (dHdw[ind].x + dHdwP[ind].x);
     w[ind].y = wo[ind].y - halfDelt * (dHdw[ind].y + dHdwP[ind].y);
+
+    if ( doCL ) {
+        w[ind].x += noise[ind].x;
+        w[ind].y += noise[ind].y;
+    }
 
 }

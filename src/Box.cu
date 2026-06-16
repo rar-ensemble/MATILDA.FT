@@ -10,6 +10,8 @@ void die(const char*);
 __global__ void d_multiplyCuComplexByFloat(cuComplex*, const float, const int);
 __global__ void sumCpxDoubleArrayKernel(cuDoubleComplex*, cuDoubleComplex*, int);
 
+__global__ void init_devCuRand(unsigned int, curandState*, int);
+
 Box::Box() {}
 Box::~Box() {}
 Box::Box(std::istringstream& iss) {
@@ -459,10 +461,32 @@ void Box::make_bias_field(
 
 
 
+// Initialize the CUDA RNG routine
+void Box::initCuRand() { 
+    if ( boxType == "fts" ) {
+        cudaMalloc(&d_states, M * sizeof(curandState));
+        init_devCuRand<<<M_Grid, M_Block>>>(RAND_SEED, d_states, M);
+    }
+}
+
 
 std::string Box::printCommand() {
     return input_command;
 }
+
+
+__global__ void init_devCuRand(unsigned int seed, curandState* d_states, int MAX) {
+
+    //check index for >= MAX
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx >= MAX)
+		return;
+
+	curand_init(seed, idx, 0, &d_states[idx]);
+
+}
+
 
 Box* BoxFactory(std::istringstream &iss) {
 	std::string s1;

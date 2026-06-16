@@ -34,7 +34,12 @@ PotentialEdwards::PotentialEdwards(std::istringstream& iss, FTS_Box* p_box) : FT
 
     d_rho_total.resize(mybox->M, ivalue);
     d_dHdw.resize(mybox->M, ivalue);
-
+    
+    if ( mybox->ftsStyle == "cl" ) {
+        d_wNoise.resize(mybox->M, 0.0);
+        std::cout << "Edwards noise fields for CL allocated!" << std::endl;
+    }
+    
     // Set default update scheme
     updateScheme = "EM";
 
@@ -72,6 +77,9 @@ PotentialEdwards::PotentialEdwards(std::istringstream& iss, FTS_Box* p_box) : FT
 // If two-part predictor/corrector scheme is to be used, then 
 // this step is the predictor step
 void PotentialEdwards::updateFields() {
+    
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
 
     // Initialize to zero
     thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
@@ -90,11 +98,22 @@ void PotentialEdwards::updateFields() {
     cuDoubleComplex* _d_dHdw = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
     cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
     cuDoubleComplex* _d_rho_total = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_total.data());
+    cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
+
+
+    // Generate noise fields if doing CL
+    if ( doCL ) {
+        double noiseMag = sqrt(2.0 * delt / mybox->gvol );
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_wNoise, mybox->d_states, noiseMag, mybox->M);
+    }
+
+
 
     // Make the force in real space
     d_makeEdwardsForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
         B, mybox->Nr, mybox->M);
 
+    
 
 
     if ( updateScheme == "EMPC" ) {
@@ -104,7 +123,7 @@ void PotentialEdwards::updateFields() {
 
     // Update the fields
     if ( updateScheme == "EM" || updateScheme == "EMPC") {
-        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, delt, mybox->M);
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_wNoise, doCL, delt, mybox->M);
     }
 
 
@@ -145,6 +164,9 @@ void PotentialEdwards::correctFields() {
         return;
     }
 
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
+
     // Initialize to zero
     thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
 
@@ -164,6 +186,7 @@ void PotentialEdwards::correctFields() {
 
     cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
     cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
+    cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
 
     // Make the force in real space
     d_makeEdwardsForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
@@ -171,7 +194,7 @@ void PotentialEdwards::correctFields() {
 
 
     // Corrector step for field updates
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, delt, mybox->M);
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_wNoise, doCL, delt, mybox->M);
     
 
     

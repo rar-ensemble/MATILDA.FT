@@ -37,7 +37,10 @@ class FTS_Species {
         // center density.
         thrust::host_vector<thrust::complex<double>> density;
         thrust::device_vector<thrust::complex<double>> d_density;
-        
+
+        // Running sum of d_density samples for CL trajectory averaging
+        thrust::device_vector<thrust::complex<double>> d_density_avg;
+
         // d_Ak is the total linear coefficient for the semi-implicit method
         // for the A component. Each molecule should add its contribution to d_Ak;
         // This is to be stored in k-space.
@@ -52,6 +55,8 @@ class FTS_Species {
         void buildPotentialField(); // Loops over the potentials and constructs the field for each species
         void zeroDensity();         // Zeroes the species density fields
         void writeDensity(const int);
+        void accumulateDensity();   // Adds d_density into the running CL average
+        void writeAvgDensity(const int, const int);
         void writeSpeciesFields(const int);
         std::string printCommand() {return input_command;}
 

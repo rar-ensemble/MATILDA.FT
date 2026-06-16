@@ -16,9 +16,11 @@
 
 #include "include_libs.h"
 #include "FTS_Box.h"
-__global__ void d_fts_updateEM(cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
-__global__ void d_fts_updateEMPC(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
+__global__ void d_fts_updateEM(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const bool, const double, const int);
+__global__ void d_fts_updateEMPC(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, 
+    const cuDoubleComplex*, const bool, const double, const int);
 __global__ void d_fts_update1S(cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
+__global__ void d_makeDoubleNoise(cuDoubleComplex*, curandState*, const double, const int);
 
 class FTS_Box;
 

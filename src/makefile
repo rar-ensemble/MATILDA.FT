@@ -28,6 +28,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	FTS_Box.cu fts_species.cu fts_potential.cu fts_potential_helfand.cu fts_potential_flory.cu \
 	fts_molecule.cu fts_molecule_linear.cu fts_updateSchemes.cu fts_potential_edwards.cu \
 	fts_potential_incompress.cu fts_moleculeHParticle.cu fts_potentialParticle.cu \
+	fts_make_CLnoise.cu \
 	FTS_BoxFindSpinodal.cu \
 	PS_Box.cu PS_Box_initialization.cu PS_Box_gsdUtils.cu PS_Box_moleculeMakers.cu \
 	ps_species.cu ps_grid_utils.cu ps_groups.cu \

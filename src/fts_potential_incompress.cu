@@ -102,7 +102,7 @@ void PotentialIncompress::updateFields() {
 
     // Update the fields
     if ( updateScheme == "EM" || updateScheme == "EMPC") {
-        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, delt, mybox->M);
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, nullptr, false, delt, mybox->M);
     }
 
 
@@ -169,7 +169,7 @@ void PotentialIncompress::correctFields() {
 
 
     // Corrector step for field updates
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, delt, mybox->M);
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, nullptr, false, delt, mybox->M);
     
 
     

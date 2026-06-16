@@ -17,6 +17,7 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
     // Resize the arrays to be of the grid dimension size
     this->density.resize(M);
     this->d_density.resize(M);
+    this->d_density_avg.resize(M);
     this->d_Ak.resize(M);
     this->d_w.resize(M);
 
@@ -136,10 +137,29 @@ void FTS_Species::writeDensity(const int id) {
     char nm[40];
 
     sprintf(nm, "rhoSpecies%d.dat", id);
-    
+
     // Transfer data to host
     density = d_density;
     box->writeTComplexGridData(std::string(nm), density);
+}
+
+// Adds the current density field into the running CL sample sum
+void FTS_Species::accumulateDensity() {
+    thrust::transform(d_density.begin(), d_density.end(), d_density_avg.begin(),
+        d_density_avg.begin(), thrust::plus<thrust::complex<double>>());
+}
+
+// Writes the running-average density field (CL sampling) to a text file
+void FTS_Species::writeAvgDensity(const int id, const int nSamples) {
+    char nm[40];
+
+    sprintf(nm, "rhoSpeciesAvg%d.dat", id);
+
+    thrust::host_vector<thrust::complex<double>> avg = d_density_avg;
+    for ( int i=0 ; i<avg.size() ; i++ ) {
+        avg[i] /= double(nSamples);
+    }
+    box->writeTComplexGridData(std::string(nm), avg);
 }
 
 // Writes the total field acting on a particular species

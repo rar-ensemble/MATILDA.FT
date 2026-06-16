@@ -40,6 +40,9 @@ class PotentialEdwards : public FTS_Potential {
         // Vector to store the force term
         thrust::device_vector<thrust::complex<double>> d_dHdw;
 
+        // Noise for w field
+        thrust::device_vector<thrust::complex<double>> d_wNoise;
+
         
         // Variables used in predictor-corrector methods
         thrust::device_vector<thrust::complex<double>> d_dHdwplo;

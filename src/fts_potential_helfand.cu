@@ -35,6 +35,10 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
     d_rho_total.resize(mybox->M, ivalue);
     d_dHdw.resize(mybox->M, ivalue);
 
+    if ( mybox->ftsStyle == "cl" ) {
+        d_noise.resize(mybox->M, ivalue);
+    }
+
     // Set default update scheme
     updateScheme = "EM";
 
@@ -61,7 +65,7 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
         d_wplo.resize(mybox->M, ivalue);
 
         // ensure PC flag set to TRUE.
-        mybox->PCflag = 1;
+        mybox->PCflag = true;
     }
 
 }// PotentialHelfand constructor
@@ -71,6 +75,9 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
 // If two-part predictor/corrector scheme is to be used, then 
 // this step is the predictor step
 void PotentialHelfand::updateFields() {
+
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
 
     // Initialize to zero
     thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
@@ -89,10 +96,18 @@ void PotentialHelfand::updateFields() {
     cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
     cuDoubleComplex* _d_rho_total = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_total.data());
 
+    cuDoubleComplex* _d_noise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_noise.data());
+
+    // Generate noise if doing CL
+    if ( doCL ) {
+        double noiseMag = sqrt(2.0 * delt / mybox->gvol);
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_noise, mybox->d_states, noiseMag, mybox->M);
+    }
+
+
     // Make the force in real space
     d_makeHelfandForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, mybox->C,
         kappaN, mybox->Nr, mybox->M);
-
 
 
     if ( updateScheme == "EMPC" ) {
@@ -102,7 +117,7 @@ void PotentialHelfand::updateFields() {
 
     // Update the fields
     if ( updateScheme == "EM" || updateScheme == "EMPC") {
-        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, delt, mybox->M);
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_noise, doCL, delt, mybox->M);
     }
 
 
@@ -133,6 +148,7 @@ void PotentialHelfand::updateFields() {
             thrust::minus<thrust::complex<double>>());
     }
 
+
 }// updateFields
 
 
@@ -142,6 +158,9 @@ void PotentialHelfand::correctFields() {
     if ( updateScheme != "EMPC" ) {
         return;
     }
+
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
 
     // Initialize to zero
     thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
@@ -163,13 +182,15 @@ void PotentialHelfand::correctFields() {
     cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
     cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
 
+    cuDoubleComplex* _d_noise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_noise.data());
+
     // Make the force in real space
     d_makeHelfandForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, mybox->C,
         kappaN, mybox->Nr, mybox->M);
 
 
     // Corrector step for field updates
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, delt, mybox->M);
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_noise, doCL, delt, mybox->M);
     
 
     

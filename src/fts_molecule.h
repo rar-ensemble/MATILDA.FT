@@ -45,6 +45,9 @@ class FTS_Molec {
         thrust::host_vector<thrust::complex<double>> density;
         thrust::device_vector<thrust::complex<double>> d_density;
         
+        // cDensity is the particle center density
+        thrust::device_vector<thrust::complex<double>> d_cDensity;
+
         // Molecular partition function
         thrust::complex<double> Q;
 
@@ -53,8 +56,7 @@ class FTS_Molec {
         double activity;    // Activity used for uVT/semi-grand calcs
         double nSites;      // Computed total number of sites for this molec
 
-        // cDensity is the particle center density
-        thrust::device_vector<thrust::complex<double>> d_cDensity;
+
         
         // Pointer to the box containing this molecule
         FTS_Box* mybox;

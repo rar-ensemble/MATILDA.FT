@@ -45,6 +45,8 @@ class PotentialHelfand : public FTS_Potential {
         thrust::device_vector<thrust::complex<double>> d_dHdwplo;
         thrust::device_vector<thrust::complex<double>> d_wplo;
 
+        thrust::device_vector<thrust::complex<double>> d_noise;
+
         
         double delt;                                            // Size of time step
         double kappaN;                                          // Strength of the potential
