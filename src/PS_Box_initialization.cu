@@ -214,6 +214,13 @@ void PS_Box::readInput(std::ifstream& inp) {
                 if ( nextWord == "linear" ) {
                     makeLinear(iss);
                 }
+                else if ( nextWord == "grafted") {
+                    makeGrafted(iss);
+                }
+                else if ( nextWord == "sclc" ) {
+                    makeSCLC(iss);
+                }
+                else { die("PS_Box_init:readInput: invalid molecule type read"); }
             }
 
             else if ( firstWord == "Nr" ) {
@@ -393,6 +400,7 @@ void PS_Box::finishInitialization() {
 
     // Count number of bonds, angles
     for ( int i=0 ; i<nstot ; i++ ) {
+        // std::cout << " i, nBonds, nAngs: " << i << " " << nBonds[i] << " " << nAngles[i] << std::endl;
         for ( int j=0 ; j<nBonds[i] ; j++ ) {
             if ( bondedTo[i*MAXBONDS+j] > i ) nBondsTot++;
         }

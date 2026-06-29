@@ -711,6 +711,8 @@ void PS_Box::writeDataConfig(std::string filename) {
                         angleGroup[3*(i*MAXANGLES+j) + 0]+1 << " " << \
                         angleGroup[3*(i*MAXANGLES+j) + 1]+1 << " " << \
                         angleGroup[3*(i*MAXANGLES+j) + 2]+1 << "\n";
+                        
+                        angleCounter++;
                 }
             }
         }

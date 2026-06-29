@@ -202,6 +202,8 @@ class PS_Box : public Box {
         void writeKFieldFloat(const char*, const float*);
 
         void makeLinear(std::istringstream&);   // Create linear multiblock copolymer
+        void makeGrafted(std::istringstream&);  // Create multiblock bottlebrushes copolymer
+        void makeSCLC(std::istringstream&);     // Create SCLC block polymer
 
 };
 
