@@ -8,6 +8,8 @@
 void die(const char*);
 double ran2(void);
 void random_unit_vec(double*, int);
+void make_lc_file(std::string, int, std::vector<int>, std::vector<int>);
+
 
 // Generate a new linear polymer of arbitrary blockiness and add it to the box
 void PS_Box::makeLinear(std::istringstream& iss ) {
@@ -803,7 +805,7 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
     // Storage for side chain graft polymers
     std::vector<int> SC_numBlocks(numBlocks);
     std::vector<std::string> SC_style(numBlocks);       // "linear" or (eventually) "sclc"
-    std::vector<std::string> SC_attachStyle(numBlocks);
+    // std::vector<std::string> SC_attachStyle(numBlocks);
 
     std::vector<int> SC_Nspace(numBlocks);
     std::vector<int> SC_spaceBondType(numBlocks);
@@ -817,6 +819,15 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
     std::vector<std::string> SC_LCSpecies(numBlocks);
     
     std::vector<int> SC_hingeAngleType(numBlocks);
+
+
+    std::string lcFileName;
+    std::string lcStyle;
+    std::vector<int> lcCenters;
+    std::vector<int> lcPartner;
+    int lc_counter;
+    int lc_file_flag = 0;
+
     
     std::vector<float> Rmin(Dim,0.0);
     std::vector<float> Rmax(Dim);
@@ -926,6 +937,16 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
             }// m=0:numBlocks
         }// s1==grafted
 
+        else if ( s1 == "make-lc-input" ) {
+            lc_file_flag = 1;
+            iss >> lcFileName;
+            iss >> lcStyle;
+
+            if ( lcStyle != "all" && lcStyle != "middle" ) {
+                die("invalid lc style!");
+            }
+        }
+
     } // while (!end of iss)
 
 
@@ -955,6 +976,12 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
     allocHostParticleArrays(nstot);
     std::cout << "nstot changed values to: " << nstot << ", starting index: " << ind << std::endl;
 
+
+
+    // Initialize lc-input variables
+    lcCenters.resize(nstot);
+    lcPartner.resize(nstot);
+    lc_counter = 0;
 
 
     // Find starting molecule ID
@@ -1362,7 +1389,7 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
 
 
                 nBonds[ind] = nBonds[ind+1] = nBonds[ind+2] = 0;
-                nAngles[ind] = nAngles[ind+1] = nAngles[ind+2] = 0;
+                // nAngles[ind] = nAngles[ind+1] = nAngles[ind+2] = 0;
 
                 pind = ind - 1;
 
@@ -1623,6 +1650,42 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
                 if ( nAngles[i1] >= MAXANGLES || nAngles[i2] >= MAXANGLES || nAngles[i3] >= MAXANGLES ) { die("too many angles on a particle, increase MAXANGLES nd try again"); }
 
 
+                std::cout << "TEST HERE WE ARE!! style: " << SC_style[j] << std::endl;
+                if ( lc_file_flag ) {
+                    if ( SC_style[j] == "side-on" ) {
+                        lcCenters[lc_counter] = ind;
+                        lcPartner[lc_counter] = ind+1;
+                        lc_counter++;
+
+                        if ( lcStyle == "all" ) {
+                            lcCenters[lc_counter] = ind+1;
+                            lcPartner[lc_counter] = ind;
+                            lc_counter++;
+
+                            lcCenters[lc_counter] = ind+2;
+                            lcPartner[lc_counter] = ind;
+                            lc_counter++;
+                        }
+                    }
+
+                    else if ( SC_style[j] == "end-on" ) {
+                        lcCenters[lc_counter] = ind+1;
+                        lcPartner[lc_counter] = ind+2;
+                        lc_counter++;
+
+                        if ( lcStyle == "all" ) {
+                            lcCenters[lc_counter] = ind;
+                            lcPartner[lc_counter] = ind+1;
+                            lc_counter++;
+
+                            lcCenters[lc_counter] = ind+2;
+                            lcPartner[lc_counter] = ind+1;
+                            lc_counter++;
+                        }
+                    }
+                }//lc_file_flag
+                std::cout << "  lc_counter: " << lc_counter << std::endl;
+
                 
                 mID[ind] = mID[ind+1] = mID[ind+2] = molecInd;
                 
@@ -1639,5 +1702,21 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
         molecInd++;
     }// i=0:nmolecs
 
+    if ( lc_file_flag ) make_lc_file(lcFileName, lc_counter, lcCenters, lcPartner);
+
     std::cout << "nstot is " << nstot << " after molecule creation" << std::endl;
+}
+
+void make_lc_file(
+    std::string name,           // file name
+    int nlc,                    // number of lc_pairs
+    std::vector<int> centers,   // lc centers list
+    std::vector<int> partner   // lc partner list
+) {
+    std::ofstream out(name);
+    out << nlc << "\n";
+    for ( int i=0 ; i<nlc; i++ ) {
+        out << i+1 << " " << centers[i]+1 << " " << partner[i]+1 << "\n";
+    }
+    out.close();
 }
