@@ -1169,7 +1169,16 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
 
         }// j=0:numBlocks; 
 
+        ///////////////////////
+        // END OF BACKBONE   //
+        ///////////////////////
+
         // std::cout << "BACKBONE FINISHED!!" << std::endl;
+
+
+
+
+
 
 
         bbIndex = 0;
@@ -1177,14 +1186,20 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
         // Now, loop over backbone and attach grafts
         for ( int j=0 ; j<numBlocks ; j++ ) {
             
+            if ( SC_style[j] == "none" ) {
+                bbIndex += Nblocks[j];
+                continue;
+            }
+
             for ( int s=0 ; s<Nblocks[j]; s++ ) {
+                
                 // 'partner' index for bonding and positioning
                 int pind = bb_inds[bbIndex];
 
                 // Place the spacer particles
-                int speciesVal = findSpeciesInteger(SC_spaceSpecies[j]);
                 for ( int t=0 ; t<SC_Nspace[j]; t++ ) {
-
+                    int speciesVal = findSpeciesInteger(SC_spaceSpecies[j]);
+                
                     intSpecies[ind] = speciesVal;
                     
                     // if not the first grafted bead, partner is ind-1
@@ -1383,7 +1398,7 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
 
 
                 // Place mesogen beads. Entering this section, 'ind' is the center of the mesogen
-                speciesVal = findSpeciesInteger(SC_LCSpecies[j]);
+                int speciesVal = findSpeciesInteger(SC_LCSpecies[j]);
 
                 intSpecies[ind] = intSpecies[ind+1] = intSpecies[ind+2] = speciesVal;
 
@@ -1650,7 +1665,6 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
                 if ( nAngles[i1] >= MAXANGLES || nAngles[i2] >= MAXANGLES || nAngles[i3] >= MAXANGLES ) { die("too many angles on a particle, increase MAXANGLES nd try again"); }
 
 
-                std::cout << "TEST HERE WE ARE!! style: " << SC_style[j] << std::endl;
                 if ( lc_file_flag ) {
                     if ( SC_style[j] == "side-on" ) {
                         lcCenters[lc_counter] = ind;
@@ -1684,7 +1698,6 @@ void PS_Box::makeSCLC(std::istringstream& iss ) {
                         }
                     }
                 }//lc_file_flag
-                std::cout << "  lc_counter: " << lc_counter << std::endl;
 
                 
                 mID[ind] = mID[ind+1] = mID[ind+2] = molecInd;

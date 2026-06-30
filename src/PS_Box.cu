@@ -574,8 +574,10 @@ int PS_Box::findSpeciesInteger(std::string testLabel) {
             break;
         }
     }
-    if ( id < 0 ) die("Species label not found!");
-
+    if ( id < 0 ) {
+        std::string last_words = "Species label: " + testLabel + " not found!";
+        die(last_words);
+    }
     return id;
 }
 
