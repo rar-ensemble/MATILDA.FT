@@ -153,7 +153,12 @@ void PS_Box::doTimeStep(int step) {
     }
 
 
-
+    ///////////////////////
+    // update potentials //
+    ///////////////////////
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        potentials[i]->update_prefactor(step, this->maxSteps);
+    }
 
 
     ///////////////
@@ -194,7 +199,7 @@ void PS_Box::doTimeStep(int step) {
 } // doTimeStep
 
 
-void PS_Box::NVT(int maxSteps) {
+void PS_Box::NVT(int nSteps) {
     std::cout << "RUNNING NVT?!?" << std::endl;
     
 
@@ -202,6 +207,7 @@ void PS_Box::NVT(int maxSteps) {
     writeData(-1);
 
 
+    maxSteps = nSteps;
 
     // Primary loop over steps
     for ( int i=0 ; i<maxSteps; i++ ) {
@@ -352,7 +358,7 @@ void PS_Box::writeData(int step) {
 void PS_Box::writeFields() {
     if ( verbose ) std::cout << "  here: ps_box:writefields" << std::endl;
     for (int i=0 ; i<psGroup.size(); i++ ) {
-        psGroup[i].writeDensityField();
+        // psGroup[i].writeDensityField();
         psGroup[i].writeDensityFieldBinary();
         
         check_cudaError("writeFields in ps_box");

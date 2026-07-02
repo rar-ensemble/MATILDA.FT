@@ -80,6 +80,8 @@ BiasField::BiasField(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, b
         cudaMalloc(&d_fz, M * sizeof(float));
         fz = (float*) malloc( M * sizeof(float));        
     }
+
+    int is_ramping = ramp_check_input(iss, Ao);
 }
 
 

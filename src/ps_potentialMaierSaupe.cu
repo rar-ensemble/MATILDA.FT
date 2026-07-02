@@ -24,6 +24,8 @@ NBMaier::NBMaier(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) 
     iss >> sig2;
     sig2 *= sig2;
     iss >> filename;
+
+    int is_ramping = ramp_check_input(iss, Ao);
 }
 
 NBMaier::~NBMaier() {

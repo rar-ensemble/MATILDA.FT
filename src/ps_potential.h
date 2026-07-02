@@ -13,12 +13,13 @@ class PS_Box;
 class PS_Potential {
 protected:
     std::string input_command;
-    void ramp_check_input(std::istringstream&);
+    float Ao_initial, Ao_final;     // initial and final prefactor values for potential
     PS_Box* mybox;
 public:
     float energy;
     bool ramp = 0;
     bool allocated = false;
+    int ramp_check_input(std::istringstream&, float);
 
     float *ur, *d_ur;   // [M] potential energy func defined on grid
     float *fI, *d_fI;   // [M*Dim] field of forces acting on I
@@ -45,6 +46,7 @@ public:
     // These are virtual so they can be overriden for non-2 body potentials
     virtual void CalcForces();      
     virtual float CalcEnergy();
+    virtual void update_prefactor(const int, const int);
 
     virtual void initBinaryOutput();    
     virtual void writeBinaryOutput();   

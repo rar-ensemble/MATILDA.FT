@@ -8,6 +8,31 @@
 #include <cufftXt.h>
 
 
+// Used for ramping/changing interaction potentials during a simulation
+__global__ void d_scale_potentials_by_scalar(
+    cuComplex* uk,          // [M] pair potential in k-space
+    cuComplex* fk,          // [M*Dim] force in k-space
+    const float lambda,     // Scaling factor
+    const int Dim,          // System dimension
+    const int M             // Number of grid points
+    ) {
+
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= M)
+        return;
+
+    // Scale the potential
+    uk[id].x *= lambda;
+    uk[id].y *= lambda;
+
+    // Scale its gradient
+    for (int j=0 ; j<Dim ; j++ ) {
+        fk[id*Dim+j].x *= lambda;
+        fk[id*Dim+j].y *= lambda;
+    }
+
+}
+
 
 // Computes f *= val for device float array
 __global__ void d_multiplyByFloat(

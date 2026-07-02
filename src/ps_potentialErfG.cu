@@ -20,6 +20,8 @@ NBErfG::NBErfG(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
     float sigma;
     iss >> Rp >> sigma;
     sig2 = sigma * sigma;
+
+    int is_ramping = ramp_check_input(iss, Ao);
 }
 
 // Direct k-space initialization matching main branch potential_gaussian_erf.cu.

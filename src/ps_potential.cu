@@ -16,6 +16,7 @@
 #include "PS_Box.h"
 
 
+__global__ void d_scale_potentials_by_scalar(cuComplex*, cuComplex*, const float, const int, const int);
 
 // Allocates memory for:
 // potential, forces, virial contribution
@@ -221,32 +222,63 @@ PS_Potential::PS_Potential(std::istringstream &iss, PS_Box* box) : mybox(box) {
 }
 
 
-void PS_Potential::ramp_check_input(std::istringstream& iss){
 
-    // if (iss.fail()){
-    //     die("Error during input script; failed to properly read:\n" + iss.str());
-    // }
 
-    // string convert;
-    // iss >> convert;
+void PS_Potential::update_prefactor(const int step, const int maxsteps) {
+    if ( !ramp ) {
+        return;
+    }
 
-    // if (!iss.fail()){
-    //     if (convert == "ramp") {
-    //         ramp = true;
-    //         iss >> final_prefactor;
-    //         if(iss.fail()) die("no final prefactor specified");
-    //         cout << "Ramping prefactor of " <<potential_type<< " style, between types " << type1+1 << " and " \
-    //             << type2 + 1 << " from " << initial_prefactor \
-    //             << " to " << final_prefactor << endl;
+    double Ao_current = Ao_initial + (Ao_final - Ao_initial) / double(maxsteps) * double(step+1);
 
-    //         cout << "Estimated per time step change: " << \
-    //             (final_prefactor - initial_prefactor) / (prod_steps)
-    //             << endl;
+    double scale_factor = Ao_current / real(uk[0]);
 
-    //     }
-    //     else 
-    //         die("Invalid keyword: " + convert);
-    // }
+    int GRID = mybox->M_Grid;
+    int BLOCK = mybox->M_Block;
+    int D = mybox->returnDimension();
+    int M = mybox->M;
+    
+    d_scale_potentials_by_scalar<<<GRID, BLOCK>>>(d_uk, d_fk, scale_factor, D, M);
+
+    cudaMemcpy(uk, d_uk, M*sizeof(std::complex<float>), cudaMemcpyDeviceToHost);
+
+    if ( mybox->verbose ) {
+        std::cout << "prefactor now calculated and updated to be: " << uk[0] << std::endl;
+    }
+}
+
+
+
+
+int PS_Potential::ramp_check_input(std::istringstream& iss, float A){
+
+    if (iss.fail()){
+        die("Error during input script; failed to properly read:\n" + iss.str());
+    }
+
+    std::string convert;
+    iss >> convert;
+
+    if (!iss.fail()){
+        if (convert == "ramp") {
+            ramp = true;
+            iss >> Ao_final;
+            Ao_initial = A;
+
+            if(iss.fail()) die("no final prefactor specified");
+            std::cout << "Ramping potential prefactor from " << Ao_initial << " to " << Ao_final << std::endl;
+
+            return 1;
+
+        }
+        else 
+            die("Invalid keyword: " + convert);
+    }
+    else {
+        return 0;
+    }
+
+    return 0;
 
 }
 
