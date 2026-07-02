@@ -31,6 +31,9 @@ DPD::DPD(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box), nList(n
 
     if (delt <= 0.0f)
         die("ps_potentialDPD: delt not set or invalid");
+
+    int is_ramping = ramp_check_input(iss, -1);
+    if ( is_ramping) die("ramping applied on an unsupported potential!");
 }
 
 

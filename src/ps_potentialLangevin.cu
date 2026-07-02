@@ -56,6 +56,9 @@ Langevin::Langevin(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box
         std::string last_words = "ps-potentialLangevin.cu: did not find appropriate delt for the Langevin noise";
         die(last_words);
     }
+    
+    int is_ramping = ramp_check_input(iss, -1);
+    if ( is_ramping) die("ramping applied on an unsupported potential!");
 
 }
 

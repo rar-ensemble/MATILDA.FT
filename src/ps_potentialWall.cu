@@ -43,6 +43,9 @@ Wall::Wall(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
     }
 
     iss >> k;
+
+    int is_ramping = ramp_check_input(iss, -1);
+    if ( is_ramping) die("ramping applied on an unsupported potential!");
 }
 
 
