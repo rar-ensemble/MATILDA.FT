@@ -11,7 +11,59 @@ PS_Group::~PS_Group() {}
 
 PS_Group::PS_Group(std::istringstream& iss, PS_Box* box) : mybox(box) {
     inputCommand = iss.str();
+
+    iss >> name;
+    nsites = 0;
+    forceFlag = 0;
+
+    std::string s1 ;
+    
+    iss >> s1;
+    if ( s1 == "types" ) {
+        std::vector<int> typ_ints;
+
+        while ( iss.tellg() != -1 ) {
+            iss >> s1;
+            typ_ints.push_back( mybox->findSpeciesInteger(s1) );            
+        }
+
+        for ( int i=0 ; i<mybox->nstot; i++ ) {
+            for ( int j=0 ; j<typ_ints.size() ; j++ ) {
+                if ( mybox->intSpecies[i] == typ_ints[j] ) {
+                    nsites++;
+                }
+            }
+        }// i=0:mybox->nstot
+
+        this->allocateGroupMemory(nsites);
+
+        // Populate the list
+        int listInd = 0;
+        for ( int i=0 ; i<mybox->nstot; i++ ) {
+            for ( int j=0 ; j<typ_ints.size() ; j++ ) {
+                if ( mybox->intSpecies[i] == typ_ints[j] ) {
+                    siteList[listInd] = i;
+                    listInd++;
+                    break;
+                }
+            }
+        }
+
+        std::cout << "    making group with " << typ_ints.size() << " types with " << nsites << " total sites." << std::endl;
+    }
+
+    // Copy site list to device
+    cudaMemcpy(d_siteList, siteList, nsites*sizeof(int), cudaMemcpyHostToDevice);
+
+    // Set group grid, block size
+    Block = mybox->blockSize;
+    Grid = (int)ceil((double)(nsites) / Block);
+
+
+    std::cout << "    Created group '" << name << "' with " << nsites << " sites" << std::endl;
 }
+
+
 
 PS_Group::PS_Group(std::string inp, int typ, PS_Box* box) : mybox(box) {
     inputCommand = std::string("group ") + inp;

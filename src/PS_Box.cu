@@ -277,21 +277,31 @@ void PS_Box::computeThermoProps() {
         d_x, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
         d_bondStyle, d_L, d_Lh, nstot, MAXBONDS, n_P_comps, Dim);
 
+    if ( verbose ) { std::cout << "Bond energy populated" << std::endl; }
+
     // Sums over the particle energies.
     // Prefactor 0.5 corrects for double-counting
     Ubond = 0.5 * sumDeviceArray(d_thermoE, blockSize, nstot);
+
+    if ( verbose ) { std::cout << "Bond energy calculated" << std::endl; }
 
     d_anglesStressEnergy<<<nsGrid, nsBlock>>>(d_thermoE, d_angleVirScratch,
         d_x, d_angleK, d_angleTheq, d_angleStyle, d_nAngles,
         d_angleType, d_angleGroup, d_L, d_Lh, nstot, MAXANGLES, n_P_comps, Dim);
 
+    if ( verbose ) { std::cout << "Angle energy populated" << std::endl; }
+
     // Sums over the particle energies
     // Division by 3 corrects triple-counting
     Uangle = sumDeviceArray(d_thermoE, blockSize, nstot) / 3.0;
 
+    if ( verbose ) { std::cout << "Angle energy calculated" << std::endl; }
+
     Upe = 0.0;
     for ( int i=0 ; i<potentials.size(); i++ ) {
         Upe += potentials[i]->CalcEnergy();
+
+        if ( verbose ) { std::cout << "NB potential " << i << " calculated" << std::endl; }
     }
 
     Upe += Ubond;

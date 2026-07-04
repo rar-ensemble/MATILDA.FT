@@ -22,6 +22,7 @@ const float*, const int, const int, const int, const int);
 Integrator* IntegratorFactory(std::istringstream&, PS_Box*);
 PS_Potential* PSPotentialFactory(std::istringstream&, PS_Box*);
 PS_Compute* PSComputeFactory(std::istringstream&, PS_Box*);
+PS_Group* GroupFactor(std::istringstream&, PS_Box*);
 
 // Reads all of the commands from the input file from when this
 // box is created (using the 'box' command) until the 'endBox' 
@@ -176,6 +177,11 @@ void PS_Box::readInput(std::ifstream& inp) {
                     M *= Nx[j];
                     if ( L[0] > 0.0 ) { dx[j] = L[j] / double(Nx[j]); }
                 }
+            }
+
+            else if ( firstWord == "group") {
+                psGroup.push_back( PS_Group(iss,this));
+                // species.push_back(PS_Species(iss, this));
             }
 
             else if ( firstWord == "gsdFreq" || firstWord == "gsd_freq" ) {
@@ -426,7 +432,11 @@ void PS_Box::finishInitialization() {
     check_cudaError("allocating device particle arrays");
     
     createDefaultGroups();
-
+    for ( int i=0 ; i<psGroup.size(); i++ ) {
+        if ( psGroup[i].nsites == 0 ) {
+            die("A group with size 0 found, exiting!");
+        }
+    }
 
 
     // Assign groups to integrators
