@@ -182,6 +182,10 @@ void PS_Box::doTimeStep(int step) {
         if ( verbose ) { std::cout << "gsd..." ; fflush(stdout); }
         writeGSDtraj();
         if ( verbose ) std::cout << "done!" << std::endl;
+
+        if (step > 1 && logSpaceGSDflag == 1 ) {
+            gsdFreq = int( float(gsdFreq) * logScaleGSD);
+        }
     }
 
     if ( trajFreq > 0 && step % trajFreq == 0 ) {
@@ -193,6 +197,10 @@ void PS_Box::doTimeStep(int step) {
     // Write field data
     if ( fieldFreq > 0 && step % fieldFreq == 0 ) {
         writeFields();
+
+        if ( step > 1 && logSpaceFieldflag == 1 ) {
+            fieldFreq = int( float(fieldFreq) * logScaleFields );
+        }
     }
     ioTimer += time(0) - startTime;
 

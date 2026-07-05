@@ -58,6 +58,8 @@ void PS_Box::readInput(std::ifstream& inp) {
     initDataFileName = "init.input.data";
     trajFreq = 0;
     doCharges = 0;
+    logSpaceGSDflag = logSpaceFieldflag = 0;
+    logScaleGSD = logScaleFields = 1.0;
 
     std::string line, firstWord;
 
@@ -168,6 +170,16 @@ void PS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "fieldFreq" || firstWord == "field_freq" ) {
                 iss >> fieldFreq;
+
+                if ( iss.tellg() != -1 ) {
+                    std::string tps;
+                    iss >> tps;
+                    if ( tps != "logspace" && tps != "log_space" && tps != "logSpace") {
+                        die("PS_Box_init::readInput: invalid option to gsdFreq");
+                    }
+                    logSpaceFieldflag = 1;
+                    iss >> logScaleFields;
+                }
             }
 
             else if ( firstWord == "grid" ) {
@@ -186,6 +198,16 @@ void PS_Box::readInput(std::ifstream& inp) {
 
             else if ( firstWord == "gsdFreq" || firstWord == "gsd_freq" ) {
                 iss >> gsdFreq;
+
+                if ( iss.tellg() != -1 ) {
+                    std::string tps;
+                    iss >> tps ;
+                    if ( tps != "logspace" && tps != "log_space" && tps != "logSpace") {
+                        die("PS_Box_init::readInput: invalid option to gsdFreq");
+                    }
+                    logSpaceGSDflag = 1;
+                    iss >> logScaleGSD;
+                }
             }
 
             else if ( firstWord == "gsdName" || firstWord == "gsd_name" ) {

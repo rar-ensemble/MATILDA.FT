@@ -36,8 +36,12 @@ class PS_Box : public Box {
         int nTypes;         // Total number of particle types
         int logFreq;        // Frequency to write to ps_data.dat
         int gsdFreq;        // Frequency to write to gsd files
+        int logSpaceGSDflag;// flag for whether or not to log-space the GSD frames
+        float logScaleGSD;  // scaling factor for the logspace writing
         int trajFreq;       // Frequency to write to lammpstrj file
         int fieldFreq;      // Frequency to write density field data
+        int logSpaceFieldflag;  // flag for whether or not to log-space the field writes
+        float logScaleFields;   // scaling factor for writing frequency
         int pmeorder;       // Order of the PME interpolation
         int gridPerPartic;  // Number of grid points each particle interacts
         int MAXBONDS;       // Max number of bonds per particle
