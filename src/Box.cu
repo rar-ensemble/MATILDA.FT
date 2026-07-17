@@ -33,8 +33,8 @@ void Box::setDimension(int d) {
     _d_dx = (double*) thrust::raw_pointer_cast(d_dx.data());
 
 
-    L = (float*) malloc(Dim*sizeof(float));
-    Lh = (float*)malloc(Dim*sizeof(float));
+    L = (float*) malloc(3*sizeof(float));
+    Lh = (float*)malloc(3*sizeof(float));
 
     cudaMalloc(&d_L, Dim*sizeof(float));
     cudaMalloc(&d_Lh, Dim*sizeof(float));
