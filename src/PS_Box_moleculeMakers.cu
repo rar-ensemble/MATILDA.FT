@@ -24,6 +24,8 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     // Flag for dealing with charges on this molec type
     int doMolecCharges = 0;
+    int lc_file_flag = 0;
+    std::string lcFileName, lcStyle;
 
     std::string s1;
 
@@ -118,6 +120,16 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
             iss >> Rmin[2];
             iss >> Rmax[2];
         }
+
+        else if ( s1 == "make-lc-input" ) {
+            lc_file_flag = 1;
+            iss >> lcFileName;
+            iss >> lcStyle;
+
+            if ( lcStyle != "all" && lcStyle != "middle" ) {
+                die("invalid lc style!");
+            }
+        }
     }
 
     // Compute number of molecules of this type to add
@@ -128,6 +140,7 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     // particle index to be incremented as particles added
     int ind = nstot;
+    int ns_init = nstot;
 
 
     // Update number of sites in the box
@@ -306,6 +319,36 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
         molecInd++;
     }// i=0:nmolecs
 
+    if ( lc_file_flag ) {
+        
+        std::ofstream lc_file(lcFileName);
+
+        if ( lcStyle == "middle" ) {
+            lc_file << nmolecs << "\n";
+            int lc_offset = int( Ntot/2 );
+            for ( int i=0 ; i<nmolecs ; i++ ) {
+                int lc_ind = ns_init + i*Ntot + lc_offset + 1;
+                lc_file << i+1 << " " << lc_ind << " " << lc_ind + 1 << "\n";
+            }
+        }
+        else {
+            lc_file << nmolecs * Ntot << "\n";
+
+            for ( int i=0 ; i<nmolecs ; i++ ) {
+                for ( int s=0 ; s<Ntot-1 ; s++ ) {
+                    int lc_ind = ns_init + i*Ntot + s + 1;
+
+                    lc_file << i*Ntot + 1 << " " << lc_ind << " " << lc_ind+1 << "\n";
+                }
+
+                // Last LC interaction has its previous site as partner
+                lc_file << (i+1)*Ntot << " " << ns_init + (i+1)*Ntot << " " << ns_init + (i+1)*Ntot - 1 << "\n";
+            }
+        }
+
+        lc_file.close();
+
+    }//if (lc_file_flag)
 
     std::cout << "nstot is " << nstot << " after molecule creation" << std::endl;
 }
