@@ -11,6 +11,12 @@ __global__ void d_wallHarmonicForce(float*, const float*, const int*,
 __global__ void d_wallHarmonicEnergy(float*, const float*, const int*,
     const int, const int, const float, const int, const float, const int);
 
+__global__ void d_wallRadialForce(float*, const float*, const int*,
+    const int, const float*, const float, const int, const float, const int);
+
+__global__ void d_wallRadialEnergy(float*, const float*, const int*,
+    const int, const float*, const float, const int, const float, const int);
+
 
 Wall::Wall(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
 
@@ -22,13 +28,14 @@ Wall::Wall(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box) {
     if      (axis == "x" || axis == "X") normalDim = 0;
     else if (axis == "y" || axis == "Y") normalDim = 1;
     else if (axis == "z" || axis == "Z") normalDim = 2;
+    else if (axis == "r" || axis == "R") isRadial = true;
     else {
-        std::string err = "ps_potentialWall.cu: axis must be x, y, or z (got '" + axis + "')";
+        std::string err = "ps_potentialWall.cu: axis must be x, y, z, or r (got '" + axis + "')";
         die(err.c_str());
     }
 
     int Dim = mybox->returnDimension();
-    if (normalDim >= Dim) {
+    if (!isRadial && normalDim >= Dim) {
         std::string err = "ps_potentialWall.cu: requested wall normal '" + axis +
                           "' but box is only " + std::to_string(Dim) + "-dimensional";
         die(err.c_str());
@@ -66,10 +73,17 @@ void Wall::CalcForces() {
     int Dim   = mybox->returnDimension();
     int ns    = mybox->psGroup[Iind].nsites;
 
-    d_wallHarmonicForce<<<GRID, BLOCK>>>(mybox->d_f, mybox->d_x,
-        mybox->psGroup[Iind].d_siteList,
-        ns, normalDim, wallPos, dirSign, k, Dim);
-    check_cudaError("Wall: d_wallHarmonicForce");
+    if (isRadial) {
+        d_wallRadialForce<<<GRID, BLOCK>>>(mybox->d_f, mybox->d_x,
+            mybox->psGroup[Iind].d_siteList,
+            ns, mybox->d_Lh, wallPos, dirSign, k, Dim);
+        check_cudaError("Wall: d_wallRadialForce");
+    } else {
+        d_wallHarmonicForce<<<GRID, BLOCK>>>(mybox->d_f, mybox->d_x,
+            mybox->psGroup[Iind].d_siteList,
+            ns, normalDim, wallPos, dirSign, k, Dim);
+        check_cudaError("Wall: d_wallHarmonicForce");
+    }
 }
 
 
@@ -80,10 +94,17 @@ float Wall::CalcEnergy() {
     int Dim   = mybox->returnDimension();
     int ns    = mybox->psGroup[Iind].nsites;
 
-    d_wallHarmonicEnergy<<<GRID, BLOCK>>>(d_ener, mybox->d_x,
-        mybox->psGroup[Iind].d_siteList,
-        ns, normalDim, wallPos, dirSign, k, Dim);
-    check_cudaError("Wall: d_wallHarmonicEnergy");
+    if (isRadial) {
+        d_wallRadialEnergy<<<GRID, BLOCK>>>(d_ener, mybox->d_x,
+            mybox->psGroup[Iind].d_siteList,
+            ns, mybox->d_Lh, wallPos, dirSign, k, Dim);
+        check_cudaError("Wall: d_wallRadialEnergy");
+    } else {
+        d_wallHarmonicEnergy<<<GRID, BLOCK>>>(d_ener, mybox->d_x,
+            mybox->psGroup[Iind].d_siteList,
+            ns, normalDim, wallPos, dirSign, k, Dim);
+        check_cudaError("Wall: d_wallHarmonicEnergy");
+    }
 
     this->energy = mybox->sumDeviceArray(d_ener, BLOCK, ns);
     return this->energy;
@@ -142,6 +163,68 @@ __global__ void d_wallHarmonicEnergy(
 
     int pind = sites[id];
     float disp = wallPos - x[pind * Dim + normalDim];
+
+    e[id] = ((float)dirSign * disp > 0.0f) ? 0.5f * k * disp * disp : 0.0f;
+}
+
+
+// Radial counterpart: r = |x - boxCenter|, F_n = k * disp * (dx_n / r) along the radial
+// unit vector when the particle is on the forbidden side (dirSign * (wallPos - r) > 0).
+__global__ void d_wallRadialForce(
+    float* f,
+    const float* x,
+    const int* sites,
+    const int ns,
+    const float* Lh,
+    const float wallPos,
+    const int dirSign,
+    const float k,
+    const int Dim
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns) return;
+
+    int pind = sites[id];
+    float dx[3];
+    float r2 = 0.0f;
+    for (int n = 0; n < Dim; ++n) {
+        dx[n] = x[pind * Dim + n] - Lh[n];
+        r2 += dx[n] * dx[n];
+    }
+    float r = sqrtf(r2);
+    if (r <= 1e-8f) return;
+
+    float disp = wallPos - r;
+    if ((float)dirSign * disp > 0.0f) {
+        for (int n = 0; n < Dim; ++n) {
+            atomicAdd(&f[pind * Dim + n], k * disp * (dx[n] / r));
+        }
+    }
+}
+
+
+__global__ void d_wallRadialEnergy(
+    float* e,
+    const float* x,
+    const int* sites,
+    const int ns,
+    const float* Lh,
+    const float wallPos,
+    const int dirSign,
+    const float k,
+    const int Dim
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns) return;
+
+    int pind = sites[id];
+    float r2 = 0.0f;
+    for (int n = 0; n < Dim; ++n) {
+        float dxn = x[pind * Dim + n] - Lh[n];
+        r2 += dxn * dxn;
+    }
+    float r = sqrtf(r2);
+    float disp = wallPos - r;
 
     e[id] = ((float)dirSign * disp > 0.0f) ? 0.5f * k * disp * disp : 0.0f;
 }
