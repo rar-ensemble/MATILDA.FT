@@ -68,6 +68,8 @@ void FTS_Potential::initializeField(
 
     std::string s1, phase_name;
     iss >> s1;
+
+    
     if ( s1 == "value" ) {
         double rVal, iVal;
         iss >> rVal;
@@ -113,7 +115,6 @@ void FTS_Potential::initializeField(
         int n_periods = 1;
 
         iss >> Ao;
-        std::cout << "phase read as " << s1 << " Ao: " << Ao << std::endl;
 
         // parse optional arguments
         while ( iss.tellg() != -1 ) {
@@ -138,7 +139,6 @@ void FTS_Potential::initializeField(
             w[i] = wtmp[i];
         }
 
-
         delete wtmp;
 
     }
@@ -151,7 +151,7 @@ void FTS_Potential::initializeField(
     }
 
     else {
-        die("Invalid initialize option on potential edwards");
+        die("Invalid initialize option on potential");
     }    
 }
 
