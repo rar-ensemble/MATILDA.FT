@@ -160,8 +160,14 @@ void FTS_Box::writeData(int step) {
         std::cout << Heff.imag() << " " ;
     }
     else {
-      OTP << error << " " ;
-      std::cout << error << " " ;
+        if ( std::isnan(error) ) { 
+            OTP << 1.0E6 << " " ;
+            std::cout << 1.0E6 << " " ;
+        }
+        else {
+            OTP << error << " " ;
+            std::cout << error << " " ;
+        }
     }
 
     for ( int i=0 ; i<Potentials.size() ; i++ ) {
