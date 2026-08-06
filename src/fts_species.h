@@ -31,6 +31,7 @@ class FTS_Species {
         FTS_Box *box;
     public:
         std::string fts_species;
+        double charge;      // Charge for this species. Default 0.0
 
         // density, d_density is the total density field associated with this spcies
         // If shape functions are used, they should be the total density, not the

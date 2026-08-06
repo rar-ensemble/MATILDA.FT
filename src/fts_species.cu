@@ -10,8 +10,21 @@ void die(const char*);
 FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
     this->input_command = iss.str();
     
-    iss >> this->fts_species; 
+    iss >> this->fts_species;
 
+    // Set default value of charge
+    charge = 0.0;
+
+    // Check for optional arguments 
+    std::string test;
+    if ( iss >> test ) {
+        if ( test == "charge" ) {
+            iss >> charge;
+        }
+    }
+
+
+    // Finish initialization //
     int M = box->M;
 
     // Resize the arrays to be of the grid dimension size
