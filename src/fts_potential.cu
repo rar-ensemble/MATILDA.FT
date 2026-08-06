@@ -6,6 +6,7 @@
 #include "fts_potential_helfand.h"
 #include "fts_potential_incompress.h"
 #include "fts_potential_edwards.h"
+#include "fts_potential_charges.h"
 #include "fts_potential_flory.h"
 #include "fts_potentialParticle.h"
 #include "include_libs.h"
@@ -42,6 +43,11 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
     else if ( s1 == "Flory" || s1 == "flory" ) {
         return new PotentialFlory(iss, box);
     }
+
+    else if ( s1 == "Charges" || s1 == "charges" ) {
+        return new PotentialCharge(iss, box);
+    }
+
 
     else if ( s1 == "particle" || s1 == "Particle" ) {
         return new PotentialParticle(iss, box);
@@ -93,6 +99,11 @@ void FTS_Potential::initializeField(
         double real_amp, imag_amp, period;
         int dir;
         iss >> dir;
+
+        if ( dir >= mybox->returnDimension() ) {
+            die("initialization direction out of range!");
+        }
+
         iss >> real_amp;
         iss >> imag_amp;
         iss >> period; 

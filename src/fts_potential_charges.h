@@ -34,7 +34,7 @@ class PotentialCharge : public FTS_Potential {
         void correctFields() override;
         
         // This field should contain the *smeared* density fields
-        thrust::device_vector<thrust::complex<double>> d_rho_total;
+        thrust::device_vector<thrust::complex<double>> d_rho_q;
 
         // Vector to store the force term
         thrust::device_vector<thrust::complex<double>> d_dHdw;

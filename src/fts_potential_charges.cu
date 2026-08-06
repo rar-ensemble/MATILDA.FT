@@ -10,7 +10,7 @@
 
 void die(const char*);
 double ran2();
-
+__global__ void d_accumulate_q_density(cuDoubleComplex*, const cuDoubleComplex*, const double);
 
 PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_Potential(iss, p_box) {
 
@@ -32,7 +32,7 @@ PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_
     d_Akpl.resize(mybox->M, ivalue);
     wplAlloc_flag = 1;
 
-    d_rho_total.resize(mybox->M, ivalue);
+    d_rho_q.resize(mybox->M, ivalue);
     d_dHdw.resize(mybox->M, ivalue);
     
     if ( mybox->ftsStyle == "cl" ) {
@@ -70,6 +70,10 @@ PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_
         mybox->PCflag = 1;
     }
 
+    else if ( updateScheme == "1S" ) {
+        die("1S scheme not implemented for charge potential");
+    }
+
 }// PotentialCharge constructor
 
 
@@ -78,42 +82,47 @@ PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_
 // this step is the predictor step
 void PotentialCharge::updateFields() {
     
-    // bool doCL = false;
-    // if ( mybox->ftsStyle == "cl" ) doCL = true;
+    bool doCL = false;
+    if ( mybox->ftsStyle == "cl" ) doCL = true;
 
-    // // Initialize to zero
-    // thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
+
+    // cast thrust vectors to cuDoubleComplex for use in kernel
+    cuDoubleComplex* _d_dHdw =   (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
+    cuDoubleComplex* _d_wpl =    (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
+    cuDoubleComplex* _d_rho_q =  (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_q.data());
+    cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
+
+
+    // Initialize to zero
+    thrust::fill(d_rho_q.begin(), d_rho_q.end(), 0.0);
 
     
-    // // Loop over species, adding them to the field
-    // for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
-    //     thrust::transform(mybox->Species[i].d_density.begin(), 
-    //         mybox->Species[i].d_density.begin()+mybox->M, d_rho_total.begin(), 
-    //         d_rho_total.begin(), thrust::plus<thrust::complex<double>>());
-    // }
+    // Loop over species, adding them to the field
+    for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
+        if ( fabs(mybox->Species[i].charge) > 1.0E-8 ) {
+
+            cuDoubleComplex* _d_rho_tp = (cuDoubleComplex*)thrust::raw_pointer_cast(mybox->Species[i].d_density.data());
+            int grid = mybox->M_Grid;
+            int block = mybox->M_Block;
+            int M = mybox->M;
+
+            d_accumulate_q_density<<<grid, block>>>(_d_rho_q, _d_rho_tp, mybox->Species[i].charge, M);
+
+        }
+    }
 
 
 
-    // // cast thrust vectors to cuDoubleComplex for use in kernel
-    // cuDoubleComplex* _d_dHdw = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
-    // cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
-    // cuDoubleComplex* _d_rho_total = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_total.data());
-    // cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
-
-
-    // // Generate noise fields if doing CL
-    // if ( doCL ) {
-    //     double noiseMag = sqrt(2.0 * delt / mybox->gvol );
-    //     d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_wNoise, mybox->d_states, noiseMag, mybox->M);
-    // }
-
+    // Generate noise fields if doing CL
+    if ( doCL ) {
+        double noiseMag = sqrt(2.0 * delt / mybox->gvol );
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_wNoise, mybox->d_states, noiseMag, mybox->M);
+    }
 
 
     // // Make the force in real space
     // d_makeEdwardsForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
     //     B, mybox->Nr, mybox->M);
-
-    
 
 
     // if ( updateScheme == "EMPC" ) {
@@ -167,48 +176,57 @@ void PotentialCharge::correctFields() {
     bool doCL = false;
     if ( mybox->ftsStyle == "cl" ) doCL = true;
 
+
+    // cast thrust vectors to cuDoubleComplex for use in kernel
+    cuDoubleComplex* _d_dHdw =   (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
+    cuDoubleComplex* _d_wpl =    (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
+    cuDoubleComplex* _d_rho_q =  (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_q.data());
+    cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
+
+
     // Initialize to zero
-    thrust::fill(d_rho_total.begin(), d_rho_total.end(), 0.0);
+    thrust::fill(d_rho_q.begin(), d_rho_q.end(), 0.0);
 
     
     // Loop over species, adding them to the field
     for ( int i=0 ; i<mybox->Species.size() ; i++ ) {
-        thrust::transform(mybox->Species[i].d_density.begin(), mybox->Species[i].d_density.begin()+mybox->M,
-            d_rho_total.begin(), d_rho_total.begin(), thrust::plus<thrust::complex<double>>());
+        if ( fabs(mybox->Species[i].charge) > 1.0E-8 ) {
+
+            cuDoubleComplex* _d_rho_tp = (cuDoubleComplex*)thrust::raw_pointer_cast(mybox->Species[i].d_density.data());
+            int grid = mybox->M_Grid;
+            int block = mybox->M_Block;
+            int M = mybox->M;
+
+            d_accumulate_q_density<<<grid, block>>>(_d_rho_q, _d_rho_tp, mybox->Species[i].charge, M);
+
+        }
     }
 
+    // cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
+    // cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
+    // cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
+
+    // // Make the force in real space
+    // d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
+    //     E, mybox->Nr, mybox->M);
 
 
-    // cast thrust vectors to cuDoubleComplex for use in kernel
-    cuDoubleComplex* _d_dHdw = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
-    cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
-    cuDoubleComplex* _d_rho_total = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_total.data());
-
-    cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
-    cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
-    cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
-
-    // Make the force in real space
-    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
-        E, mybox->Nr, mybox->M);
-
-
-    // Corrector step for field updates
-    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_wNoise, doCL, delt, mybox->M);
+    // // Corrector step for field updates
+    // d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_wNoise, doCL, delt, mybox->M);
     
 
     
-    // Check for modifiers
-    if ( zeroMean == true ) {
-        thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
+    // // Check for modifiers
+    // if ( zeroMean == true ) {
+    //     thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
         
-        // dtmp = mean
-        thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
+    //     // dtmp = mean
+    //     thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
 
-        // wpl(r) = wpl(r) - mean
-        thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
-            thrust::minus<thrust::complex<double>>());
-    }    
+    //     // wpl(r) = wpl(r) - mean
+    //     thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
+    //         thrust::minus<thrust::complex<double>>());
+    // }    
 }
 
 
@@ -239,6 +257,22 @@ __global__ void d_makeChargeForce(
 
     dHdw[ind].x = w[ind].x / B - rho_total[ind].y / Nr;
     dHdw[ind].y = w[ind].y / B + rho_total[ind].x / Nr;
+}
+
+__global__ void d_accumulate_q_density(
+    cuDoubleComplex* rho_q,             // [M] storage for total charge
+    const cuDoubleComplex* species_rho, // [M] species density
+    const double q,                     // magnitude of charge
+    const int M                         // array size
+    ) {
+
+    const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind >= M)
+        return;
+
+    rho_q[ind].x += species_rho[ind].x * q;
+    rho_q[ind].y += species_rho[ind].y * q;
+
 }
 
 
