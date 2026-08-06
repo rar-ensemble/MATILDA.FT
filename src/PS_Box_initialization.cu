@@ -664,6 +664,9 @@ void PS_Box::allocDeviceArrays(const int nsAlloc) {
     cudaMalloc(&d_v, nsAlloc * Dim * sizeof(float));
     cudaMalloc(&d_f, nsAlloc*Dim*sizeof(float));
 
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_v, 0.0, Dim*nsAlloc);
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nsAlloc);
+
     
     if ( doCharges ) {
         cudaMalloc(&d_charges, nsAlloc*sizeof(float));

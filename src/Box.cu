@@ -8,6 +8,8 @@
 
 void die(const char*);
 __global__ void d_multiplyCuComplexByFloat(cuComplex*, const float, const int);
+__global__ void d_multiplyCuDoubleComplexByDouble(cuDoubleComplex*, const double, const int);
+                
 __global__ void sumCpxDoubleArrayKernel(cuDoubleComplex*, cuDoubleComplex*, int);
 
 __global__ void init_devCuRand(unsigned int, curandState*, int);
@@ -56,7 +58,7 @@ std::string Box::returnBoxStyle() {
 // potential fields with smearing functions, so it is expected that
 // the smear function will be stored in k-space.
 void Box::convolveTComplexDouble(
-    thrust::device_vector<thrust::complex<double>> input_r,     // Input data, assumed in real-space to convolved
+    thrust::device_vector<thrust::complex<double>> &input_r,     // Input data, assumed in real-space to convolved
     thrust::device_vector<thrust::complex<double>> &dest_r,     // destiny array to store result
     thrust::device_vector<thrust::complex<double>> convFunc_k)  // Convolution function, assumed stored in k-space
     {
@@ -74,7 +76,7 @@ void Box::convolveTComplexDouble(
 }
 
 void Box::cufftWrapperDouble(
-    thrust::device_vector<thrust::complex<double>> in,
+    thrust::device_vector<thrust::complex<double>> &in,
     thrust::device_vector<thrust::complex<double>> &out,
     const int fftDir)      // fftDir = 1 for forward, -1 for backwards FFT
     {
@@ -86,13 +88,7 @@ void Box::cufftWrapperDouble(
 
     if ( fftDir == 1 ) {
         cufftExecZ2Z(fftplan, _in, _out, CUFFT_FORWARD);
-
-        // Normalize the FT
-        thrust::device_vector<thrust::complex<double>> norm(M);
-        thrust::fill(norm.begin(), norm.end(), 1.0/double(M));
-        
-        thrust::transform(out.begin(), out.end(), norm.begin(), out.begin(), 
-            thrust::multiplies<thrust::complex<double>>());
+        d_multiplyCuDoubleComplexByDouble<<<M_Grid, M_Block>>>(_out, 1.0/float(M), M);
     }
 
     else if ( fftDir == -1 ) {

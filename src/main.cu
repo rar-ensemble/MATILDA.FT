@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 std::string giveQuote() {
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> distrib_int(0, quoteDB.size());
+	std::uniform_int_distribution<> distrib_int(0, quoteDB.size()-1);
 
 	int id = distrib_int(gen);
 

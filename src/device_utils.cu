@@ -62,6 +62,20 @@ __global__ void d_multiplyCuComplexByFloat(
     f[id].y *= val;
 }
 
+// Computes f *= val for device cuComplex array
+__global__ void d_multiplyCuDoubleComplexByDouble(
+    cuDoubleComplex* f,     // [N] array to be multiplied
+    const double val,        // value of inp to be multiplied by
+    const int N
+    ) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    f[id].x *= val;
+    f[id].y *= val;
+}
+
 // computes out += in for floats
 __global__ void d_floatPlusEqFloat(
     float* out,

@@ -658,7 +658,7 @@ void PS_Box::writeDataConfig(std::string filename) {
     max = -1;
     for ( int i=0 ; i<nstot ; i++ ) {
         for ( int j=0 ; j<nAngles[i]; j++ ) 
-            if ( angleType[i*MAXANGLES+j] > max ) max = angleType[i*MAXBONDS+j];
+            if ( angleType[i*MAXANGLES+j] > max ) max = angleType[i*MAXANGLES+j];
     }
     out << max+1 << " angle types" << "\n";
 
