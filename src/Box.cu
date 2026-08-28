@@ -13,6 +13,8 @@ __global__ void d_multiplyCuDoubleComplexByDouble(cuDoubleComplex*, const double
 __global__ void sumCpxDoubleArrayKernel(cuDoubleComplex*, cuDoubleComplex*, int);
 
 __global__ void init_devCuRand(unsigned int, curandState*, int);
+__global__ void d_scale_by_minusk2(cuDoubleComplex*, const cuDoubleComplex*, const float*, 
+const int*, const int, const int);
 
 Box::Box() {}
 Box::~Box() {}
@@ -53,6 +55,29 @@ std::string Box::returnBoxStyle() {
     return boxStyle;
 }
 
+
+// This routine computes \nabla^2 w using spectral methods
+// This assumes the field w is in real space and 
+// computes its Fourier transform
+// grad2w is only inverse transformed if return_rspace = 1
+void Box::computeGrad2FieldDouble(
+    cuDoubleComplex* grad2w,        // [M] Return containing grad^2 w
+    cuDoubleComplex* w,       // [M] Input field w
+    const int return_rspace )       // should grad2w return in r-space (1) or not (0)
+{
+    // Put w in k-space
+    // grad2w = FT(w)
+    cufftWrapperDouble(w, grad2w, 1);
+
+    d_scale_by_minusk2<<<M_Grid, M_Block>>>(grad2w, w, this->d_L, this->_d_Nx, this->Dim, this->M);
+
+    if ( return_rspace) {
+        cufftWrapperDouble(grad2w, grad2w, -1);
+    }
+}
+
+
+
 // This routine assumes all received data is device thrust vectors
 // Typical use case for this is to convolve density fields and
 // potential fields with smearing functions, so it is expected that
@@ -76,27 +101,39 @@ void Box::convolveTComplexDouble(
 }
 
 void Box::cufftWrapperDouble(
-    thrust::device_vector<thrust::complex<double>> &in,
-    thrust::device_vector<thrust::complex<double>> &out,
+    cuDoubleComplex* in,
+    cuDoubleComplex* out,
     const int fftDir)      // fftDir = 1 for forward, -1 for backwards FFT
     {
 
     int startTime = time(0);
 	
-    cuDoubleComplex* _in = (cuDoubleComplex*)thrust::raw_pointer_cast(in.data());
-    cuDoubleComplex* _out = (cuDoubleComplex*)thrust::raw_pointer_cast(out.data());
-
     if ( fftDir == 1 ) {
-        cufftExecZ2Z(fftplan, _in, _out, CUFFT_FORWARD);
-        d_multiplyCuDoubleComplexByDouble<<<M_Grid, M_Block>>>(_out, 1.0/float(M), M);
+        cufftExecZ2Z(fftplan, in, out, CUFFT_FORWARD);
+        d_multiplyCuDoubleComplexByDouble<<<M_Grid, M_Block>>>(out, 1.0/float(M), M);
     }
 
     else if ( fftDir == -1 ) {
-        cufftExecZ2Z(fftplan, _in, _out, CUFFT_INVERSE);        
+        cufftExecZ2Z(fftplan, in, out, CUFFT_INVERSE);        
     }
 
-
     ftTimer += time(0) - startTime;
+}
+
+
+// This is a wrapper for the cufftWrapperDouble that takes in 
+// cuDoubleComplex data types
+void Box::cufftWrapperDouble(
+    thrust::device_vector<thrust::complex<double>> &in,
+    thrust::device_vector<thrust::complex<double>> &out,
+    const int fftDir)      // fftDir = 1 for forward, -1 for backwards FFT
+    {
+
+    cuDoubleComplex* _in = (cuDoubleComplex*)thrust::raw_pointer_cast(in.data());
+    cuDoubleComplex* _out = (cuDoubleComplex*)thrust::raw_pointer_cast(out.data());
+
+    this->cufftWrapperDouble(_in, _out, fftDir);
+
 }
 
 // Takes cuComplex data structure and either FFT or inverse FFTs it

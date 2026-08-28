@@ -10,7 +10,7 @@
 
 void die(const char*);
 double ran2();
-__global__ void d_accumulate_q_density(cuDoubleComplex*, const cuDoubleComplex*, const double);
+__global__ void d_accumulate_q_density(cuDoubleComplex*, const cuDoubleComplex*, const double, const int);
 
 PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_Potential(iss, p_box) {
 
@@ -120,9 +120,13 @@ void PotentialCharge::updateFields() {
     }
 
 
-    // // Make the force in real space
-    // d_makeEdwardsForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
-    //     B, mybox->Nr, mybox->M);
+    // Get square gradient of field wpl, store in cpxAtmn
+    // d_cpxAtmn = \nabla^2 _d_wpl
+    mybox->computeGrad2FieldDouble(mybox->d_cpxAtmn, _d_wpl, 1);
+    
+    // Make the force in real space
+    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_q, 
+        E, mybox->Nr, mybox->M);
 
 
     // if ( updateScheme == "EMPC" ) {
@@ -240,13 +244,12 @@ void PotentialCharge::storePredictorData() {
 
 
 
-// This routine is currently written to deal with dHdw in real space
-// the I*rho0 term should change if it changed to k-space updating
+// This routine computes the ``force'' on the field conjugate to charge interactions
 __global__ void d_makeChargeForce(
     cuDoubleComplex* dHdw,              // Field holding dHdw
-    const cuDoubleComplex* w,           // current d_wpl
-    const cuDoubleComplex* rho_total,   // current total density
-    const double B,                    // kappa * N
+    const cuDoubleComplex* grad2w,      // \nabla^2 d_wpl
+    const cuDoubleComplex* rho_q,       // [M] Charge density field
+    const double E,                     // Dimensionless Bjerrum length
     const double Nr,                    // Reference chain length
     const int M                         // number of grid points
     ) {
@@ -255,8 +258,8 @@ __global__ void d_makeChargeForce(
     if (ind >= M)
         return;
 
-    dHdw[ind].x = w[ind].x / B - rho_total[ind].y / Nr;
-    dHdw[ind].y = w[ind].y / B + rho_total[ind].x / Nr;
+    dHdw[ind].x = -grad2w[ind].x / E - rho_q[ind].y / Nr;
+    dHdw[ind].y = -grad2w[ind].y / E + rho_q[ind].x / Nr;
 }
 
 __global__ void d_accumulate_q_density(

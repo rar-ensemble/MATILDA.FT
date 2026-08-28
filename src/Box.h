@@ -47,8 +47,12 @@ class Box {
         cufftHandle fftplan, fftplanSingle; // FFT Plans
         void cufftWrapperDouble(thrust::device_vector<thrust::complex<double>>&,
             thrust::device_vector<thrust::complex<double>>&, const int);
+        
+        void cufftWrapperDouble(cuDoubleComplex*, cuDoubleComplex*, const int);
+
         void convolveTComplexDouble(thrust::device_vector<thrust::complex<double>>&,
             thrust::device_vector<thrust::complex<double>>&, thrust::device_vector<thrust::complex<double>>);
+        void computeGrad2FieldDouble(cuDoubleComplex*, cuDoubleComplex*, const int);
 
         void cufftWrapperSingle(cuComplex*, cuComplex*, const int);
 
