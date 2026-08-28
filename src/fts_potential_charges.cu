@@ -112,7 +112,6 @@ void PotentialCharge::updateFields() {
     }
 
 
-
     // Generate noise fields if doing CL
     if ( doCL ) {
         double noiseMag = sqrt(2.0 * delt / mybox->gvol );
@@ -129,43 +128,44 @@ void PotentialCharge::updateFields() {
         E, mybox->Nr, mybox->M);
 
 
-    // if ( updateScheme == "EMPC" ) {
-    //     storePredictorData();
-    // }
+    if ( updateScheme == "EMPC" ) {
+        storePredictorData();
+    }
 
 
-    // // Update the fields
-    // if ( updateScheme == "EM" || updateScheme == "EMPC") {
-    //     d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_wNoise, doCL, delt, mybox->M);
-    // }
+    // Update the fields
+    if ( updateScheme == "EM" || updateScheme == "EMPC") {
+        d_fts_updateEM<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_wNoise, doCL, delt, mybox->M);
+    }
 
 
-    // else if ( updateScheme == "1S" ) {
-    //     // Put the force and potential into k-space
-    //     mybox->cufftWrapperDouble(d_dHdw, d_dHdw, 1);
-    //     mybox->cufftWrapperDouble(d_wpl, d_wpl, 1);
+    else if ( updateScheme == "1S" ) {
+        die("1S not set up for fts_potential_charges");
+        // // Put the force and potential into k-space
+        // mybox->cufftWrapperDouble(d_dHdw, d_dHdw, 1);
+        // mybox->cufftWrapperDouble(d_wpl, d_wpl, 1);
 
-    //     // Pointer to linear coefficient
-    //     cuDoubleComplex* _d_Ak = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Akpl.data());
+        // // Pointer to linear coefficient
+        // cuDoubleComplex* _d_Ak = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Akpl.data());
 
-    //     // Call updater
-    //     d_fts_update1S<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_Ak, delt, mybox->M);
+        // // Call updater
+        // d_fts_update1S<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_dHdw, _d_Ak, delt, mybox->M);
 
-    //     // Bring potential back to r-space
-    //     mybox->cufftWrapperDouble(d_wpl, d_wpl, -1);
-    // }
+        // // Bring potential back to r-space
+        // mybox->cufftWrapperDouble(d_wpl, d_wpl, -1);
+    }
 
-    // // Check for modifiers
-    // if ( zeroMean == true ) {
-    //     thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
+    // Check for modifiers
+    if ( zeroMean == true ) {
+        thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
         
-    //     // dtmp = mean
-    //     thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
+        // dtmp = mean
+        thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
 
-    //     // wpl(r) = wpl(r) - mean
-    //     thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
-    //         thrust::minus<thrust::complex<double>>());
-    // }
+        // wpl(r) = wpl(r) - mean
+        thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
+            thrust::minus<thrust::complex<double>>());
+    }
 
 }// updateFields
 
@@ -183,7 +183,10 @@ void PotentialCharge::correctFields() {
 
     // cast thrust vectors to cuDoubleComplex for use in kernel
     cuDoubleComplex* _d_dHdw =   (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdw.data());
+    cuDoubleComplex* _d_dHdwplo =   (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
     cuDoubleComplex* _d_wpl =    (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
+    cuDoubleComplex* _d_wplo =    (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
+
     cuDoubleComplex* _d_rho_q =  (cuDoubleComplex*)thrust::raw_pointer_cast(d_rho_q.data());
     cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
 
@@ -206,31 +209,32 @@ void PotentialCharge::correctFields() {
         }
     }
 
-    // cuDoubleComplex* _d_dHdwplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_dHdwplo.data());
-    // cuDoubleComplex* _d_wplo = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wplo.data());
-    // cuDoubleComplex* _d_wNoise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wNoise.data());
 
-    // // Make the force in real space
-    // d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_total, 
-    //     E, mybox->Nr, mybox->M);
+    // Get square gradient of field wpl, store in cpxAtmn
+    // d_cpxAtmn = \nabla^2 _d_wpl
+    mybox->computeGrad2FieldDouble(mybox->d_cpxAtmn, _d_wpl, 1);
+    
+    // Make the force in real space
+    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_q, 
+        E, mybox->Nr, mybox->M);
 
 
-    // // Corrector step for field updates
-    // d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_wNoise, doCL, delt, mybox->M);
+    // Corrector step for field updates
+    d_fts_updateEMPC<<<mybox->M_Grid, mybox->M_Block>>>(_d_wpl, _d_wplo, _d_dHdw, _d_dHdwplo, _d_wNoise, doCL, delt, mybox->M);
     
 
     
-    // // Check for modifiers
-    // if ( zeroMean == true ) {
-    //     thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
+    // Check for modifiers
+    if ( zeroMean == true ) {
+        thrust::complex<double> mean = thrust::reduce(d_wpl.begin(), d_wpl.end()) / double(mybox->M);
         
-    //     // dtmp = mean
-    //     thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
+        // dtmp = mean
+        thrust::device_vector<thrust::complex<double>> dtmp(mybox->M, mean);
 
-    //     // wpl(r) = wpl(r) - mean
-    //     thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
-    //         thrust::minus<thrust::complex<double>>());
-    // }    
+        // wpl(r) = wpl(r) - mean
+        thrust::transform(d_wpl.begin(), d_wpl.end(), dtmp.begin(), d_wpl.begin(), 
+            thrust::minus<thrust::complex<double>>());
+    }    
 }
 
 
