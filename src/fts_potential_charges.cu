@@ -122,9 +122,9 @@ void PotentialCharge::updateFields() {
     // Get square gradient of field wpl, store in cpxAtmn
     // d_cpxAtmn = \nabla^2 _d_wpl
     mybox->computeGrad2FieldDouble(mybox->d_cpxAtmn, _d_wpl, 1);
-    
+
     // Make the force in real space
-    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_q, 
+    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, mybox->d_cpxAtmn, _d_rho_q,
         E, mybox->Nr, mybox->M);
 
 
@@ -213,9 +213,9 @@ void PotentialCharge::correctFields() {
     // Get square gradient of field wpl, store in cpxAtmn
     // d_cpxAtmn = \nabla^2 _d_wpl
     mybox->computeGrad2FieldDouble(mybox->d_cpxAtmn, _d_wpl, 1);
-    
+
     // Make the force in real space
-    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, _d_wpl, _d_rho_q, 
+    d_makeChargeForce<<<mybox->M_Grid, mybox->M_Block>>>(_d_dHdw, mybox->d_cpxAtmn, _d_rho_q,
         E, mybox->Nr, mybox->M);
 
 
@@ -296,20 +296,33 @@ void PotentialCharge::writeFields(int potInd ) {
 // Computes this potential's contribution to the effective Hamiltonian
 std::complex<double> PotentialCharge::calcHamiltonian() {
     thrust::device_vector<thrust::complex<double>> dtmp(mybox->M);
-    thrust::complex<double> I(0.0,1.0);
 
-    // dtmp(r) = wpl(r)^2
-    thrust::transform(d_wpl.begin(), d_wpl.end(), d_wpl.begin(), dtmp.begin(), 
+    cuDoubleComplex* _d_wpl = (cuDoubleComplex*)thrust::raw_pointer_cast(d_wpl.data());
+
+    // d_cpxAtmn = \nabla^2 wpl
+    mybox->computeGrad2FieldDouble(mybox->d_cpxAtmn, _d_wpl, 1);
+
+    thrust::device_ptr<thrust::complex<double>> d_grad2w((thrust::complex<double>*)mybox->d_cpxAtmn);
+
+    // dtmp(r) = wpl(r) * grad2wpl(r)
+    thrust::transform(d_wpl.begin(), d_wpl.end(), d_grad2w, dtmp.begin(),
         thrust::multiplies<thrust::complex<double>>());
 
     thrust::complex<double> integral = thrust::reduce(dtmp.begin(), dtmp.end()) * mybox->gvol;
 
-    Hterm = integral / 2.0 / E;
+    // H = (1/2E) integral |grad(wpl)|^2 dr = -(1/2E) integral wpl * grad2(wpl) dr
+    Hterm = -integral / 2.0 / E;
 
-    //std::cout << Hterm << std::endl;
+    // std::cout << Hterm << " " << E << " " << integral << " " << mybox->gvol << std::endl;
+
+    // wpl = dtmp;
+    // mybox->writeTComplexGridData("grad2_phi.dat", wpl);
+
+    // wpl = d_wpl;
+    // mybox->writeTComplexGridData("phi.dat", d_wpl);
 
     return Hterm;
-    
+
 }
 
 void PotentialCharge::initLinearCoeffs() {

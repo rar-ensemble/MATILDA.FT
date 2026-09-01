@@ -69,7 +69,7 @@ void Box::computeGrad2FieldDouble(
     // grad2w = FT(w)
     cufftWrapperDouble(w, grad2w, 1);
 
-    d_scale_by_minusk2<<<M_Grid, M_Block>>>(grad2w, w, this->d_L, this->_d_Nx, this->Dim, this->M);
+    d_scale_by_minusk2<<<M_Grid, M_Block>>>(grad2w, grad2w, this->d_L, this->_d_Nx, this->Dim, this->M);
 
     if ( return_rspace) {
         cufftWrapperDouble(grad2w, grad2w, -1);

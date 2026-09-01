@@ -147,9 +147,6 @@ void FTS_Box::writeData(int step) {
     computeHamiltonian();
 
 
-    if ( std::isnan(Heff.real()) ) {
-        die("Found Heff = NaN, quitting!");
-    }
 
     OTP.open("fts_data.dat", std::ios_base::app);
 
@@ -193,6 +190,11 @@ void FTS_Box::writeData(int step) {
     std::cout << std::endl;
 
     OTP.close();
+
+    if ( std::isnan(Heff.real()) ) {
+        die("Found Heff = NaN, quitting!");
+    }
+
 }
 
 
