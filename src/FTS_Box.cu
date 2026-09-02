@@ -483,6 +483,11 @@ void FTS_Box::readInput(std::ifstream& inp) {
         gvol *= dx[j];
     }
 
+    // Push box lengths and grid dimensions to the device; needed by
+    // spectral routines (e.g. computeGrad2FieldDouble) that compute k-vectors on the GPU
+    cudaMemcpy(d_L, L, Dim*sizeof(float), cudaMemcpyHostToDevice);
+    d_Nx = Nx;
+
     M_Block = threads;
     M_Grid = (int)ceil((double)(M) / M_Block);
 
