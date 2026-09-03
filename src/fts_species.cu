@@ -50,6 +50,19 @@ void FTS_Species::zeroDensity() {
     thrust::fill(d_density.begin(), d_density.end(), 0.0);
 }
 
+// Allows one step to directly add I * q * wpl field to species field for 
+// charge potentials
+struct plus_Iq_times {
+    double q;
+
+    plus_Iq_times(double q_) : q(q_) {}
+
+    __host__ __device__ 
+        thrust::complex<double> operator()(const thrust::complex<double> &ws, const thrust::complex<double> &wpl) {
+            thrust::complex<double> I = thrust::complex<double>(0.0,1.0);
+            return ws + q * I * wpl;
+        }
+};
 
 // Allows one step to directly add I * wpl field to species field ws
 struct plusITimes {
@@ -70,23 +83,15 @@ void FTS_Species::buildPotentialField() {
 
     for ( int i=0 ; i<box->Potentials.size() ; i++ ) {
 
-        if ( box->Potentials[i]->printStyle() == "Helfand" ) {
+        if ( box->Potentials[i]->printStyle() == "Charges" && fabs(this->charge) > 1.0E-7 ) {
 
-            // d_w += I * wpl from Helfand
+            // d_w += I * wpl from Edwards
             thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
-                d_w.begin(), plusITimes());
+                d_w.begin(), plus_Iq_times(this->charge));
 
         }
 
-        if ( box->Potentials[i]->printStyle() == "Incompress" ) {
-
-            // d_w += I * wpl from Helfand
-            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
-                d_w.begin(), plusITimes());
-
-        }
-
-        if ( box->Potentials[i]->printStyle() == "Edwards" ) {
+        else if ( box->Potentials[i]->printStyle() == "Edwards" ) {
 
             // d_w += I * wpl from Edwards
             thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
@@ -94,6 +99,7 @@ void FTS_Species::buildPotentialField() {
 
         }
 
+        
         else if ( box->Potentials[i]->printStyle() == "Flory" ) {
             if ( fts_species == box->Potentials[i]->actsOn[0] ) {
                 
@@ -117,6 +123,24 @@ void FTS_Species::buildPotentialField() {
                     d_w.begin(), plusITimes());                    
             }
         }
+
+        else if ( box->Potentials[i]->printStyle() == "Helfand" ) {
+
+            // d_w += I * wpl from Helfand
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
+        else if ( box->Potentials[i]->printStyle() == "Incompress" ) {
+
+            // d_w += I * wpl from Helfand
+            thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(),
+                d_w.begin(), plusITimes());
+
+        }
+
+
 
         else if (box->Potentials[i]->printStyle() == "Particle" ) {
             if (fts_species == box->Potentials[i]->actsOn[0] ) {
