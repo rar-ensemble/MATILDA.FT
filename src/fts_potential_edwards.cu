@@ -68,7 +68,11 @@ PotentialEdwards::PotentialEdwards(std::istringstream& iss, FTS_Box* p_box) : FT
 
         // ensure PC flag set to TRUE.
         mybox->PCflag = 1;
+        
     }
+
+    // Send the field to the device
+    d_wpl = wpl;
 
 }// PotentialEdwards constructor
 
