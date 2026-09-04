@@ -74,6 +74,9 @@ PotentialCharge::PotentialCharge(std::istringstream& iss, FTS_Box* p_box) : FTS_
         die("1S scheme not implemented for charge potential");
     }
 
+    // Send potential to the device
+    d_wpl = wpl;
+
 }// PotentialCharge constructor
 
 
