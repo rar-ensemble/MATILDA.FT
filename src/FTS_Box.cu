@@ -83,7 +83,7 @@ void FTS_Box::doTimeStep(int step) {
     /////////////////
 
     // Accumulate CL density samples
-    if ( ftsStyle == "cl" && clSampleFreq > 0 && step % clSampleFreq == 0 ) {
+    if ( ftsStyle == "cl" && clSampleFreq > 0 && step % clSampleFreq == 0 && step > cl_wait ) {
         nCLSamples++;
         for ( int i=0 ; i<Species.size(); i++ ) {
             Species[i].accumulateDensity();
@@ -326,7 +326,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     chemFieldFreq = 0;
     densityFieldFreq = 0;
     clSampleFreq = 100;
-    nCLSamples = 0;
+    nCLSamples = cl_wait = 0;
     Hold = 1.0E8;       // Arbitrary large value for old Hamiltonian
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
     tolMetric = "Heff";
@@ -381,6 +381,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
             else if ( firstWord == "chemFieldFreq" || firstWord == "chemfieldfreq" ) { iss >> chemFieldFreq; }
 
             else if ( firstWord == "clSampleFreq" || firstWord == "clsamplefreq" ) { iss >> clSampleFreq; }
+
+            else if ( firstWord == "cl_wait" || firstWord == "CLWait" ) { iss >> cl_wait; }
 
             else if ( firstWord == "densityFieldFreq" || firstWord == "densityfieldfreq" ) { iss >> densityFieldFreq; }
 

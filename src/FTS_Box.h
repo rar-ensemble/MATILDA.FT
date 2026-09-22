@@ -29,6 +29,7 @@ class FTS_Box : public Box {
 
         int clSampleFreq;   // Steps between CL density-average samples (cl only)
         int nCLSamples;     // Running count of accumulated CL density samples
+        int cl_wait;        // Number of steps to wait before computing averages
         
 
         // Data for tolerance checks
