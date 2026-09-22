@@ -1,0 +1,34 @@
+box ps
+Dim 3
+grid 21 21 225
+boxLengths 14.696938 14.696938 165.340558
+rho0 5
+pmeorder 1
+species A
+
+molecule linear nmolecs 217 1 82 A charge 1.0 bondType 1 zrange 55.0 100.0
+molecule linear nmolecs 217 1 82 A charge -1.0 bondType 1 zrange 55.0 100.0
+
+# doCharges
+# readData input.data
+
+
+
+# trajFreq 50
+fieldFreq 5000
+gsdFreq 5000
+logfreq 5000
+
+
+bond 1 harmonic 1.5 0.0
+
+potential gaussian all all 0.0003688 1.0
+potential charges 0.43484 0.70710678
+
+
+integrator all GJF delt 0.005
+
+endBox
+
+
+run nvt 2000000

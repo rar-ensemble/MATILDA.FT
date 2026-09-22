@@ -5,4 +5,7 @@ JCP V136 024903 (2012). Specifically, it should be similar to data in Figure
 The density of the condensed phases in [b^-3] units (as opposed to [Rg^-3]
 units in the paper) should be approximately 6.6 or so.
 
-Runs with the command: ../../matilda.ft -particle
+Current version runs with:
+../../matilda.ft -in v2-input
+
+Version 1 (if using an old version of MATILDA.FT) runs with the command: ../../matilda.ft -particle -in v1-input
