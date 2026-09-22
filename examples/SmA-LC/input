@@ -1,0 +1,33 @@
+box ps
+Dim 3
+
+grid 45 45 45
+boxLengths 35.0 35.0 35.0
+
+rho0 1.875
+pmeorder 1
+species A mass 1.0
+
+molecule linear phi 1.0 1  3 A angleType 1 make-lc-input lc.input middle
+
+
+bond 1 harmonic 100.0 1.0
+angle 1 wlc 20.0
+
+
+# verbose 1
+
+fieldFreq 50000
+gsdFreq 25000
+logfreq 500
+
+
+potential gaussian all all 5.0 1.0
+potential maiersaupe all all 5.0 1.0 lc.input ramp 40.0
+
+integrator all GJF delt 0.005
+
+endBox
+
+
+run nvt 2500000
