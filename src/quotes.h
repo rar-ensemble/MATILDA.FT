@@ -59,6 +59,7 @@ chokes a little bit.\nBut since he's your son, I hope it's not fatal.\n\
 Tom McCarthy: Thank you, John...\n\n--Phillies broadcast, 5/4/2025",
   "'It's better to keep your mouth closed and let people think you are\na fool than to open it\
  and remove all doubt.'\n--Unknown",
+  "'You bring your own weather to the picnic'\n\n--Harlan Coben",
   "'Would I be a good messiah with my low self-esteem? \n If I don't believe in myself would that be blasphemy?' \n--Bloodhound Gang" };
 
 #endif
