@@ -4,17 +4,12 @@ PARTICLE-BASED MODELS:
 
 From the subfolder containing the input file, run the command:
 
-../../matilda.ft -particle
-
 coacervate:
 Particle-based simulation of the system considered in Riggleman, Kumar, and Fredrickson (J. Chem. Phys. 2012). This particular simulation is run at dimensionless excluded volume parameter B = 0.05 and dimensionless Bjerrum length E = 10000
 .
 
 dpd:
 Runs a spinodal demixing simulation using the DPD thermostat.
-
-
-dynamic-bonds:
 
 
 lamella:
