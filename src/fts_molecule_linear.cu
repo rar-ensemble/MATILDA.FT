@@ -312,9 +312,16 @@ void LinearMolec::calcDensity() {
             ind += 1;
         }
 
-        W = mybox->Species[intSpecies[b]].d_w;
+        // Must match the (possibly smeared) field used in calcPropagators
+        if ( doSmear ) {
+            mybox->convolveTComplexDouble(mybox->Species[intSpecies[b]].d_w,
+                W, d_smearFunc);
+        }
+        else {
+            W = mybox->Species[intSpecies[b]].d_w;
+        }
         // expW = exp(W)
-        thrust::transform(W.begin(), W.end(), expW.begin(), Exponential()); 
+        thrust::transform(W.begin(), W.end(), expW.begin(), Exponential());
         
         // factor = n / Q / V
         thrust::fill(temp.begin(), temp.end(), factor);
@@ -332,8 +339,13 @@ void LinearMolec::calcDensity() {
     // Define total density as juts center density for now. needs to be convolved
     // with shape functions once those are implemented.
     if ( doSmear ) {
-        // smear the density field
-        mybox->convolveTComplexDouble(d_cDensity, d_density, d_smearFunc);
+        // smear the density field one block at a time; the FFT plan and
+        // d_smearFunc are both size M, not numBlocks*M
+        for ( int b=0 ; b<numBlocks ; b++ ) {
+            thrust::copy(d_cDensity.begin()+b*M, d_cDensity.begin()+(b+1)*M, qf.begin());
+            mybox->convolveTComplexDouble(qf, hf, d_smearFunc);
+            thrust::copy(hf.begin(), hf.end(), d_density.begin()+b*M);
+        }
     }
 
     // Not using smearing
