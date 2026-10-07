@@ -29,6 +29,16 @@ void NBGauss::initializePotential() {
     std::cout << "Initializing Gaussian potential..." << std::endl;
 
     PS_Potential::initializePotential();
+
+    buildKernels();
+
+}
+
+
+// Builds u(k), f(k), and the virial kernel for the current box
+// dimensions. Called at initialization and whenever L changes.
+void NBGauss::buildKernels() {
+
     
     std::complex<float> I(0.0, 1.0);
     float kv[3], k2;
@@ -43,7 +53,12 @@ void NBGauss::initializePotential() {
         for (int j = 0; j < Dim; j++) {
             fk[i * Dim + j] = -I * kv[j] * uk[i];
         }
+
+        // du/dk = -k sigma^2 u(k)
+        double kmag = sqrt(double(k2));
+        setVirialKernel(i, kv, k2, real(uk[i]), -kmag * sig2 * real(uk[i]));
     }
+    sendVirialKernelToDevice();
 
     // Send these to device, inv transform to get ur, f(r)
     cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);

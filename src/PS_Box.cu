@@ -91,27 +91,10 @@ void PS_Box::doTimeStep(int step) {
     for ( int i=0 ; i<neighborLists.size(); i++ )
         neighborLists[i]->build();
 
-    // Update grid weights
-    if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
-        "calcing weights..." << std::endl; }
-    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx,
-        d_dxf, nstot, pmeorder, M, Dim );
-    check_cudaError("Weights calculated in PS_Box");
-
-
-
     ///////////////////////////
     // UPDATE DENSITY FIELDS //
     ///////////////////////////
-
-    // update the density fields
-    for ( int i=0 ; i<psGroup.size(); i++ ) {
-        // zero density, grid force fields
-        psGroup[i].zeroFields();
-
-        // Fill density fields
-        psGroup[i].makeDensityField();
-    }
+    updateDensityFields();
 
 
 
@@ -131,6 +114,12 @@ void PS_Box::doTimeStep(int step) {
     // COMPUTE FORCES //
     ////////////////////
     forces();
+
+    // Pressure is evaluated here, before Integrate_2, so the densities,
+    // tensor fields, and positions all describe the same configuration
+    if ( step % logFreq == 0 ) {
+        computePressureTensor();
+    }
 
     // Diagnostic: net force on COM should be exactly zero every step.
     // Any nonzero value identifies the potential/bond/angle contributing drift.
@@ -212,6 +201,7 @@ void PS_Box::NVT(int nSteps) {
     
 
     std::cout << "Initial values:" << std::endl;
+    evaluateCurrentState();
     writeData(-1);
 
 
@@ -224,6 +214,7 @@ void PS_Box::NVT(int nSteps) {
         totSteps++;
     }
     std::cout << "NVT Finished, writing final output" << std::endl;
+    evaluateCurrentState();
     writeData(maxSteps);
     writeFields();
     writeGSDtraj(); 
@@ -317,6 +308,225 @@ void PS_Box::computeThermoProps() {
 }
 
 
+// Maps pressure component index to tensor indices (a,b).
+// 2D: xx, yy, xy. 3D: xx, yy, zz, xy, xz, yz.
+void PS_Box::pressureCompIndices(int c, int& a, int& b) {
+    const int map2[3][2] = { {0,0}, {1,1}, {0,1} };
+    const int map3[6][2] = { {0,0}, {1,1}, {2,2}, {0,1}, {0,2}, {1,2} };
+
+    if ( Dim == 2 ) { a = map2[c][0]; b = map2[c][1]; }
+    else            { a = map3[c][0]; b = map3[c][1]; }
+}
+
+
+// Computes grid weights from d_x and fills every group's density fields
+void PS_Box::updateDensityFields() {
+    if ( verbose ) { cudaDeviceSynchronize(); std::cout << \
+        "calcing weights..." << std::endl; }
+    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx,
+        d_dxf, nstot, pmeorder, M, Dim );
+    check_cudaError("Weights calculated in PS_Box");
+
+    for ( int i=0 ; i<psGroup.size(); i++ ) {
+        // zero density, grid force fields
+        psGroup[i].zeroFields();
+
+        // Fill density fields
+        psGroup[i].makeDensityField();
+    }
+}
+
+
+// Brings fields, forces, and the pressure tensor up to date with the
+// current positions, for output outside the normal time step.
+// d_f is restored afterward so integrator state is unaffected.
+void PS_Box::evaluateCurrentState() {
+    float* d_fSave;
+    cudaMalloc(&d_fSave, Dim * nstot * sizeof(float));
+    cudaMemcpy(d_fSave, d_f, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    updateDensityFields();
+    d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nstot);
+    forces();
+    computePressureTensor();
+
+    cudaMemcpy(d_f, d_fSave, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaFree(d_fSave);
+    check_cudaError("evaluateCurrentState");
+}
+
+
+// Computes the full pressure tensor
+// P_ab = ( N kT delta_ab + W_ab ) / V,   kT = 1
+// W_ab = -dU/d(eps_ab) is the virial from bonds, angles, and every
+// potential that supports it. Assumes forces() was just called for the
+// current positions, so all density and tensor fields are current.
+void PS_Box::computePressureTensor() {
+
+    float W[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+
+    // Bonds: each bond is counted by both particles
+    if ( nBondsTot > 0 ) {
+        d_bondStressEnergy<<<nsGrid, nsBlock>>>(d_thermoE, d_bondVirScratch,
+            d_x, d_nBonds, d_bondedTo, d_bondType, d_bondReq, d_bondK,
+            d_bondStyle, d_L, d_Lh, nstot, MAXBONDS, n_P_comps, Dim);
+
+        for ( int c=0 ; c<n_P_comps ; c++ ) {
+            d_extractStridedComp<<<nsGrid, nsBlock>>>(d_thermoE, d_bondVirScratch, c, n_P_comps, nstot);
+            W[c] += 0.5f * sumDeviceArray(d_thermoE, nsBlock, nstot);
+        }
+    }
+
+    // Angles: each angle is counted by all three particles
+    if ( nAnglesTot > 0 ) {
+        d_anglesStressEnergy<<<nsGrid, nsBlock>>>(d_thermoE, d_angleVirScratch,
+            d_x, d_angleK, d_angleTheq, d_angleStyle, d_nAngles,
+            d_angleType, d_angleGroup, d_L, d_Lh, nstot, MAXANGLES, n_P_comps, Dim);
+
+        for ( int c=0 ; c<n_P_comps ; c++ ) {
+            d_extractStridedComp<<<nsGrid, nsBlock>>>(d_thermoE, d_angleVirScratch, c, n_P_comps, nstot);
+            W[c] += sumDeviceArray(d_thermoE, nsBlock, nstot) / 3.0f;
+        }
+    }
+    check_cudaError("bonded virial");
+
+    // Nonbonded potentials
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        if ( potentials[i]->hasVirial() ) {
+            potentials[i]->CalcVirial(W);
+        }
+    }
+
+    float Vol = gvol * float(M);
+    Pscalar = 0.0f;
+    for ( int c=0 ; c<n_P_comps ; c++ ) {
+        int a, b;
+        pressureCompIndices(c, a, b);
+
+        Ptens[c] = W[c];
+        if ( a == b ) Ptens[c] += float(nstot);
+
+        Ptens[c] /= Vol;
+
+        if ( a == b ) Pscalar += Ptens[c];
+    }
+    Pscalar /= float(Dim);
+}
+
+
+// Affinely rescales the box to newL[Dim]: positions, box dimensions, grid
+// spacing, and every potential's k-space kernels. Integrator history
+// (e.g. GJF's previous positions) is not modified.
+void PS_Box::rescaleBox(const float* newL) {
+
+    float* h_x = (float*) malloc(Dim * nstot * sizeof(float));
+    cudaMemcpy(h_x, d_x, Dim * nstot * sizeof(float), cudaMemcpyDeviceToHost);
+
+    for ( int i=0 ; i<nstot ; i++ )
+        for ( int j=0 ; j<Dim ; j++ )
+            h_x[i*Dim + j] *= newL[j] / L[j];
+
+    cudaMemcpy(d_x, h_x, Dim * nstot * sizeof(float), cudaMemcpyHostToDevice);
+    free(h_x);
+
+    float dxf[3];
+    gvol = 1.0;
+    V = 1.0;
+    for ( int j=0 ; j<Dim ; j++ ) {
+        L[j] = newL[j];
+        Lh[j] = 0.5f * L[j];
+        dx[j] = L[j] / double(Nx[j]);
+        dxf[j] = (float)dx[j];
+        gvol *= dx[j];
+        V *= L[j];
+    }
+    cudaMemcpy(d_L, L, Dim * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_Lh, Lh, Dim * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_dxf, dxf, Dim * sizeof(float), cudaMemcpyHostToDevice);
+    d_dx = dx;
+
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        potentials[i]->buildKernels();
+    }
+    check_cudaError("rescaleBox");
+}
+
+
+// Compares the diagonal virial against a central finite difference of
+// the energy under uniaxial strain, W_aa = -dU/d(eps_aa). Only bonded
+// terms and potentials that support the virial are included. The state
+// is restored afterward.
+void PS_Box::checkPressure(float delta) {
+
+    std::cout << "\nPressure check, finite-difference strain delta = " << delta << std::endl;
+
+    float L0[3], Lnew[3];
+    for ( int j=0 ; j<Dim ; j++ ) L0[j] = L[j];
+
+    float *d_xSave, *d_fSave;
+    cudaMalloc(&d_xSave, Dim * nstot * sizeof(float));
+    cudaMalloc(&d_fSave, Dim * nstot * sizeof(float));
+    cudaMemcpy(d_xSave, d_x, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(d_fSave, d_f, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    // Analytic virial at the reference state
+    evaluateCurrentState();
+    float Vol0 = gvol * float(M);
+    float Wan[6];
+    for ( int c=0 ; c<n_P_comps ; c++ ) {
+        int a, b;
+        pressureCompIndices(c, a, b);
+        Wan[c] = Ptens[c] * Vol0 - ( a == b ? float(nstot) : 0.0f );
+    }
+
+    for ( int a=0 ; a<Dim ; a++ ) {
+        double U[2];
+        for ( int s=0 ; s<2 ; s++ ) {
+            float sign = ( s == 0 ) ? 1.0f : -1.0f;
+            for ( int j=0 ; j<Dim ; j++ ) Lnew[j] = L0[j];
+            Lnew[a] = L0[a] * (1.0f + sign * delta);
+
+            cudaMemcpy(d_x, d_xSave, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+            rescaleBox(Lnew);
+
+            updateDensityFields();
+            d_assignFloatVal<<<DnsGrid, nsBlock>>>(d_f, 0.0, Dim*nstot);
+            forces();
+            computeThermoProps();
+
+            U[s] = Ubond + Uangle;
+            for ( int i=0 ; i<potentials.size(); i++ )
+                if ( potentials[i]->hasVirial() ) U[s] += potentials[i]->energy;
+
+            // restore the reference box before the next strain
+            for ( int j=0 ; j<Dim ; j++ ) Lnew[j] = L0[j];
+            rescaleBox(Lnew);
+        }
+
+        // eps = +/- delta, so W_aa = -(U+ - U-) / (2 delta)
+        double Wfd = -( U[0] - U[1] ) / ( 2.0 * double(delta) );
+        std::cout << "  W[" << a << a << "]  analytic: " << Wan[a] << "  finite diff: " << Wfd
+            << "  rel. err: " << fabs(Wan[a] - Wfd) / fmax(fabs(Wfd), 1.0e-12) << std::endl;
+    }
+
+    if ( Dim == 3 ) {
+        std::cout << "  off-diagonal analytic W: xy " << Wan[3] << " xz " << Wan[4]
+            << " yz " << Wan[5] << std::endl;
+    } else {
+        std::cout << "  off-diagonal analytic W: xy " << Wan[2] << std::endl;
+    }
+
+    // Restore exact reference state
+    cudaMemcpy(d_x, d_xSave, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+    evaluateCurrentState();
+    cudaMemcpy(d_f, d_fSave, Dim * nstot * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaFree(d_xSave);
+    cudaFree(d_fSave);
+    check_cudaError("checkPressure");
+    std::cout << std::endl;
+}
+
+
 // Sums d_f per dimension and prints.  Called after forces() in doTimeStep.
 // For a conservative force field with Newton's 3rd law satisfied, each
 // component should be exactly zero (to float round-off).
@@ -362,6 +572,12 @@ void PS_Box::writeData(int step) {
         OTP << " " << potentials[i]->energy;
         std::cout << " pot[" << i << "]: " << potentials[i]->energy;
     }
+
+    for ( int c=0 ; c<n_P_comps ; c++ ) {
+        OTP << " " << Ptens[c];
+    }
+    OTP << " " << Pscalar;
+    std::cout << " P: " << Pscalar;
 
     OTP << std::endl;
     std::cout << std::endl;
@@ -850,7 +1066,13 @@ void PS_Box::modifyBox(std::istringstream& iss) {
 
     iss >> word;
 
-    if ( word == "potential" ) {
+    if ( word == "check_pressure" ) {
+        float delta = 1.0e-3f;
+        iss >> delta;
+        checkPressure(delta);
+    }
+
+    else if ( word == "potential" ) {
         iss >> word;
 
         if ( word == "remove" || word == "delete" ) {

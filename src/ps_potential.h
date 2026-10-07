@@ -15,6 +15,16 @@ protected:
     std::string input_command;
     float Ao_initial, Ao_final;     // initial and final prefactor values for potential
     PS_Box* mybox;
+    bool virialSupported = false;   // true once virk has been filled
+
+    // Fills virk at grid index i for an isotropic kernel u(|k|), given
+    // u(k) and du/dk. K_ab = delta_ab u + k_a k_b / |k| du/dk
+    void setVirialKernel(const int, const float*, const float, const double, const double);
+    void sendVirialKernelToDevice(void);
+
+    // Adds pref * V * sum_k Re[A_k^* B_k] K_c(k) to W[c] for every component c
+    void contractVirial(const float*, const float*, const float, float*);
+    void contractVirialFT(const cuComplex*, const cuComplex*, const float, float*);
 public:
     float energy;
     bool ramp = 0;
@@ -42,10 +52,13 @@ public:
     virtual ~PS_Potential();
 
     virtual void initializePotential();
+    virtual void buildKernels() {}  // (Re)builds k-space kernels for the current box
     
     // These are virtual so they can be overriden for non-2 body potentials
     virtual void CalcForces();      
     virtual float CalcEnergy();
+    virtual void CalcVirial(float*);    // Adds virial W[n_P_comps] of this potential
+    bool hasVirial(void) { return virialSupported; }
     virtual void update_prefactor(const int, const int);
 
     virtual void initBinaryOutput();    

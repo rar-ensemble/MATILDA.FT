@@ -17,6 +17,7 @@
 
 
 __global__ void d_scale_potentials_by_scalar(cuComplex*, cuComplex*, const float, const int, const int);
+__global__ void d_multiplyCuComplexByFloat(cuComplex*, const float, const int);
 
 // Allocates memory for:
 // potential, forces, virial contribution
@@ -182,6 +183,110 @@ float PS_Potential::CalcEnergy() {
 
 
 
+// Default virial for scalar pair potentials whose energy is
+// E = \int dr rhoI(r) [u \ast rhoJ](r), consistent with CalcEnergy() above.
+// Potentials that do not fill virk are skipped by PS_Box.
+void PS_Potential::CalcVirial(float* W) {
+    if ( !virialSupported ) return;
+
+    contractVirial(mybox->psGroup[Iind].d_rho, mybox->psGroup[Jind].d_rho, 1.0f, W);
+}
+
+
+// Fourier transforms two real fields and contracts them against the
+// virial kernel. If both pointers are the same field, only one FFT is done.
+void PS_Potential::contractVirial(
+    const float* d_rhoA,    // [M] first real-space field
+    const float* d_rhoB,    // [M] second real-space field
+    const float pref,       // prefactor matching the CalcEnergy convention
+    float* W                // [n_P_comps] virial, accumulated
+    ) {
+
+    cuComplex *d_cpxAlex = mybox->d_cpxAlex;
+    cuComplex *d_cpxGabe = mybox->d_cpxGabe;
+    int M = mybox->M;
+    int Grid = mybox->M_Grid;
+    int Block = mybox->M_Block;
+
+    // Gabe = FT(rhoA)
+    d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoA, M);
+    mybox->cufftWrapperSingle(d_cpxAlex, d_cpxGabe, 1);
+
+    if ( d_rhoA == d_rhoB ) {
+        contractVirialFT(d_cpxGabe, d_cpxGabe, pref, W);
+        return;
+    }
+
+    // Alex = FT(rhoB)
+    d_floatToCpx<<<Grid, Block>>>(d_cpxAlex, d_rhoB, M);
+    mybox->cufftWrapperSingle(d_cpxAlex, d_cpxAlex, 1);
+
+    contractVirialFT(d_cpxGabe, d_cpxAlex, pref, W);
+}
+
+
+// W[c] += pref * V * sum_k Re[a_k^* b_k] K_c(k)
+// With the 1/M-normalized forward FFT, this is the same normalization
+// as CalcEnergy(), so replacing K_c with u(k) recovers the energy.
+void PS_Potential::contractVirialFT(
+    const cuComplex* d_a,   // [M] FT of first field
+    const cuComplex* d_b,   // [M] FT of second field
+    const float pref,       // prefactor matching the CalcEnergy convention
+    float* W                // [n_P_comps] virial, accumulated
+    ) {
+
+    int M = mybox->M;
+    int nPC = mybox->n_P_comps;
+    float Vol = mybox->gvol * float(M);
+
+    for ( int c=0 ; c<nPC ; c++ ) {
+        d_virialContract<<<mybox->M_Grid, mybox->M_Block>>>(mybox->d_Gabe, d_a, d_b,
+            d_virk, c, nPC, M);
+
+        W[c] += pref * Vol * mybox->sumDeviceArray(mybox->d_Gabe, mybox->M_Block, M);
+    }
+    check_cudaError("PS_Potential::contractVirialFT");
+}
+
+
+// Fills the virial kernel at grid index i for an isotropic potential.
+// K_ab(k) = delta_ab u(k) + (k_a k_b / |k|) du/dk
+// This is -d/d(eps_ab) of the k-space energy under affine strain;
+// the k = 0 term only carries the volume derivative.
+void PS_Potential::setVirialKernel(
+    const int i,            // grid index
+    const float* kv,        // [Dim] wavevector
+    const float k2,         // |k|^2
+    const double u,         // u(|k|)
+    const double dudk       // du/dk at |k|
+    ) {
+
+    int nPC = mybox->n_P_comps;
+    double kmag = sqrt(double(k2));
+
+    for ( int c=0 ; c<nPC ; c++ ) {
+        int a, b;
+        mybox->pressureCompIndices(c, a, b);
+
+        double K = ( a == b ) ? u : 0.0;
+        if ( kmag > 0.0 )
+            K += double(kv[a]) * double(kv[b]) / kmag * dudk;
+
+        virk[i * nPC + c] = std::complex<float>(float(K), 0.0f);
+    }
+}
+
+
+void PS_Potential::sendVirialKernelToDevice() {
+    int M = mybox->M;
+    int nPC = mybox->n_P_comps;
+    cudaMemcpy(d_virk, virk, M * nPC * sizeof(std::complex<float>), cudaMemcpyHostToDevice);
+    check_cudaError("virk --> d_virk");
+    virialSupported = true;
+}
+
+
+
 PS_Potential::~PS_Potential() {
 
 
@@ -239,6 +344,13 @@ void PS_Potential::update_prefactor(const int step, const int maxsteps) {
     int M = mybox->M;
     
     d_scale_potentials_by_scalar<<<GRID, BLOCK>>>(d_uk, d_fk, scale_factor, D, M);
+
+    // Virial kernel is linear in the prefactor as well
+    if ( virialSupported ) {
+        int nPC = mybox->n_P_comps;
+        int vGRID = (M * nPC + BLOCK - 1) / BLOCK;
+        d_multiplyCuComplexByFloat<<<vGRID, BLOCK>>>(d_virk, scale_factor, M * nPC);
+    }
 
     cudaMemcpy(uk, d_uk, M*sizeof(std::complex<float>), cudaMemcpyDeviceToHost);
 

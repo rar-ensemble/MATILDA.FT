@@ -33,6 +33,16 @@ void NBErf2::initializePotential() {
 
     PS_Potential::initializePotential();
 
+    buildKernels();
+
+}
+
+
+// Builds u(k), f(k), and the virial kernel for the current box
+// dimensions. Called at initialization and whenever L changes.
+void NBErf2::buildKernels() {
+
+
     std::complex<float> I(0.0f, 1.0f);
     float kv[3];
     int Dim = mybox->returnDimension();
@@ -51,7 +61,21 @@ void NBErf2::initializePotential() {
 
         for (int j = 0; j < Dim; j++)
             fk[i*Dim + j] = -I * kv[j] * uk[i];
+
+        // u = Ao e^{-k^2 s^2/2} g(k)^2, g = 4pi h/k^3, h = sin(Rk) - Rk cos(Rk)
+        // dg/dk = 4pi ( R^2 sin(Rk)/k^2 - 3h/k^4 )
+        double dudk = 0.0;
+        if (k2 > 0.0f) {
+            double kd = double(k), R = double(Rp);
+            double h  = sin(R*kd) - R*kd*cos(R*kd);
+            double g  = PI4 * h / (kd*kd*kd);
+            double dg = PI4 * (R*R*sin(R*kd) / (kd*kd) - 3.0*h / (kd*kd*kd*kd));
+            double ex = Ao * exp(-kd*kd * sig2 * 0.5);
+            dudk = ex * (-kd * sig2 * g * g + 2.0 * g * dg);
+        }
+        setVirialKernel(i, kv, k2, real(uk[i]), dudk);
     }
+    sendVirialKernelToDevice();
 
     cudaMemcpy(d_uk, uk, M * sizeof(std::complex<float>), cudaMemcpyHostToDevice);
 

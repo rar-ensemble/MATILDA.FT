@@ -41,6 +41,7 @@ NBMaier::~NBMaier() {
     cudaFree(d_S_field);
     cudaFree(d_tmp_tensor);
     cudaFree(d_Dim_Dim_tensor);
+    cudaFree(d_msVir);
 }
 
 
@@ -83,6 +84,20 @@ void NBMaier::initializePotential() {
     // ── Read lc_file ─────────────────────────────────────────────────────
     read_lc_file(filename);
 
+    cudaMalloc(&d_msVir, nstot * mybox->n_P_comps * sizeof(float));
+    check_cudaError("NBMaier: virial scratch allocation");
+
+    buildKernels();
+
+}
+
+
+// Builds u(k), f(k), and the virial kernel for the current box
+// dimensions. Called at initialization and whenever L changes.
+void NBMaier::buildKernels() {
+    int M     = mybox->M;
+    int Dim   = mybox->returnDimension();
+
     // ── Build uk and fk in k-space (Gaussian kernel) ─────────────────────
     // uk[i]        = Ao * exp(-k²σ²/2)
     // fk[i*Dim+j]  = -i * kj * uk[i]   (gradient in k-space)
@@ -94,7 +109,12 @@ void NBMaier::initializePotential() {
         for (int j = 0; j < Dim; j++) {
             fk[i * Dim + j] = -I * kv[j] * uk[i];
         }
+
+        // Gaussian kernel: du/dk = -k sigma^2 u(k)
+        double kmag = sqrt(double(k2));
+        setVirialKernel(i, kv, k2, real(uk[i]), -kmag * sig2 * real(uk[i]));
     }
+    sendVirialKernelToDevice();
 
     cudaMemcpy(d_uk, uk, M * sizeof(std::complex<float>), cudaMemcpyHostToDevice);
     cudaMemcpy(d_fk, fk, M * Dim * sizeof(std::complex<float>), cudaMemcpyHostToDevice);
@@ -291,6 +311,45 @@ float NBMaier::CalcEnergy() {
     return energy;
 }
 
+// Virial consistent with CalcEnergy(): E = -1/2 gvol sum_r S(r) : (u⊗S)(r).
+// Assumes CalcForces() was called for the current configuration, so
+// d_S_field, d_ms_u and d_tmp_tensor = (u⊗S)(r) are current.
+void NBMaier::CalcVirial(float* W) {
+
+    int nstot = mybox->nstot;
+    int M     = mybox->M;
+    int Dim   = mybox->returnDimension();
+    int nPC   = mybox->n_P_comps;
+
+    // ── Orientation part: u rotates under strain ─────────────────────────
+    d_MSOrientVirial<<<mybox->nsGrid, mybox->nsBlock>>>(
+        d_msVir, mybox->d_x, d_MS_pair, d_tmp_tensor, d_ms_u,
+        mybox->d_gridW, mybox->d_gridInds,
+        (float)mybox->gvol, mybox->gridPerPartic, nstot, nPC,
+        mybox->d_L, mybox->d_Lh, Dim);
+    check_cudaError("NBMaier: d_MSOrientVirial");
+
+    for (int c = 0; c < nPC; c++) {
+        d_extractStridedComp<<<mybox->nsGrid, mybox->nsBlock>>>(
+            mybox->d_thermoE, d_msVir, c, nPC, nstot);
+        W[c] += mybox->sumDeviceArray(mybox->d_thermoE, mybox->nsBlock, nstot);
+    }
+
+    // ── Grid part: Gaussian kernel contracted with each S component ──────
+    // Off-diagonal components appear twice in S:S
+    for (int k = 0; k < Dim; k++) {
+        for (int m = k; m < Dim; m++) {
+            d_extractTensorComponent<<<mybox->M_Grid, mybox->M_Block>>>(
+                mybox->d_cpxAlex, d_S_field, k, m, M, Dim);
+            mybox->cufftWrapperSingle(mybox->d_cpxAlex, mybox->d_cpxGabe, 1);
+
+            float pref = (k == m) ? -0.5f : -1.0f;
+            contractVirialFT(mybox->d_cpxGabe, mybox->d_cpxGabe, pref, W);
+        }
+    }
+    check_cudaError("NBMaier::CalcVirial end");
+}
+
 void NBMaier::initBinaryOutput() {
     std::string name;
     name = "Sfield-" + grpI + "-" + grpJ + std::string(".bin");
@@ -462,30 +521,27 @@ __global__ void d_accumulateMSForce1(
 }
 
 
-// Force contribution 2: derivative of S tensor w.r.t. particle position.
-// Acts on both particles involved in the definition of u.
-__global__ void d_accumulateMSForce2(
-    float* f,               // [ns*Dim]
+// Force on site id from the dependence of its S tensor on its position
+// (u = (r_partner - r_id)/|r_partner - r_id|). The partner feels -fi.
+// Shared by the force and virial kernels so the two always agree.
+// On return, dr = r_partner - r_id (PBC corrected).
+__device__ void d_msForce2OnSite(
+    float* fi,              // [Dim] output force on site id
+    float* dr,              // [Dim] output r_partner - r_id
+    const int id,           // site index
+    const int id1,          // partner index
     const float* x,         // [ns*Dim]
-    const int* upartner,    // [ns]
     const float* tensorField, // [Dim²*M] (u⊗S)(r)
     const float* ms_u,      // [Dim*ns]
     const float* grid_W,    // [ns*gridPerPartic]
     const int* grid_inds,   // [ns*gridPerPartic]
     const float gvol,
     const int grid_per_partic,
-    const int ns,
     const float* L,
     const float* Lh,
     const int Dim
 ) {
-    const int id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id >= ns) return;
-    if (upartner[id] < 0 || upartner[id] >= ns) return;
-
-    int id1 = upartner[id];
-
-    float ri[3], rj[3], dr[3], fi[3];
+    float ri[3], rj[3];
     for (int j = 0; j < Dim; j++) {
         ri[j] = x[id  * Dim + j];
         rj[j] = x[id1 * Dim + j];
@@ -538,11 +594,84 @@ __global__ void d_accumulateMSForce2(
             fi[a] += dotsum * W3 * gvol;
         }
     }
+}
+
+
+// Force contribution 2: derivative of S tensor w.r.t. particle position.
+// Acts on both particles involved in the definition of u.
+__global__ void d_accumulateMSForce2(
+    float* f,               // [ns*Dim]
+    const float* x,         // [ns*Dim]
+    const int* upartner,    // [ns]
+    const float* tensorField, // [Dim²*M] (u⊗S)(r)
+    const float* ms_u,      // [Dim*ns]
+    const float* grid_W,    // [ns*gridPerPartic]
+    const int* grid_inds,   // [ns*gridPerPartic]
+    const float gvol,
+    const int grid_per_partic,
+    const int ns,
+    const float* L,
+    const float* Lh,
+    const int Dim
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns) return;
+    if (upartner[id] < 0 || upartner[id] >= ns) return;
+
+    int id1 = upartner[id];
+
+    float fi[3], dr[3];
+    d_msForce2OnSite(fi, dr, id, id1, x, tensorField, ms_u, grid_W, grid_inds,
+        gvol, grid_per_partic, L, Lh, Dim);
 
     // Newton's 3rd law: partner gets opposite force
     for (int a = 0; a < Dim; a++) {
         atomicAdd(&f[id  * Dim + a],  fi[a]);
         atomicAdd(&f[id1 * Dim + a], -fi[a]);
+    }
+}
+
+
+// Virial from the rotation of u under affine strain. The energy depends on
+// d = r_partner - r_id through S_id, and the force on id is F = dE/dd, so
+// W_ab = -F_a d_b. Stored symmetrized, since the total is symmetric.
+__global__ void d_MSOrientVirial(
+    float* vir,             // [ns*nPC] per-site virial
+    const float* x,         // [ns*Dim]
+    const int* upartner,    // [ns]
+    const float* tensorField, // [Dim²*M] (u⊗S)(r)
+    const float* ms_u,      // [Dim*ns]
+    const float* grid_W,    // [ns*gridPerPartic]
+    const int* grid_inds,   // [ns*gridPerPartic]
+    const float gvol,
+    const int grid_per_partic,
+    const int ns,
+    const int nPC,
+    const float* L,
+    const float* Lh,
+    const int Dim
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= ns) return;
+
+    for (int c = 0; c < nPC; c++)
+        vir[id * nPC + c] = 0.0f;
+
+    if (upartner[id] < 0 || upartner[id] >= ns) return;
+
+    float fi[3], dr[3];
+    d_msForce2OnSite(fi, dr, id, upartner[id], x, tensorField, ms_u, grid_W, grid_inds,
+        gvol, grid_per_partic, L, Lh, Dim);
+
+    vir[id * nPC + 0] = -fi[0] * dr[0];
+    vir[id * nPC + 1] = -fi[1] * dr[1];
+    if (Dim == 2)
+        vir[id * nPC + 2] = -0.5f * (fi[0] * dr[1] + fi[1] * dr[0]);
+    else if (Dim == 3) {
+        vir[id * nPC + 2] = -fi[2] * dr[2];
+        vir[id * nPC + 3] = -0.5f * (fi[0] * dr[1] + fi[1] * dr[0]);
+        vir[id * nPC + 4] = -0.5f * (fi[0] * dr[2] + fi[2] * dr[0]);
+        vir[id * nPC + 5] = -0.5f * (fi[1] * dr[2] + fi[2] * dr[1]);
     }
 }
 

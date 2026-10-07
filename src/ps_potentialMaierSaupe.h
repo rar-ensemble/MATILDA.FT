@@ -21,6 +21,7 @@ class NBMaier : public PS_Potential {
         float *d_tmp_tensor;            // [Dim²*M] scratch tensor field (device only)
         float *h_Dim_Dim_tensor;        // [Dim²] host copy for eigenvalue solve
         float *d_Dim_Dim_tensor;        // [Dim²] accumulated S tensor for order param
+        float *d_msVir;                 // [nPC*nstot] per-site orientation virial
 
         std::string filename;           // Path to lc_file specifying MS pairs
         static int num;
@@ -37,8 +38,11 @@ class NBMaier : public PS_Potential {
         ~NBMaier();
 
         void initializePotential(void) override;
+
+        void buildKernels(void) override;
         void CalcForces(void) override;
         float CalcEnergy(void) override;
+        void CalcVirial(float*) override;
 
         float Ao;           // Gaussian potential prefactor
         float sig2;         // Squared range of the Gaussian (stored as sigma^2)
@@ -66,6 +70,10 @@ __global__ void d_accumulateMSForce1(float*, const int*, const float*, const flo
 
 __global__ void d_accumulateMSForce2(float*, const float*, const int*, const float*,
     const float*, const float*, const int*, const float, const int, const int,
+    const float*, const float*, const int);
+
+__global__ void d_MSOrientVirial(float*, const float*, const int*, const float*,
+    const float*, const float*, const int*, const float, const int, const int, const int,
     const float*, const float*, const int);
 
 __global__ void d_doubleDotTensorFields(float*, const float*, const float*, const int, const int);

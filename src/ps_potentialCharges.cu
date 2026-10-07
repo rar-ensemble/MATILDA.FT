@@ -29,6 +29,16 @@ void NBCharge::initializePotential() {
     std::cout << "Initializing charge potential..." ; fflush(stdout);
 
     Iind = mybox->findGroupInteger(grpI);
+
+    buildKernels();
+
+}
+
+
+// Builds u(k), f(k), and the virial kernel for the current box
+// dimensions. Called at initialization and whenever L changes.
+void NBCharge::buildKernels() {
+
     
     std::complex<float> I(0.0, 1.0);
     float kv[3], k2;
@@ -52,7 +62,16 @@ void NBCharge::initializePotential() {
         for (int j = 0; j < Dim; j++) {
             fk[i * Dim + j] = -I * kv[j] * uk[i] ;
         }
+
+        // du/dk = -u(k) (2/k + 2 k sigma^2); u(0) = 0 so K(0) = 0
+        double dudk = 0.0;
+        if ( k2 > 0.0 ) {
+            double kmag = sqrt(double(k2));
+            dudk = -real(uk[i]) * (2.0 / kmag + 2.0 * kmag * sig2);
+        }
+        setVirialKernel(i, kv, k2, real(uk[i]), dudk);
     }
+    sendVirialKernelToDevice();
 
     // Send these to device, inv transform to get ur, f(r)
     cudaMemcpy(d_uk, uk, M*sizeof(std::complex<float>), cudaMemcpyHostToDevice);
@@ -119,6 +138,13 @@ float NBCharge::CalcEnergy() {
 }
 
 
+
+
+
+// Virial consistent with CalcEnergy(): E = 1/2 \int rhoq [u \ast rhoq]
+void NBCharge::CalcVirial(float* W) {
+    contractVirial(mybox->psGroup[Iind].d_rhoq, mybox->psGroup[Iind].d_rhoq, 0.5f, W);
+}
 
 
 

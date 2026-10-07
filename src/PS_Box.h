@@ -66,6 +66,9 @@ class PS_Box : public Box {
         float Upe;          // Total potential energy
         float Ubond, Uangle;// Stores bond and angle energy
 
+        float Ptens[6];     // [n_P_comps] pressure tensor, 2D: xx,yy,xy; 3D: xx,yy,zz,xy,xz,yz
+        float Pscalar;      // trace(Ptens) / Dim
+
         // Pre-allocated device scratch arrays for computeThermoProps()
         float *d_thermoE;       // [nstot]
         float *d_bondVirScratch; // [nstot*n_P_comps]
@@ -177,6 +180,12 @@ class PS_Box : public Box {
         void NVT(int) override;
         void forces(void);
         void computeThermoProps(void);
+        void computePressureTensor(void);   // Fills Ptens; assumes forces() just called
+        void updateDensityFields(void);     // Grid weights + group densities from d_x
+        void evaluateCurrentState(void);    // Fields, forces, and pressure for current d_x
+        void pressureCompIndices(int, int&, int&);  // pressure component -> (a,b)
+        void rescaleBox(const float*);      // Affinely rescale box, positions, kernels
+        void checkPressure(float);          // Finite-difference check of the virial
         void logNetForce(int step);     // Diagnostic: print Σf per dim
 
         void enableCharges(void); // allocates memory, sets flags for charges

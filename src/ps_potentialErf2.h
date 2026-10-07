@@ -14,6 +14,7 @@ class NBErf2 : public PS_Potential {
         NBErf2(std::istringstream&, PS_Box*);
         ~NBErf2();
         void initializePotential(void) override;
+        void buildKernels(void) override;
 
         float Ao;    // potential prefactor
         float Rp;    // step-function radius

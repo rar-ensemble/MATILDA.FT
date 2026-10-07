@@ -355,14 +355,6 @@ void PS_Box::finishInitialization() {
         die("Box created with no particles?!?");
     }
 
-    // Initialzie the data file, write its header
-    OTP.open(datFileName);
-    OTP << "# step" ;
-    if ( nBondTypes > 0 ) OTP << " bond" ;
-    
-    OTP << std::endl;
-    OTP.close();
-
     // After input read, make the FFT plan
     // This currently assumes complex-float to complex-float transforms
     // Would probably be better to do R2C and C2R at some point
@@ -539,24 +531,35 @@ void PS_Box::finishInitialization() {
     }
 
 
-    // Initialize the output stream
+    // Initialize the data file and write its header. Column order
+    // matches writeData()
     OTP.open(datFileName);
+    OTP << "# step" ;
+    if ( nBondsTot > 0 ) OTP << " Ubond" ;
+    if ( nAnglesTot > 0 ) OTP << " Uangle" ;
+    for ( int i=0 ; i<potentials.size(); i++ ) OTP << " U_pot" << i ;
+    const char* pLabels2[3] = {"Pxx", "Pyy", "Pxy"};
+    const char* pLabels3[6] = {"Pxx", "Pyy", "Pzz", "Pxy", "Pxz", "Pyz"};
+    for ( int c=0 ; c<n_P_comps; c++ ) OTP << " " << (Dim == 2 ? pLabels2[c] : pLabels3[c]);
+    OTP << " P" << std::endl;
     OTP.close();
+
+    // Pressure is only exact when every potential contributes its virial
+    for ( int c=0 ; c<6 ; c++ ) Ptens[c] = 0.0f;
+    Pscalar = 0.0f;
+    for ( int i=0 ; i<potentials.size(); i++ ) {
+        if ( !potentials[i]->hasVirial() ) {
+            std::cout << "WARNING: potential " << i << " does not support the virial; "
+                << "its contribution is omitted from the pressure" << std::endl;
+        }
+    }
 
     totSteps = 0;
 
     
     // Compute grid weights and fill the grid as a final 
     // step before leaving initialization.
-    d_calcGridWeights<<<nsGrid, nsBlock>>>(d_gridW, d_gridInds, d_x, _d_Nx, 
-            d_dxf, nstot, pmeorder, M, Dim );
-    
-    for ( int i=0 ; i<psGroup.size(); i++ ) {
-        // zero density, grid force fields
-        psGroup[i].zeroFields();
-        // Fill density fields
-        psGroup[i].makeDensityField();
-    }
+    updateDensityFields();
     check_cudaError("density field generation in PS_Box::finishInit");
 
 

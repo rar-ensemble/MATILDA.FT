@@ -17,8 +17,11 @@ class NBCharge : public PS_Potential {
         ~NBCharge();     // Default destructor
 
         void initializePotential(void) override;
+
+        void buildKernels(void) override;
         void CalcForces(void) override;
         float CalcEnergy(void) override;
+        void CalcVirial(float*) override;
         
         float LB;           // Bjerrum length
         float sig2;         // Variance for the charge-smearing Gaussian

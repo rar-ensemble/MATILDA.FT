@@ -129,11 +129,14 @@ __global__ void d_bondStressEnergy(
 		mdr2 = 0.0f;
 		for (j = 0; j < Dim; j++) {
 			dr[j] = x1[j] - d_x[id2 * Dim + j];
-			if (dr[j] > 0.5f * Lh[j]) dr[j] -= L[j];
-			else if (dr[j] < -0.5f * Lh[j]) dr[j] += L[j];
+			if (dr[j] > Lh[j]) dr[j] -= L[j];
+			else if (dr[j] < -Lh[j]) dr[j] += L[j];
 			mdr2 += dr[j] * dr[j];
 		}
 
+		// mf must match d_bonds exactly so the virial is consistent
+		// with the forces actually applied
+		mf = 0.0f;
 		if (mdr2 > 1.0E-4f) {
 			mdr = sqrtf(mdr2);
 
@@ -143,16 +146,14 @@ __global__ void d_bondStressEnergy(
 				d_e[ind] += d_bond_k[btyp] * arg * arg;
 			}
 			else if (bs == 1){
-				if ((mdr/d_bond_req[btyp]) < 1){
-					float arg = 1/(1 - (mdr/d_bond_req[btyp]) * (mdr/d_bond_req[btyp]));
-					mf = 2.0f * d_bond_k[btyp] * arg;
-					d_e[ind] += mf * mdr;
-					// printf("Did not implement the virial yet nor f = infinity!!!!!!!\n");
-				}
+				float x2 = (mdr/d_bond_req[btyp]) * (mdr/d_bond_req[btyp]);
+				mf = 2.0f * d_bond_k[btyp] / (1.0f - x2);
+
+				// U = -k R0^2 ln(1 - (r/R0)^2); undefined for r >= R0
+				if ( x2 < 1.0f )
+					d_e[ind] += -d_bond_k[btyp] * d_bond_req[btyp] * d_bond_req[btyp] * logf(1.0f - x2);
 			}
-		} // if ( mdr2 > 1.0E-5 )
-		else
-			mf = 0.0f;
+		} // if ( mdr2 > 1.0E-4 )
 
 
 		// Store pressure tensor stuffs

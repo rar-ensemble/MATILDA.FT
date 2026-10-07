@@ -185,6 +185,44 @@ __global__ void d_multiplyCpxByCpxConj(
 }
 
 
+// Contracts two k-space fields against one component of a virial kernel:
+// out[k] = Re[ a_k^* b_k ] * Re[ K_c(k) ]
+// Summing out[] over k and multiplying by V gives that potential's
+// virial component W_c.
+__global__ void d_virialContract(
+    float* out,             // [M] per-wavevector contribution
+    const cuComplex* a,     // [M] FT of first field
+    const cuComplex* b,     // [M] FT of second field
+    const cuComplex* virk,  // [M*nPC] virial kernel, stored k-major
+    const int comp,         // pressure component to contract
+    const int nPC,          // number of pressure components
+    const int M             // number of grid points
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= M)
+        return;
+
+    out[id] = ( a[id].x * b[id].x + a[id].y * b[id].y ) * virk[id * nPC + comp].x;
+}
+
+
+// Copies component comp of a strided per-particle array into a
+// contiguous array so it can be reduced with sumDeviceArray
+__global__ void d_extractStridedComp(
+    float* out,             // [N] contiguous output
+    const float* in,        // [N*stride] strided input
+    const int comp,         // component to extract
+    const int stride,       // number of components per particle
+    const int N             // number of particles
+) {
+    const int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= N)
+        return;
+
+    out[id] = in[id * stride + comp];
+}
+
+
 
 // performs complex multiplication with rh
 __global__ void d_multiplyDoubleCpxByCpx(
