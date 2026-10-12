@@ -71,7 +71,7 @@ NBBiasLC::NBBiasLC(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, box
     cudaMemcpy(d_rmin, rmin, dim*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_rmax, rmax, dim*sizeof(float), cudaMemcpyHostToDevice);
 
-    int is_ramping = -1;
+    // int is_ramping = -1;
     // ramp_check_input(iss, Ao);
 }
 
