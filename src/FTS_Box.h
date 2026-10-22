@@ -30,7 +30,7 @@ class FTS_Box : public Box {
         int clSampleFreq;   // Steps between CL density-average samples (cl only)
         int nCLSamples;     // Running count of accumulated CL density samples
         int cl_wait;        // Number of steps to wait before computing averages
-        
+
 
         // Data for tolerance checks
         double tolerance, Hold;   // Convergence tolerance, old real part of Heff for SCFT simulation
@@ -79,6 +79,12 @@ class FTS_Box : public Box {
         void computeIntRABlockDebye(thrust::host_vector<thrust::complex<double>>&, const double, const double);
         void computeIntERBlockDebye(thrust::host_vector<thrust::complex<double>>&, const double, 
             const double, const double, const double);
+
+        
+        // Variables and functions for orientation/unit sphere 
+        int Nu[2];          // Number of unit sphere grid points
+        int *d_Nu;          // ^^ device version of ^^
+        void integrate_u_fixed_r(cuDoubleComplex*, const cuDoubleComplex*);
 };
 
 #endif // FTS_BOX

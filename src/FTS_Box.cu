@@ -783,6 +783,18 @@ double FTS_Box::convergenceCheck() {
     }
 }
 
+
+void FTS_Box::integrate_u_fixed_r(
+    cuDoubleComplex* d_out,         // [M] output after integrating over orientations
+    const cuDoubleComplex* d_in     // [M*Nu[0]*Nu[1]] Input with r,phi,theta dependence
+) {
+
+    if ( Dim == 2 ) {
+        // For unit circle integrations
+    }
+    
+}
+
 void FTS_Box::initTolerances() {
     if ( tolMetric == "Heff" ) {
         return;

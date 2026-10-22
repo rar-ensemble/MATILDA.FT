@@ -8,6 +8,30 @@
 #include <cufftXt.h>
 #include "constants.h"
 
+__global__ void d_integrate_circle(
+    cuDoubleComplex* d_out,         // [M] after integrating orientations
+    const cuDoubleComplex* d_in,    // [M*Nu_tot] input with r, u dependence
+    const double d_th,              // 2*pi/Nu_tot
+    const int Nu_tot,               // Total u grid points
+    const int M                     // Total spatial points
+) {
+
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir >= M) return;
+
+    cuDoubleComplex rsum;
+    rsum.x = rsum.y = 0.0;
+    for (int iu = 0; iu < Nu_tot; iu++) {
+        rsum.x += d_in[(size_t)iu * M + ir].x;   // w = quadrature weights
+        rsum.y += d_in[(size_t)iu * M + ir].y;   // w = quadrature weights
+    }
+    
+    d_out[ir].x = rsum.x * d_th;
+    d_out[ir].y = rsum.y * d_th;
+
+}
+
+
 // Used for ramping/changing interaction potentials during a simulation
 __global__ void d_scale_potentials_by_scalar(
     cuComplex* uk,          // [M] pair potential in k-space
