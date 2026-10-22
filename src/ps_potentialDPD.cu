@@ -112,7 +112,8 @@ __global__ void d_DPD_forces(
             d_x + j_global * Dim,
             d_L, d_Lh, Dim);
 
-        if (r2 >= rcut * rcut) continue;
+        // Skip coincident particles: r_hat is undefined and 1/r -> inf gives NaN
+        if (r2 >= rcut * rcut || r2 < 1.0e-10f) continue;
 
         const float r    = sqrtf(r2);
         const float w    = 1.0f - r / rcut;

@@ -60,6 +60,8 @@ __global__ void d_VV_integrate_1(
         // PBC wrap
         if (xnew >= L[j]) xnew -= L[j];
         else if (xnew < 0.0f) xnew += L[j];
+        // tiny negative xnew + L can round to exactly L in float
+        if (xnew >= L[j]) xnew = 0.0f;
 
         x[aind] = xnew;
     }
