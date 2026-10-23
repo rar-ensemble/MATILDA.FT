@@ -2,6 +2,7 @@
 box fts scft
 Dim 3
 grid 35 35
+u_grid 40 80
 boxLengths 20.0 20.0
 Nr 1
 rho0 3.0

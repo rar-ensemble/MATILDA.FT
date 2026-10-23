@@ -448,6 +448,10 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 iss >> threads;
             }
 
+            else if ( firstWord == "u_grid" ) {
+                
+            }
+
             else if ( firstWord == "tolerance" ) {
                 iss >> tolMetric;
                 iss >> tolerance;
