@@ -50,6 +50,15 @@ class FTS_Species {
         // "Bare" field for this species (i.e., not convolved with a shape function)
         thrust::device_vector<thrust::complex<double>> d_w;
 
+
+        // Infrastructure to handle tensor field interactions
+        int tensor_field;
+        thrust::host_vector<thrust::complex<double>> density_u;     // [M*Nu_tot] \rho(r, u)
+        thrust::device_vector<thrust::complex<double>> d_density_u; // device version
+        thrust::device_vector<thrust::complex<double>> d_w_u;       // [M*Nu_tot] w(r) + M(r):S(u)
+
+
+
         FTS_Species();
         FTS_Species(std::istringstream&, FTS_Box*);
         virtual ~FTS_Species();     

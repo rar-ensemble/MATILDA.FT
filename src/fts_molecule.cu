@@ -4,6 +4,7 @@
 
 #include "fts_molecule.h"
 #include "fts_molecule_linear.h"
+#include "fts_molecule_lc.h"
 #include "fts_moleculeHParticle.h"
 #include "include_libs.h"
 #include "FTS_Box.h"
@@ -87,3 +88,69 @@ void modifyMolecParam(double& param, const std::string how2Mod, const double cha
         param = change;
     }
 }
+
+
+// Computes the contribution to the Hamiltonian 
+// for this molecule style. 
+std::complex<double> FTS_Molec::calcHTerm() {
+    std::complex<double> ht = 0.0;
+
+    if ( nmolecs > 0.0 ) {
+        ht = (std::complex<double>)( -nmolecs * log( Q ) );
+    }
+    else if ( activity > 0.0 ) {
+        ht = (std::complex<double>)( -activity*mybox->V*Q );
+    }
+    else {
+        die("Invalid conditions to calcHTerm()");
+    }
+
+    return ht;
+}
+
+void FTS_Molec::modifyMolecule(std::istringstream& iss) {
+
+    std::string property, how2Mod;
+    iss >> property;
+    
+    if ( property == "activity" ) {
+        iss >> how2Mod;
+
+        double change;
+        iss >> change;
+
+        std::cout << "activity changed from " << activity ;
+
+        modifyMolecParam(activity, how2Mod, change);
+        
+        // if (how2Mod == "scale" ) {
+        //     activity *= change;
+        // }
+
+        // else if ( how2Mod == "delta" ) {
+        //     activity += change;
+        // }
+
+        // else if ( how2Mod == "value" ) {
+        //     activity = change;
+        // }
+
+        std::cout << " to " << activity << std::endl;
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "phi" ) {
+        die("changes in FTS:molec:phi not yet supported");
+    }
+
+    // Changes here require re-calculating nmolecs
+    else if ( property == "nmolecs" ) {
+        die("changes in FTS:molec:nmolecs not yet supported");
+    }
+
+    else {
+        std::string lastWords = property + " is not a valid property to change in FTS:molecule";
+        die(lastWords.c_str());
+    }
+}
+

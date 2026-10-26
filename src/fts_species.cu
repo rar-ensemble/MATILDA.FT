@@ -21,6 +21,9 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
         if ( test == "charge" ) {
             iss >> charge;
         }
+        else if ( test == "orientation" ) {
+            tensor_field = 1;
+        }
     }
 
 
@@ -158,14 +161,6 @@ void FTS_Species::buildPotentialField() {
                         thrust::multiplies<thrust::complex<double>>());
 
 
-    // thrust::host_vector<thrust::complex<double>> htmp(box->M);
-    // htmp = d_w;
-    // if ( fts_species == "A" )
-    //     box->writeTComplexGridData("from_speciesA.dat", htmp);
-    // else {
-    //     box->writeTComplexGridData("from_speciesB.dat", htmp);
-    // //    die("done");
-    // }
 }
 
 

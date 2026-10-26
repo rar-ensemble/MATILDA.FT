@@ -69,9 +69,10 @@ class FTS_Molec {
         virtual ~FTS_Molec();
         std::string printCommand() {return input_command;}
 
+        virtual std::complex<double> calcHTerm();
+        virtual void modifyMolecule(std::istringstream&);
+        
         virtual void calcDensity()=0;
-        virtual std::complex<double> calcHTerm() = 0;
-        virtual void modifyMolecule(std::istringstream&) = 0;
         virtual void recomputeNmolecs(void) = 0;
 };
 

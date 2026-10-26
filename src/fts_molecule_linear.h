@@ -52,9 +52,7 @@ class LinearMolec : public FTS_Molec {
 
         void calcPropagators();
         void calcDensity() override;
-        std::complex<double> calcHTerm() override;
         void computeLinearTerms() override;
-        void modifyMolecule(std::istringstream&) override;
         void recomputeNmolecs(void) override;
 };
 
