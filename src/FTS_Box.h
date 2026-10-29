@@ -85,6 +85,9 @@ class FTS_Box : public Box {
         int Nu[2];          // Number of unit sphere grid points
         int *d_Nu;          // ^^ device version of ^^
         void integrate_u_fixed_r(cuDoubleComplex*, const cuDoubleComplex*);
+        
+        double *uvecs, *d_uvecs;    // [Dim*Nu] orientation vectors
+        double *Stens, *d_Stens;    // [Dim*(Dim+1)/2 * Nu] S_tensors
 };
 
 #endif // FTS_BOX

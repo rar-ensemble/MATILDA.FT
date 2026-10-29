@@ -22,8 +22,8 @@ __global__ void d_integrate_circle(
     cuDoubleComplex rsum;
     rsum.x = rsum.y = 0.0;
     for (int iu = 0; iu < Nu_tot; iu++) {
-        rsum.x += d_in[(size_t)iu * M + ir].x;   // w = quadrature weights
-        rsum.y += d_in[(size_t)iu * M + ir].y;   // w = quadrature weights
+        rsum.x += d_in[iu * M + ir].x;
+        rsum.y += d_in[iu * M + ir].y;
     }
     
     d_out[ir].x = rsum.x * d_th;

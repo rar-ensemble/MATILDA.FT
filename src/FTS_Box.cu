@@ -253,6 +253,45 @@ void FTS_Box::finishInitialization() {
     }
 
 
+    // Orientation initialization if needed
+    if ( Nu[0] > 0 ) {
+        int Nu_tot = Nu[0];
+        if ( Dim == 3 ) { 
+            Nu_tot *= Nu[1]; 
+        }
+
+        // Memory allocation on host and device //
+        uvecs = (double*) calloc(Dim*Nu_tot, sizeof(double));
+        cudaMalloc(&d_uvecs, Dim*Nu_tot * sizeof(double));
+
+        int u_alloc = (Dim*(Dim+1))/2 * Nu_tot;
+        Stens = (double*) calloc(u_alloc, sizeof(double));
+        cudaMalloc(&d_Stens, u_alloc * sizeof(double));
+
+        // Set up 2D orientation, S tensor host arrays
+        if ( Dim == 2 ) {
+            double dth = 2.0 * PI / double(Nu[0]);
+            for (int i=0 ; i<Nu[0] ; i++ ) {
+                double theta = dth * i;
+                uvecs[2*i + 0] = cos(theta);
+                uvecs[2*i + 1] = sin(theta);
+            }
+        }
+
+        //
+        else if ( Dim == 3 ) {
+            die("Orientation stuff not yet set up for 3D!");
+        }
+
+        // Send arrays to device
+        cudaMemcpy(d_Nu, Nu, 2 * sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_uvecs, uvecs, Dim*Nu_tot*sizeof(double),
+            cudaMemcpyHostToDevice);
+        cudaMemcpy(d_Stens, Stens, u_alloc*sizeof(double),
+            cudaMemcpyHostToDevice);
+    }
+
+
     // Initialize the output stream
     OTP.open("fts_data.dat");
     OTP << outline << std::endl;
@@ -448,14 +487,16 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 iss >> threads;
             }
 
-            else if ( firstWord == "u_grid" ) {
-                
-            }
-
             else if ( firstWord == "tolerance" ) {
                 iss >> tolMetric;
                 iss >> tolerance;
 
+            }
+            
+            else if ( firstWord == "u_grid" ) {
+                iss >> Nu[0] ;
+                if ( Dim == 3 ) { iss >> Nu[1]; }
+                else { Nu[1] = 1; }
             }
 
             else {

@@ -1,14 +1,16 @@
 # DEVELOPMENT INPUT THAT IS IN PROGRESS AND NOT FULLY TESTED
 box fts scft
 Dim 3
-grid 35 35
-u_grid 40 80
+grid 63 63
+u_grid 60
 boxLengths 20.0 20.0
 Nr 1
 rho0 3.0
 
+species A
+
 # molecule keyword, molecule type, vol fraction number of blocks, block N, block type, block N, block type...
-molecule linear phi 0.5 1 80 A
+molecule liquid-crystal phi 1.0 1 3 A 
 
 # potential keyword, style Helfand, kappa*Nr, time step
 potential edwards 10.0 0.001 modify zeromean updateScheme EMPC initialize random 0.0 1.0
