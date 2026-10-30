@@ -82,7 +82,7 @@ class FTS_Box : public Box {
 
         
         // Variables and functions for orientation/unit sphere 
-        int Nu[2];          // Number of unit sphere grid points
+        int Nu[2], Nu_tot;  // Number of unit sphere grid points
         int *d_Nu;          // ^^ device version of ^^
         void integrate_u_fixed_r(cuDoubleComplex*, const cuDoubleComplex*);
         

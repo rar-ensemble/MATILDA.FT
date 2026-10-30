@@ -60,12 +60,17 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
 
                 // initializes Gaussian smear in k-space
                 mybox->initSmearGaussian(smearFunc, 1.0, smearLength);
-                mybox->writeTComplexGridData("smearGaussian.dat", smearFunc);
+                // mybox->writeTComplexGridData("smearGaussian.dat", smearFunc);
                 
                 // Send smear to the device
                 d_smearFunc = smearFunc;
             }
-        }
+            else {
+                die("invalid smearing function passed to linear molecule");
+            }
+        } // s1 == "smear"
+
+
     }
 
     // Copy block lengths to device

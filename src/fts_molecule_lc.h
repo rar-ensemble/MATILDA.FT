@@ -17,9 +17,15 @@ class LCMolec : public FTS_Molec {
 
     public:
         int Ntot;                                           // total mesogen length
+        double bond_length;
         
-        thrust::host_vector<int>     intSpecies;            // [Ntot] type for each site   
-        thrust::device_vector<int> d_intSpecies;            // [Ntot] type for each site
+        std::string lc_style;
+        std::vector<std::string>    text_species;           // [Ntot] text labels per site
+        thrust::host_vector<int>     int_species;           // [Ntot] type for each site   
+        thrust::device_vector<int> d_int_species;           // [Ntot] type for each site
+
+        // Potential field for Ntot sites
+        thrust::device_vector<thrust::complex<double>> W;
 
         // [Dim*(Dim+1)/2*M] orientational order field
         thrust::host_vector<thrust::complex<double>> Stilde;

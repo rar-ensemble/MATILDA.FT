@@ -9,8 +9,8 @@ rho0 3.0
 
 species A
 
-# molecule keyword, molecule type, vol fraction number of blocks, block N, block type, block N, block type...
-molecule liquid-crystal phi 1.0 1 3 A 
+# molecule keyword, molecule type, vol fraction, total number of sites, list of site types
+molecule liquid-crystal phi 1.0 3 A A A
 
 # potential keyword, style Helfand, kappa*Nr, time step
 potential edwards 10.0 0.001 modify zeromean updateScheme EMPC initialize random 0.0 1.0

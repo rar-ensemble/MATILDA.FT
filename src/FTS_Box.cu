@@ -370,6 +370,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     tolerance = 1.0E-5; // Arbitrary small value for convergance tolerance
     tolMetric = "Heff";
     PCflag = false;
+    Nu_tot = 0;
     totSteps = 0;
     idum = time(0);
     threads = 512;
@@ -497,6 +498,8 @@ void FTS_Box::readInput(std::ifstream& inp) {
                 iss >> Nu[0] ;
                 if ( Dim == 3 ) { iss >> Nu[1]; }
                 else { Nu[1] = 1; }
+
+                Nu_tot = Nu[0] * Nu[1];
             }
 
             else {
