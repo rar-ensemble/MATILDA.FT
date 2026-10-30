@@ -21,6 +21,14 @@ class LCMolec : public FTS_Molec {
         thrust::host_vector<int>     intSpecies;            // [Ntot] type for each site   
         thrust::device_vector<int> d_intSpecies;            // [Ntot] type for each site
 
+        // [Dim*(Dim+1)/2*M] orientational order field
+        thrust::host_vector<thrust::complex<double>> Stilde;
+        thrust::device_vector<thrust::complex<double>> d_Stilde;
+
+        // [Nu_tot*M] orientational order field
+        thrust::host_vector<thrust::complex<double>> rhou;
+        thrust::device_vector<thrust::complex<double>> d_rhou;
+
         ~LCMolec();
         LCMolec(std::istringstream&, FTS_Box*);
 
