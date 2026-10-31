@@ -63,6 +63,11 @@ FTS_Molec* FTS_MolecFactory(std::istringstream &iss, FTS_Box* box) {
     else if ( s1 == "HParticle" ) {
         return new ParticleMolec(iss, box);
     }
+
+    else if ( s1 == "liquid-crystal") {
+        return new LCMolec(iss, box);
+    }
+    
 	else {
         std::string s2 = s1 + " is not a valid FTS_Molec"; 
         die(s2.c_str());

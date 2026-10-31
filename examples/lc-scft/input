@@ -1,16 +1,16 @@
 # DEVELOPMENT INPUT THAT IS IN PROGRESS AND NOT FULLY TESTED
 box fts scft
-Dim 3
+Dim 2
 grid 63 63
 u_grid 60
 boxLengths 20.0 20.0
-Nr 1
+Nr 5
 rho0 3.0
 
 species A
 
 # molecule keyword, molecule type, vol fraction, total number of sites, list of site types
-molecule liquid-crystal phi 1.0 3 A A A
+molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.25
 
 # potential keyword, style Helfand, kappa*Nr, time step
 potential edwards 10.0 0.001 modify zeromean updateScheme EMPC initialize random 0.0 1.0

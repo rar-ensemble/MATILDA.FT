@@ -40,6 +40,7 @@ class LCMolec : public FTS_Molec {
 
         void calcDensity() override;
         void recomputeNmolecs(void) override;
+        void computeLinearTerms(void) override;
 
 };
 #endif

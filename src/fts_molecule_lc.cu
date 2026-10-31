@@ -22,6 +22,8 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     // Number of sites on the LC
     iss >> Ntot ;
 
+    bond_length = 1.0;
+
     // Allocate the site-specific vectors
     text_species.resize(Ntot);
     int_species.resize(Ntot);
@@ -32,7 +34,7 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     }
 
     // Optional arguments
-    if ( iss.tellg() != -1 ) {
+    while ( iss.tellg() != -1 ) {
         std::string s1;
         iss >> s1;
         if ( s1 == "smear" || s1 == "Smear" ) {
@@ -49,7 +51,7 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
 
         else if ( s1 == "lc_style" || s1 == "lcStyle" ) {
             iss >> lc_style;
-            if ( lc_style != "all" || lc_style != "middle" ) {
+            if ( lc_style != "all" && lc_style != "middle" ) {
                 die("Invalid lc_style given for liquid-crystal molecule");
             }
         }
@@ -83,6 +85,68 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
 
     // initializes Gaussian smear in k-space
     mybox->initSmearGaussian(smearFunc, 1.0, smearLength);
+    
+
+
+    //////////////////////////
+    // begin debug
+    double u[2], r0[2], r1[2], r2[2];
+    u[0] = u[1] = 0.5 * pow(2.0,0.5);
+    
+    r1[0] = r1[1] = mybox->Lh[0];
+    r0[0] = r1[0]-bond_length * u[0];   r0[1] = r1[1]-bond_length * u[1];
+    
+
+    r2[0] = r1[0] + bond_length * u[0];   r2[1] = r1[1] + bond_length * u[1];
+
+    thrust::host_vector<thrust::complex<double>> htot;
+    htot.resize(mybox->M);
+
+    std::complex<double> I(0.0, 1.0);
+
+    double dr[2], mdr2, r[2];
+    for ( int i=0 ; i<mybox->M ; i++ ) {
+        // mybox->get_r(i, r);
+
+        // mdr2 = mybox->pbc_dr2(dr, r, r0);
+        // htot[i] = exp(-mdr2/2.0/smearLength/smearLength);
+        // std::cout << mdr2 << " " ;
+        // mdr2 = mybox->pbc_dr2(dr, r, r1);
+        // std::cout << mdr2 << " " ;
+
+        // htot[i] += exp(-mdr2/2.0/smearLength/smearLength);
+
+        // mdr2 = mybox->pbc_dr2(dr, r, r2);
+        // std::cout << mdr2 << std::endl;;
+        // htot[i] += exp(-mdr2/2.0/smearLength/smearLength);
+
+
+        double kv[3], k2;
+        k2 = mybox->get_kD(i, kv);
+        double kdotu = kv[0] * u[0] + kv[1] * u[1];
+
+        thrust::complex<double> arg1 = exp(-I * (kv[0]*r1[0] + kv[1]*r1[1]));
+        thrust::complex<double> arg0 = exp( I * kdotu * bond_length);
+        thrust::complex<double> arg2 = exp(-I * kdotu * bond_length);
+
+        htot[i] = smearFunc[i] * arg1 * ( 1.0 + arg0 + arg2 );
+    }
+    // mybox->writeTComplexGridData("htot.dat", htot);
+
+    d_smearFunc = htot;
+    
+    mybox->cufftWrapperDouble( d_smearFunc, d_smearFunc, -1);
+    
+    smearFunc = d_smearFunc;
+
+    mybox->writeTComplexGridData("lc-smear.dat", smearFunc);
+
+    die("done");
+    // end of debug
+    ////////////////////////////
+
+
+
     // mybox->writeTComplexGridData("smearGaussian.dat", smearFunc);
     
     // Send smear to the device
@@ -101,4 +165,7 @@ void LCMolec::recomputeNmolecs() {
     if ( activity > 0.0 ) {
         nmolecs = mybox->C * phi * mybox->Vfree * mybox->Nr / double(Ntot);   
     }
+}
+
+void LCMolec::computeLinearTerms() {
 }

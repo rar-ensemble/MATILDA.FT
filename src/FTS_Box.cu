@@ -410,6 +410,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
                     V *= L[j];
                     Vfree = V;
                     if ( Nx[0] > 0 ) { dx[j] = L[j] / double(Nx[j]); }
+                    Lh[j] = 0.5 * L[j];
                 }
             }
 
