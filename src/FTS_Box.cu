@@ -266,6 +266,8 @@ void FTS_Box::finishInitialization() {
         Stens.resize(u_alloc);
         d_Stens.resize(u_alloc);
 
+        Ntens = nS;
+
         // Set up 2D orientation, S tensor host arrays
         if ( Dim == 2 ) {
             double dth = 2.0 * PI / double(Nu[0]);

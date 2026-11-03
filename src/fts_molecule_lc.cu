@@ -158,14 +158,38 @@ void LCMolec::calcDensity() {
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
     
+    thrust::device_vector<thrust::complex<double>> t_tmp(M);
+
     // Transform the scalar field to generate E(k)
     for ( int s=0 ; s<Ntot ; s++ ) {
+        
+        // Convolve fields with smearing function as needed
         if ( doSmear ) {
             mybox->convolveTComplexDouble(mybox->Species[int_species[s]].d_w, 
                 d_W, d_smearFunc);
+
+            // Smear independent components of M tensor
+            if ( mybox->Species[int_species[s]].tensor_field == 1 ) {
+                int Ntens = mybox->Ntens;
+                for ( int nt=0 ; nt<Ntens ; nt++ ) {
+                    thrust::copy(mybox->Species[int_species[s]].d_Mw.begin(), 
+                        mybox->Species[int_species[s]].d_Mw.end(), 
+                        t_tmp.begin());
+
+                    mybox->convolveTComplexDouble(t_tmp, t_tmp, d_smearFunc);
+
+                    thrust::copy(t_tmp.begin(), t_tmp.end(), 
+                        d_Mr.begin() + nt*M);
+                }
+            }
         }
+
+        // If no convolutions needed, just copy fields
         else {
             d_W = mybox->Species[int_species[s]].d_w;
+            if ( mybox->Species[int_species[s]].tensor_field == 1 ) {
+                d_Mr = mybox->Species[int_species[s]].d_Mw;
+            }
         }
     
         // expW = exp(-W)
