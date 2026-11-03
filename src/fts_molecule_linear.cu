@@ -137,7 +137,7 @@ LinearMolec::LinearMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(is
     q_qdag.resize(mybox->M);
     temp.resize(mybox->M);
     thrust::fill(norm.begin(), norm.end(), 1.0/double(mybox->M));
-}
+}// LinearMolec() constructor
 
 struct NegExponential {
     __host__ __device__
@@ -360,14 +360,6 @@ void LinearMolec::calcDensity() {
     
     if ( activity > 0.0 ) {
         nSites = activity * mybox->V * Q.real() * Ntot;
-
-        // thrust::complex<double> ntemp;
-        // ntemp = thrust::reduce(d_cDensity.begin(), d_cDensity.end(), thrust::complex<double>(0.0),
-        //                         thrust::plus<thrust::complex<double>>()) * mybox->gvol;
-        
-        // std::cout << "nmolecs: " << nmolecs << " ntmp: " << ntemp << std::endl;
-            // this->Q = thrust::reduce(d_q.begin()+(Ntot-1)*mybox->M, d_q.begin()+Ntot*mybox->M, thrust::complex<double>(0.0), 
-            //             thrust::plus<thrust::complex<double>>()) * mybox->gvol / mybox->V;
     }
 
     // Finally, accumulate density onto the relevant species field

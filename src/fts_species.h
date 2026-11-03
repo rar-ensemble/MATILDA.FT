@@ -53,9 +53,11 @@ class FTS_Species {
 
         // Infrastructure to handle tensor field interactions
         int tensor_field;
-        thrust::host_vector<thrust::complex<double>> density_u;     // [M*Nu_tot] \rho(r, u)
-        thrust::device_vector<thrust::complex<double>> d_density_u; // device version
-        thrust::device_vector<thrust::complex<double>> d_w_u;       // [M*Nu_tot] w(r) + M(r):S(u)
+        thrust::host_vector<thrust::complex<double>> density_ru;     // [M*Nu_tot] \rho(r, u)
+        thrust::device_vector<thrust::complex<double>> d_density_ru; // device version
+        
+        // [M*(dim*(dim+1)/2-1)] M(r):S(u)
+        thrust::device_vector<thrust::complex<double>> d_Mw;         
 
 
 

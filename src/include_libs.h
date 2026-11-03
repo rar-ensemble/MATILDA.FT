@@ -50,6 +50,10 @@ __global__ void d_cpxToFloatVecComponent(float*, const cuComplex*, const int, co
 __global__ void d_assignFloatVal(float*, const float, const int);
 __global__ void d_floatPlusEqFloat(float*, const float*, const int);
 __global__ void d_floatVecPlusEqFloatComp(float*, const float*, const int, const int, const int);
+
+__global__ void d_exp_M_doubledot_S(cuDoubleComplex*, const cuDoubleComplex*, const double*,
+                const int, const int, const int);
+
 double ran2(void);
 std::string giveQuote(void);
 

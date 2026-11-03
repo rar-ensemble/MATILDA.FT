@@ -74,6 +74,7 @@ class FTS_Molec {
         
         virtual void calcDensity()=0;
         virtual void recomputeNmolecs(void) = 0;
+        virtual void finish_initialization() {} ;
 };
 
 #endif

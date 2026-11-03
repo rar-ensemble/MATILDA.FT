@@ -14,14 +14,15 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
 
     // Set default value of charge
     charge = 0.0;
+    tensor_field = 0;
 
     // Check for optional arguments 
     std::string test;
-    if ( iss >> test ) {
+    while ( iss >> test ) {
         if ( test == "charge" ) {
             iss >> charge;
         }
-        else if ( test == "orientation" ) {
+        else if ( test == "orientation" || test == "tensor" ) {
             tensor_field = 1;
         }
     }
@@ -36,6 +37,17 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
     this->d_density_avg.resize(M);
     this->d_Ak.resize(M);
     this->d_w.resize(M);
+
+    // Define tensor fields as needed
+    if ( tensor_field ) {
+        int Nu_tot = box->Nu_tot;
+        int dim = box->returnDimension();
+        int Ntensor = dim*(dim+1)/2 - 1;
+        this->density_ru.resize(M*Nu_tot);
+        this->d_density_ru.resize(M*Nu_tot);
+
+        this->d_Mw.resize(M*Ntensor);
+    }
 
     return;
 }
@@ -142,8 +154,6 @@ void FTS_Species::buildPotentialField() {
                 d_w.begin(), plusITimes());
 
         }
-
-
 
         else if (box->Potentials[i]->printStyle() == "Particle" ) {
             if (fts_species == box->Potentials[i]->actsOn[0] ) {

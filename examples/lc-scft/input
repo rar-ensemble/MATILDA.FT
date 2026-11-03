@@ -3,14 +3,14 @@ box fts scft
 Dim 2
 grid 63 63
 u_grid 60
-boxLengths 20.0 20.0
+boxLengths 12.0 12.0
 Nr 5
 rho0 3.0
 
-species A
+species A tensor
 
 # molecule keyword, molecule type, vol fraction, total number of sites, list of site types
-molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.25
+molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.5 bond_length 1.0
 
 # potential keyword, style Helfand, kappa*Nr, time step
 potential edwards 10.0 0.001 modify zeromean updateScheme EMPC initialize random 0.0 1.0

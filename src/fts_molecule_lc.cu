@@ -23,10 +23,12 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     iss >> Ntot ;
 
     bond_length = 1.0;
+    lc_style = "middle";
 
     // Allocate the site-specific vectors
     text_species.resize(Ntot);
     int_species.resize(Ntot);
+    tensor_flags.resize(Ntot, 0);
     d_int_species.resize(Ntot);
 
     for ( int i=0 ; i<Ntot ; i++ ) {
@@ -54,12 +56,23 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
             if ( lc_style != "all" && lc_style != "middle" ) {
                 die("Invalid lc_style given for liquid-crystal molecule");
             }
+            if ( lc_style == "middle" && Ntot%2 == 0 ) {
+                die("LCMolec can't handle even-numbers of sites with lc_style middle");
+            }
         }
 
         else if ( s1 == "bond_length" || s1 == "bondLength" ) {
             iss >> bond_length;
         }
     } // end of optional arguments
+
+    // Set flags for which particles carry orientation interactions
+    if ( lc_style == "middle" ) {
+        tensor_flags[ int(Ntot/2) ] = 1;
+    }
+    else if (lc_style == "all" ) {
+        for ( int s=0 ; s<Ntot ; s++ ) tensor_flags[s] = 1;
+    }
 
 
     // Determine integer block Species
@@ -79,84 +92,137 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     d_int_species = int_species;
 
 
-    // Allocate smearing
-    smearFunc.resize(mybox->M);
-    d_smearFunc.resize(mybox->M);
 
+    // Allocate field variables
+    // scalar fields
+    int M = mybox->M;
+    int Nru = M * mybox->Nu_tot;
+    int Ntens;
+    if ( mybox->returnDimension() == 2 ) {
+        Ntens = 2 * M;
+    }
+    else if ( mybox->returnDimension() == 3 ) {
+        Ntens = 5 * M;
+    }
+
+    // Allocate storage for scalar field
+    d_W.resize(M);
+    d_E.resize(Ntot * M);
+    d_expW.resize(M);
+    d_expMddS.resize(M);
+    
+    // M(r) and Stilde fields
+    d_Mr.resize(Ntens);
+
+    Stilde.resize(Ntens);
+    d_Stilde.resize(Ntens);
+    
+    cStilde.resize(Ntens);
+    d_cStilde.resize(Ntens);
+
+    // functions of (r, u)
+    rhou.resize(Nru);
+    d_rhou.resize(Nru);
+    d_Nru.resize(Nru);
+    
+    // int du N(r,u)
+    d_Nr.resize(M);
+
+
+    // Allocate smearing
+    smearFunc.resize(M);
+    d_smearFunc.resize(M);
+    
+    
     // initializes Gaussian smear in k-space
     mybox->initSmearGaussian(smearFunc, 1.0, smearLength);
-    
-
-
-    //////////////////////////
-    // begin debug
-    double u[2], r0[2], r1[2], r2[2];
-    u[0] = u[1] = 0.5 * pow(2.0,0.5);
-    
-    r1[0] = r1[1] = mybox->Lh[0];
-    r0[0] = r1[0]-bond_length * u[0];   r0[1] = r1[1]-bond_length * u[1];
-    
-
-    r2[0] = r1[0] + bond_length * u[0];   r2[1] = r1[1] + bond_length * u[1];
-
-    thrust::host_vector<thrust::complex<double>> htot;
-    htot.resize(mybox->M);
-
-    std::complex<double> I(0.0, 1.0);
-
-    double dr[2], mdr2, r[2];
-    for ( int i=0 ; i<mybox->M ; i++ ) {
-        // mybox->get_r(i, r);
-
-        // mdr2 = mybox->pbc_dr2(dr, r, r0);
-        // htot[i] = exp(-mdr2/2.0/smearLength/smearLength);
-        // std::cout << mdr2 << " " ;
-        // mdr2 = mybox->pbc_dr2(dr, r, r1);
-        // std::cout << mdr2 << " " ;
-
-        // htot[i] += exp(-mdr2/2.0/smearLength/smearLength);
-
-        // mdr2 = mybox->pbc_dr2(dr, r, r2);
-        // std::cout << mdr2 << std::endl;;
-        // htot[i] += exp(-mdr2/2.0/smearLength/smearLength);
-
-
-        double kv[3], k2;
-        k2 = mybox->get_kD(i, kv);
-        double kdotu = kv[0] * u[0] + kv[1] * u[1];
-
-        thrust::complex<double> arg1 = exp(-I * (kv[0]*r1[0] + kv[1]*r1[1]));
-        thrust::complex<double> arg0 = exp( I * kdotu * bond_length);
-        thrust::complex<double> arg2 = exp(-I * kdotu * bond_length);
-
-        htot[i] = smearFunc[i] * arg1 * ( 1.0 + arg0 + arg2 );
-    }
-    // mybox->writeTComplexGridData("htot.dat", htot);
-
-    d_smearFunc = htot;
-    
-    mybox->cufftWrapperDouble( d_smearFunc, d_smearFunc, -1);
-    
-    smearFunc = d_smearFunc;
-
-    mybox->writeTComplexGridData("lc-smear.dat", smearFunc);
-
-    die("done");
-    // end of debug
-    ////////////////////////////
-
-
-
-    // mybox->writeTComplexGridData("smearGaussian.dat", smearFunc);
     
     // Send smear to the device
     d_smearFunc = smearFunc;
 
+}//LCMolec constructor
+
+struct NegExponential {
+    __host__ __device__
+        thrust::complex<double> operator()(const thrust::complex<double> &z) {
+            return exp(-z);
+    }
+};
+
+void LCMolec::calcDensity() {
+    int Nu_tot = mybox->Nu_tot;
+    int dim = mybox->returnDimension();
+    int M = mybox->M;
+    double dth = 2.0 * PI / double(mybox->Nu[0]);
+
+    thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
+    thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
+    
+    // Transform the scalar field to generate E(k)
+    for ( int s=0 ; s<Ntot ; s++ ) {
+        if ( doSmear ) {
+            mybox->convolveTComplexDouble(mybox->Species[int_species[s]].d_w, 
+                d_W, d_smearFunc);
+        }
+        else {
+            d_W = mybox->Species[int_species[s]].d_w;
+        }
+    
+        // expW = exp(-W)
+        thrust::transform(d_W.begin(), d_W.end(), d_expW.begin(), NegExponential());
+
+        // Take F.T. of expW
+        mybox->cufftWrapperDouble(d_expW, d_expW, 1);
+
+        // d_E(k,s) = expW(k), offset by s*M to store in different regions of array
+        thrust::copy(d_expW.begin(), d_expW.end(), d_E.begin()+s*M);
+    }
+        
+
+    int grid = mybox->M_Grid;
+    int block = mybox->M_Block;
+
+    // d_exp_M_doubledot_S<<<grid, block>>>
+    
 }
 
 
-void LCMolec::calcDensity() {
-    
+void LCMolec::finish_initialization() {
+    int Nu = mybox->Nu_tot;
+    int M = mybox->M;
+    int Dim = mybox->returnDimension();
+    double dth = 2.0 * PI / double(mybox->Nu[0]);
+    std::complex<double> I(0.0, 1.0);
+
+    psi_x.resize(Nu*mybox->Nx[0]);
+    psi_y.resize(Nu*mybox->Nx[1]);
+    if ( Dim == 3 ) psi_z.resize(Nu*mybox->Nx[2]);
+
+    for ( int i=0 ; i<M ; i++ ) {
+        double kv[3];
+        (void) mybox->get_kD(i, kv);
+
+        for ( int j=0 ; j<Nu ; j++ ) {
+            if ( Dim == 2 ) {
+                double theta = dth * i;
+                double ux = mybox->uvecs[2*j + 0];
+                double uy = mybox->uvecs[2*j + 1];
+
+                psi_x[i*Nu + j] = exp(-I*kv[0]*ux);
+                psi_y[i*Nu + j] = exp(-I*kv[1]*uy);
+            }
+        }// j=0:Nu
+    }
+
+    d_psi_x.resize(Nu*mybox->Nx[0]);
+    d_psi_y.resize(Nu*mybox->Nx[1]);
+    if ( Dim == 3 ) d_psi_z.resize(Nu*mybox->Nx[2]);
+
+    d_psi_x = psi_x;
+    d_psi_y = psi_y;
+    if ( Dim == 3 ) d_psi_z = psi_z;
+
+    std::cout << "    psi_\alpha variables initialized for LCMolec" << std::endl;
 }
 
 

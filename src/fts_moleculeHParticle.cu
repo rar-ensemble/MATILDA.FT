@@ -287,7 +287,6 @@ std::complex<double> ParticleMolec::calcHTerm() {
 
 void ParticleMolec::modifyMolecule(std::istringstream& iss) {}
 
-
 void ParticleMolec::computeLinearTerms() { }
 
 void ParticleMolec::recomputeNmolecs() { }

@@ -8,6 +8,66 @@
 #include <cufftXt.h>
 #include "constants.h"
 
+
+// exp_M_doubledot_S computes the function 
+// f(r,u) = exp( -M(r):S(u) )
+// Kernel is parallelized over M, and each instance
+// loops over u
+__global__ void d_exp_M_doubledot_S(
+    cuDoubleComplex* expM,      // [M*Nu_tot] exp(-M(r):S(u) )
+    const cuDoubleComplex* MW,  // [M*Ntens] tensor field M
+    const double* S,            // [Nu_tot*Ntens]
+    const int Nu_tot,           // Total number of orientations
+    const int dim,              // spatial dimension
+    const int M                 // spatial grid points
+) {
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir >= M) return;
+
+    int nS = dim*(dim+1)/2 - 1;
+    cuDoubleComplex Mxx, Myy, Mzz, Mxy, Mxz, Myz;
+    
+    // Extract M(r) components
+    if ( dim == 2 ) {
+        Mxx = MW[0 * M + ir];
+        Mxy = MW[1 * M + ir];
+
+        Myy.x = -Mxx.x; // Based on traceless condition
+        Myy.y = -Mxx.y; // Based on traceless condition
+    }
+
+    else if ( dim == 3 ) {
+        // TODO
+    }
+
+
+    for ( int j=0 ; j<Nu_tot ; j++ ) {
+        if ( dim == 2 ) {
+            double Sxx = S[j*nS + 0];
+            double Syy = -Sxx;          // From traceless condition
+
+            double Sxy = S[j*nS + 1];
+
+            cuDoubleComplex MddotS;
+
+            // FActor of 2.0 from symmetry and inclusion of yx terms
+            MddotS.x = Mxx.x * Sxx + 2.0 * Sxy * Mxy.x + Myy.x * Syy;
+            MddotS.y = Mxx.y * Sxx + 2.0 * Sxy * Mxy.y + Myy.y * Syy;
+
+            // expM[j*M + ir] = cuCexp(MddotS);
+            double exp_temp = exp(-MddotS.x);
+            double c, s;
+            sincos(MddotS.y, &s, &c);
+            expM[j*M + ir].x = exp_temp * c;
+            expM[j*M + ir].y = exp_temp * s;
+        }
+
+        else if ( dim == 3 ) {
+            // TODO
+        }
+    }// j=0:Nu_tot
+}
+
 __global__ void d_integrate_circle(
     cuDoubleComplex* d_out,         // [M] after integrating orientations
     const cuDoubleComplex* d_in,    // [M*Nu_tot] input with r, u dependence

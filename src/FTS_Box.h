@@ -86,8 +86,8 @@ class FTS_Box : public Box {
         int *d_Nu;          // ^^ device version of ^^
         void integrate_u_fixed_r(cuDoubleComplex*, const cuDoubleComplex*);
         
-        double *uvecs, *d_uvecs;    // [Dim*Nu] orientation vectors
-        double *Stens, *d_Stens;    // [Dim*(Dim+1)/2 * Nu] S_tensors
+        thrust::host_vector<double>     uvecs,   Stens;
+        thrust::device_vector<double> d_uvecs, d_Stens;
 };
 
 #endif // FTS_BOX
