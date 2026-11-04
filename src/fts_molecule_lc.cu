@@ -184,7 +184,7 @@ void LCMolec::calcDensity() {
             }
         }
 
-        // If no convolutions needed, just copy fields
+        // If not smeared just copy fields
         else {
             d_W = mybox->Species[int_species[s]].d_w;
             if ( mybox->Species[int_species[s]].tensor_field == 1 ) {
