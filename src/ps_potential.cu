@@ -365,6 +365,7 @@ void PS_Potential::update_prefactor(const int step, const int maxsteps) {
 int PS_Potential::ramp_check_input(std::istringstream& iss, float A){
 
     if (iss.fail()){
+        return 0;
         die("Error during input script; failed to properly read:\n" + iss.str());
     }
 

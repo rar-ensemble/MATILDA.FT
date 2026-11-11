@@ -28,7 +28,7 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     // Allocate the site-specific vectors
     text_species.resize(Ntot);
     int_species.resize(Ntot);
-    tensor_flags.resize(Ntot, 0);
+    tensor_flag.resize(Ntot, 0);
     d_int_species.resize(Ntot);
 
     for ( int i=0 ; i<Ntot ; i++ ) {
@@ -68,10 +68,10 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
 
     // Set flags for which particles carry orientation interactions
     if ( lc_style == "middle" ) {
-        tensor_flags[ int(Ntot/2) ] = 1;
+        tensor_flag[ int(Ntot/2) ] = 1;
     }
     else if (lc_style == "all" ) {
-        for ( int s=0 ; s<Ntot ; s++ ) tensor_flags[s] = 1;
+        for ( int s=0 ; s<Ntot ; s++ ) tensor_flag[s] = 1;
     }
 
 
@@ -109,7 +109,6 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     d_W.resize(M);
     d_E.resize(Ntot * M);
     d_expW.resize(M);
-    d_expMddS.resize(M);
     
     // M(r) and Stilde fields
     d_Mr.resize(Ntens);
@@ -124,6 +123,7 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     rhou.resize(Nru);
     d_rhou.resize(Nru);
     d_Nru.resize(Nru);
+    d_expMddS.resize(Nru);
     
     // int du N(r,u)
     d_Nr.resize(M);
@@ -153,10 +153,14 @@ void LCMolec::calcDensity() {
     int Nu_tot = mybox->Nu_tot;
     int dim = mybox->returnDimension();
     int M = mybox->M;
+    int grid = mybox->M_Grid;
+    int block = mybox->M_Block;
     double dth = 2.0 * PI / double(mybox->Nu[0]);
     int grid = mybox->M_Grid;
     int block = mybox->M_Block;
 
+
+    double Lc = bond_length * (Ntot - 1);
 
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
@@ -202,15 +206,41 @@ void LCMolec::calcDensity() {
         // d_E(r,s) = expW(r), offset by s*M to store in different regions of array
         thrust::copy(d_expW.begin(), d_expW.end(), d_E.begin()+s*M);
     }// s=0:Ntot
-        
-
-
-    for ( int m=0 ; m<Nu_tot ; m++ ) {
-        
-    }// m=0:Nu_tot
-
     
-    // d_exp_M_doubledot_S<<<grid, block>>>
+
+    // Computes exp_M_doubledot_S = exp(-M(r):S(u)) for all r, u
+    cuDoubleComplex* _d_expMddS = (cuDoubleComplex*)thrust::raw_pointer_cast(d_expMddS.data());
+    cuDoubleComplex* _d_Mr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Mr.data());
+    double* _d_Stens = (double*)thrust::raw_pointer_cast(mybox->d_Stens.data());
+
+    d_exp_M_doubledot_S<<<grid, block>>>(_d_expMddS, _d_Mr, _d_Stens, Nu_tot, dim, M);
+
+
+    // Zero 
+    thrust::fill(d_Nru.begin(), d_Nru.end(), 1.0);
+    thrust::fill(d_Nr.begin(), d_Nr.end(), 0.0);
+
+    for ( int m=0 ; m<Nu_tot ; m++ ) { 
+        for ( int s=0 ; s<Ntot ; s++ ) { 
+
+            if ( tensor_flag[s] == 1 ) {
+                // t_tmp(r) = exp(-M(r):S)*exp(-w(r))
+                thrust::transform(d_expMddS.begin() + m*M, d_expMddS.begin() + (m+1)*M, 
+                    d_E.begin() + s*M, t_tmp.begin(), thrust::multiplies<thrust::complex<double>>());
+            }
+
+            else { 
+                // t_tmp(r) = exp(-w(r))
+                thrust::copy(d_E.begin() + s*M, d_E.begin() + (s+1)*M, t_tmp.begin());
+            }
+
+            // Compute F.T. of exp(-w-M:S)
+            mybox->cufftWrapperDouble(t_tmp, t_tmp, 1);
+
+            
+
+        }// s=0:Ntot
+    }// m=0:Nu_tot
     
 }
 
@@ -236,8 +266,8 @@ void LCMolec::finish_initialization() {
                 double ux = mybox->uvecs[2*j + 0];
                 double uy = mybox->uvecs[2*j + 1];
 
-                psi_x[i*Nu + j] = exp(-I*kv[0]*ux);
-                psi_y[i*Nu + j] = exp(-I*kv[1]*uy);
+                psi_x[i*Nu + j] = exp(-I * bond_length * kv[0]*ux);
+                psi_y[i*Nu + j] = exp(-I * bond_length * kv[1]*uy);
             }
         }// j=0:Nu
     }

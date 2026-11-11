@@ -66,7 +66,56 @@ __global__ void d_exp_M_doubledot_S(
             // TODO
         }
     }// j=0:Nu_tot
-}
+}// d_exp_M_doubledot_S
+
+
+
+__global__ void d_multiply_phase_shift(
+    cuDoubleComplex* d_out,         // [M] output after phase shift
+    const cuDoubleComplex* d_in,    // [M] input field
+    const cuDoubleComplex* psiX,    // [Nx]
+    const cuDoubleComplex* psiY,    // [Ny]
+    const cuDoubleComplex* psiZ,    // [Nz]
+    const int dim,
+    const int* Nx,
+    const int M
+) {
+
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir >= M) return;
+
+
+    // Figure out indices in [0, Nx), [0, Ny) etc
+    int nn[3], ix, iy, iz;
+    d_unstack(ir, nn, Nx, dim);
+    ix = nn[0];
+    iy = nn[1];
+
+    // Extract specific psi_x, psi_y components
+    cuDoubleComplex px = psiX[ix];
+    cuDoubleComplex py = psiY[iy];
+
+    // Construct total phase shift psi
+    cuDoubleComplex psi;
+    psi.x = px.x * py.x - px.y * py.y;
+    psi.y = px.x * py.y + px.y * py.x;
+
+    // if 3D, build in z phase shift
+    if ( dim == 3 ) {
+        iz = nn[2];
+
+        cuDoubleComplex pz = psiZ[iz];
+
+        psi.x = psi.x * pz.x - psi.y * pz.y;
+        psi.y = psi.x * pz.y + psi.y * pz.x;
+    }
+
+    // out
+    d_out[ir].x = d_in[ir].x * psi.x - d_in[ir].y * psi.y;
+    d_out[ir].y = d_in[ir].x * psi.y + d_in[ir].y * psi.x;
+    
+} // d_multiply_phase_shift
+
 
 __global__ void d_integrate_circle(
     cuDoubleComplex* d_out,         // [M] after integrating orientations

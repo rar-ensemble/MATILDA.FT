@@ -55,7 +55,7 @@ BiasField::BiasField(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, b
             iss >> n_periods;
         }
         else {
-            std::string err_msg = temp_str + " is not a valid initialize option in fts_potential";
+            std::string err_msg = temp_str + " is not a valid initialize option in ps_potentialBias";
             die(err_msg.c_str());
         }
     } // while (!iss)
@@ -80,7 +80,7 @@ BiasField::BiasField(std::istringstream& iss, PS_Box* box) : PS_Potential(iss, b
         cudaMalloc(&d_fz, M * sizeof(float));
         fz = (float*) malloc( M * sizeof(float));        
     }
-
+    std::cout << n_periods << " " << dir << " " << std::endl;
     int is_ramping = ramp_check_input(iss, Ao);
 }
 

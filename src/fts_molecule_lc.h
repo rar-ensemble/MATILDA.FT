@@ -23,22 +23,21 @@ class LCMolec : public FTS_Molec {
         std::string lc_style;
         std::vector<std::string>    text_species;           // [Ntot] text labels per site
         thrust::host_vector<int>     int_species;           // [Ntot] type for each site
-        thrust::host_vector<int>    tensor_flags;           // [Ntot] M(r) for this particle?
+        thrust::host_vector<int>    tensor_flag;            // [Ntot] M(r) for this particle?
         thrust::device_vector<int> d_int_species;           // [Ntot] type for each site
 
-        // Potential field for sites
+        // [M] Potential field for sites
         thrust::device_vector<thrust::complex<double>> d_W;
         thrust::device_vector<thrust::complex<double>> d_expW;
-        thrust::device_vector<thrust::complex<double>> d_expMddS;
         thrust::device_vector<thrust::complex<double>> d_E;
-
-        // Tensor potential field
+        
+        // [(Dim*(Dim+1)/2-1)*M] M(r) tensor field
         thrust::device_vector<thrust::complex<double>> d_Mr;
 
         // [(Dim*(Dim+1)/2-1)*M] orientational order field
-        thrust::host_vector<thrust::complex<double>> Stilde;
+        thrust::host_vector<thrust::complex<double>> Stilde;       
         thrust::device_vector<thrust::complex<double>> d_Stilde;
-
+        
         // [(Dim*(Dim+1)/2-1)*M] orientational order field
         thrust::host_vector<thrust::complex<double>> cStilde;
         thrust::device_vector<thrust::complex<double>> d_cStilde;
@@ -48,6 +47,7 @@ class LCMolec : public FTS_Molec {
         thrust::device_vector<thrust::complex<double>> d_rhou;
         thrust::device_vector<thrust::complex<double>> d_Nru;
         thrust::device_vector<thrust::complex<double>> d_Nr;
+        thrust::device_vector<thrust::complex<double>> d_expMddS;
 
         // Storage for the vectors that translate the Boltzmann weights
         thrust::host_vector<thrust::complex<double>> psi_x, psi_y, psi_z;
