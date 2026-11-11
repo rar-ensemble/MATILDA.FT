@@ -154,6 +154,9 @@ void LCMolec::calcDensity() {
     int dim = mybox->returnDimension();
     int M = mybox->M;
     double dth = 2.0 * PI / double(mybox->Nu[0]);
+    int grid = mybox->M_Grid;
+    int block = mybox->M_Block;
+
 
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
@@ -161,6 +164,7 @@ void LCMolec::calcDensity() {
     thrust::device_vector<thrust::complex<double>> t_tmp(M);
 
     // Transform the scalar field to generate E(k)
+    // Also smear M(r) if needed
     for ( int s=0 ; s<Ntot ; s++ ) {
         
         // Convolve fields with smearing function as needed
@@ -195,17 +199,17 @@ void LCMolec::calcDensity() {
         // expW = exp(-W)
         thrust::transform(d_W.begin(), d_W.end(), d_expW.begin(), NegExponential());
 
-        // Take F.T. of expW
-        mybox->cufftWrapperDouble(d_expW, d_expW, 1);
-
-        // d_E(k,s) = expW(k), offset by s*M to store in different regions of array
+        // d_E(r,s) = expW(r), offset by s*M to store in different regions of array
         thrust::copy(d_expW.begin(), d_expW.end(), d_E.begin()+s*M);
-    }
+    }// s=0:Ntot
         
 
-    int grid = mybox->M_Grid;
-    int block = mybox->M_Block;
 
+    for ( int m=0 ; m<Nu_tot ; m++ ) {
+        
+    }// m=0:Nu_tot
+
+    
     // d_exp_M_doubledot_S<<<grid, block>>>
     
 }
