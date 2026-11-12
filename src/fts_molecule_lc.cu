@@ -22,6 +22,10 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     // Number of sites on the LC
     iss >> Ntot ;
 
+    if ( Ntot % 2 == 0 ) {
+        die("Phase shifts for even numbers of LC sites not set up");
+    }
+
     bond_length = 1.0;
     lc_style = "middle";
 
@@ -156,16 +160,20 @@ void LCMolec::calcDensity() {
     int grid = mybox->M_Grid;
     int block = mybox->M_Block;
     double dth = 2.0 * PI / double(mybox->Nu[0]);
-    int grid = mybox->M_Grid;
-    int block = mybox->M_Block;
 
+    thrust::device_vector<thrust::complex<double>> t_tmp(M);
 
-    double Lc = bond_length * (Ntot - 1);
+    
+    cuDoubleComplex* _d_expMddS = (cuDoubleComplex*)thrust::raw_pointer_cast(d_expMddS.data());
+    cuDoubleComplex* _d_Mr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Mr.data());
+    double* _d_Stens = (double*)thrust::raw_pointer_cast(mybox->d_Stens.data());
+    cuDoubleComplex* _t_tmp = (cuDoubleComplex*)thrust::raw_pointer_cast(t_tmp.data());
+    cuDoubleComplex* _d_psi_x = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_x.data());
+    cuDoubleComplex* _d_psi_y = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_y.data());
+    cuDoubleComplex* _d_psi_z = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_z.data());
 
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
-    
-    thrust::device_vector<thrust::complex<double>> t_tmp(M);
 
     // Transform the scalar field to generate E(k)
     // Also smear M(r) if needed
@@ -209,14 +217,10 @@ void LCMolec::calcDensity() {
     
 
     // Computes exp_M_doubledot_S = exp(-M(r):S(u)) for all r, u
-    cuDoubleComplex* _d_expMddS = (cuDoubleComplex*)thrust::raw_pointer_cast(d_expMddS.data());
-    cuDoubleComplex* _d_Mr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Mr.data());
-    double* _d_Stens = (double*)thrust::raw_pointer_cast(mybox->d_Stens.data());
-
     d_exp_M_doubledot_S<<<grid, block>>>(_d_expMddS, _d_Mr, _d_Stens, Nu_tot, dim, M);
 
 
-    // Zero 
+    // Initialize Nru, Nr 
     thrust::fill(d_Nru.begin(), d_Nru.end(), 1.0);
     thrust::fill(d_Nr.begin(), d_Nr.end(), 0.0);
 
@@ -237,8 +241,16 @@ void LCMolec::calcDensity() {
             // Compute F.T. of exp(-w-M:S)
             mybox->cufftWrapperDouble(t_tmp, t_tmp, 1);
 
-            
+            // phase shift exponent: Ntot/2 - s
+            int phase_power = int(Ntot/2) - s;
+            d_multiply_phase_shift<<<grid, block>>>(_t_tmp, _t_tmp, _d_psi_x, _d_psi_y, _d_psi_z,
+                m, Nu_tot, phase_power, dim, mybox->_d_Nx, M);
 
+            // t_tmp back to real space
+            mybox->cufftWrapperDouble(t_tmp, t_tmp, -1);
+
+            thrust::transform(t_tmp.begin(), t_tmp.end(), d_Nru.begin() + m*M,
+                                thrust::multiplies<thrust::complex<double>>());
         }// s=0:Ntot
     }// m=0:Nu_tot
     

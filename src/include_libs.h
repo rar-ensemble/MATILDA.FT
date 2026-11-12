@@ -53,6 +53,9 @@ __global__ void d_floatVecPlusEqFloatComp(float*, const float*, const int, const
 
 __global__ void d_exp_M_doubledot_S(cuDoubleComplex*, const cuDoubleComplex*, const double*,
                 const int, const int, const int);
+__global__ void d_multiply_phase_shift(cuDoubleComplex*, const cuDoubleComplex*, 
+        const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*,
+        const int, const int, const int, const int, const int*, const int);
 
 double ran2(void);
 std::string giveQuote(void);

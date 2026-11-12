@@ -76,6 +76,9 @@ __global__ void d_multiply_phase_shift(
     const cuDoubleComplex* psiX,    // [Nx]
     const cuDoubleComplex* psiY,    // [Ny]
     const cuDoubleComplex* psiZ,    // [Nz]
+    const int m,
+    const int Nu_tot,
+    const int power,
     const int dim,
     const int* Nx,
     const int M
@@ -92,8 +95,9 @@ __global__ void d_multiply_phase_shift(
     iy = nn[1];
 
     // Extract specific psi_x, psi_y components
-    cuDoubleComplex px = psiX[ix];
-    cuDoubleComplex py = psiY[iy];
+    // ERROR IN INDEXES
+    cuDoubleComplex px = psiX[ix*Nu_tot + m];
+    cuDoubleComplex py = psiY[iy*Nu_tot + m];
 
     // Construct total phase shift psi
     cuDoubleComplex psi;
@@ -104,7 +108,7 @@ __global__ void d_multiply_phase_shift(
     if ( dim == 3 ) {
         iz = nn[2];
 
-        cuDoubleComplex pz = psiZ[iz];
+        cuDoubleComplex pz = psiZ[iz*Nu_tot + m];
 
         psi.x = psi.x * pz.x - psi.y * pz.y;
         psi.y = psi.x * pz.y + psi.y * pz.x;
