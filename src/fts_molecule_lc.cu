@@ -82,6 +82,10 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     // Determine integer block Species
     for ( int j=0 ; j<Ntot; j++ ) {
         int_species[j] = -55;
+        if ( j > 0 && text_species[j] != text_species[j-1] ) {
+            die("LC densities not yet set up to handle multiple species");
+        }
+
         for ( int i=0 ; i<mybox->Species.size(); i++ ) {
             if ( text_species[j] == mybox->Species[i].fts_species ) {
                 int_species[j] = i;
@@ -162,7 +166,6 @@ void LCMolec::calcDensity() {
     double dth = 2.0 * PI / double(mybox->Nu[0]);
 
     thrust::device_vector<thrust::complex<double>> t_tmp(M);
-
     
     cuDoubleComplex* _d_expMddS = (cuDoubleComplex*)thrust::raw_pointer_cast(d_expMddS.data());
     cuDoubleComplex* _d_Mr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Mr.data());
@@ -171,9 +174,12 @@ void LCMolec::calcDensity() {
     cuDoubleComplex* _d_psi_x = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_x.data());
     cuDoubleComplex* _d_psi_y = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_y.data());
     cuDoubleComplex* _d_psi_z = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_z.data());
+    cuDoubleComplex* _d_Nru = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Nru.data());
+    cuDoubleComplex* _d_Nr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Nr.data());
 
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
+    thrust::fill(d_rhou.begin(), d_rhou.end(), 0.0);
 
     // Transform the scalar field to generate E(k)
     // Also smear M(r) if needed
@@ -249,13 +255,84 @@ void LCMolec::calcDensity() {
             // t_tmp back to real space
             mybox->cufftWrapperDouble(t_tmp, t_tmp, -1);
 
+            // N(r,u) *= E_s(r-b_su, u)
             thrust::transform(t_tmp.begin(), t_tmp.end(), d_Nru.begin() + m*M,
+                                d_Nru.begin() + m*M, 
                                 thrust::multiplies<thrust::complex<double>>());
         }// s=0:Ntot
+
+
+        // t_tmp(r) = d_N(r,u_m)
+        thrust::copy(d_Nru.begin()+m*M, d_Nru.begin()+(m+1)*M, t_tmp.begin());
+
+        if ( lc_style == "middle" ) {
+            // accumulate S_m * N(r,u)
+        }
+
+        // t_tmp = N(k,u)
+        mybox->cufftWrapperDouble(t_tmp, t_tmp, 1);
+
+
+        // Sum density contributions for all monomers
+        // Gabe = \sum_s \psi_s N(k,u) = R(k,u)
+        d_Ntot_phase_shifts<<<grid, block>>>(mybox->d_cpxGabe, _t_tmp, 
+            _d_psi_x, _d_psi_y, _d_psi_z,
+            m, Nu_tot, Ntot, dim, mybox->_d_Nx, M);
+
+        // Back to real space: t_tmp = R(r,u) = F^(-1)[\sum_s d_Nru]
+        mybox->cufftWrapperDouble(mybox->d_cpxGabe, _t_tmp, -1);
+
+        // rho(r,u) = R(r,u)
+        thrust::copy(t_tmp.begin(), t_tmp.end(), d_rhou.begin() + m*M);
+
+        if ( lc_style == "all" ) {
+            // accumulate S_m * R(r,u)
+        }
+
     }// m=0:Nu_tot
     
-}
+    mybox->integrate_u_fixed_r(_d_Nr, _d_Nru);
 
+    thrust::complex<double> prefactor = nmolecs * mybox->gvol / mybox->V / PI2;
+    
+    // Angle normalization should be 4PI in 3D
+    if ( dim == 3 ) prefactor *= 0.5;
+
+    Q = thrust::reduce(d_Nr.begin(), d_Nr.end(), thrust::complex<double>(0.0), 
+                        thrust::plus<thrust::complex<double>>()) * prefactor;
+
+    // Multiply rho(r,u) by n/Omega/V/Q
+    prefactor *= 1.0 / Q;
+    thrust::transform( d_rhou.begin(), d_rhou.end(), d_rhou.begin(),
+        [=] __device__ (thrust::complex<double> x) {
+            return x * prefactor;
+        }
+    );
+        
+    // accumulate rho(r) = \int du rho(r,u)
+    cuDoubleComplex *_d_cDensity = 
+            (cuDoubleComplex*) thrust::raw_pointer_cast(d_cDensity.data());
+    cuDoubleComplex *_d_rhou = 
+            (cuDoubleComplex*) thrust::raw_pointer_cast(d_rhou.data());
+    mybox->integrate_u_fixed_r(_d_cDensity, _d_rhou);
+
+
+    // Finally, smear the relevant fields if needed
+    if ( doSmear ) {
+        mybox->convolveTComplexDouble(d_cDensity, t_tmp, d_smearFunc);
+        // Make this convolve S field
+        // mybox->convolveTComplexDouble(d_cDensity, t_tmp, d_smearFunc);
+    }
+
+    // Not smearing, so just equate the fields
+    else {
+        d_density = d_cDensity;
+        d_Stilde = d_cStilde;
+    }
+
+
+}
+// gabe here :3
 
 void LCMolec::finish_initialization() {
     int Nu = mybox->Nu_tot;
@@ -271,6 +348,8 @@ void LCMolec::finish_initialization() {
     for ( int i=0 ; i<M ; i++ ) {
         double kv[3];
         (void) mybox->get_kD(i, kv);
+        int nn[3];
+        mybox->unstack2(i, nn);
 
         for ( int j=0 ; j<Nu ; j++ ) {
             if ( Dim == 2 ) {
@@ -278,8 +357,8 @@ void LCMolec::finish_initialization() {
                 double ux = mybox->uvecs[2*j + 0];
                 double uy = mybox->uvecs[2*j + 1];
 
-                psi_x[i*Nu + j] = exp(-I * bond_length * kv[0]*ux);
-                psi_y[i*Nu + j] = exp(-I * bond_length * kv[1]*uy);
+                psi_x[nn[0]*Nu + j] = exp(-I * bond_length * kv[0]*ux);
+                psi_y[nn[1]*Nu + j] = exp(-I * bond_length * kv[1]*uy);
             }
         }// j=0:Nu
     }

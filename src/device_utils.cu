@@ -7,7 +7,7 @@
 #include <cufft.h>
 #include <cufftXt.h>
 #include "constants.h"
-
+__device__ void d_unstack(int, int*, const int*, const int ) ;
 
 // exp_M_doubledot_S computes the function 
 // f(r,u) = exp( -M(r):S(u) )
@@ -68,16 +68,90 @@ __global__ void d_exp_M_doubledot_S(
     }// j=0:Nu_tot
 }// d_exp_M_doubledot_S
 
+__global__ void d_Ntot_phase_shifts(
+    cuDoubleComplex* d_Rku,         // [M] output after phase shift
+    const cuDoubleComplex* d_Nku,   // [M] input field
+    const cuDoubleComplex* psiX,    // [Nx*Nu_tot] x-phase shift
+    const cuDoubleComplex* psiY,    // [Ny*Nu_tot] y-phase shift
+    const cuDoubleComplex* psiZ,    // [Nz*Nu_tot] z-phase shift
+    const int m,                    // angle index \in [0, Nu_tot)
+    const int Nu_tot,               // Number of possible angles
+    const int Ntot,                 // Sites per LC
+    const int dim, 
+    const int* Nx,
+    const int M
+) {
 
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir >= M) return;
+
+    cuDoubleComplex Rout = d_Rku[ir];
+    cuDoubleComplex Nin = d_Nku[ir];
+
+    // Figure out indices in [0, Nx), [0, Ny) etc
+    int nn[3], ix, iy, iz;
+    d_unstack(ir, nn, Nx, dim);
+    ix = nn[0];
+    iy = nn[1];
+    cuDoubleComplex psi, psi_s;
+
+    if ( Ntot == 1 ) {
+        psi.x = 1.0;
+        psi.y = 0.0;
+
+        psi_s = psi;
+    }
+    else {
+        cuDoubleComplex px = psiX[ix*Nu_tot + m];
+        cuDoubleComplex py = psiY[iy*Nu_tot + m];
+
+        // Construct total phase shift psi
+        psi = cuCmul( px, py) ;
+
+        // if 3D, build in z phase shift
+        if ( dim == 3 ) {
+            iz = nn[2];
+            cuDoubleComplex pz = psiZ[iz*Nu_tot + m];
+            psi = cuCmul(psi, pz);
+        }
+
+        psi_s.x = 1.0;
+        psi_s.y = 0.0;
+        
+        // scale psi to start at s=0 end of molecule
+        psi_s = cuCdiv( psi_s, psi );
+        for ( int s=1 ; s<int(Ntot/2) ; s++ ) {
+            psi_s = cuCmul( psi_s, psi_s );
+        }
+
+    }
+
+    // accumulate first bead density
+    cuDoubleComplex N_psi = cuCmul(Nin, psi_s);
+    Rout = cuCadd( Rout, N_psi );
+
+    // update phase shift and accumulate s=1:Ntot densities
+    for ( int s=1 ; s<Ntot ; s++ ) {
+        // Increment psi_s by one power
+        psi_s = cuCmul( psi_s, psi );
+
+        // R_psi = psi_s(k) * N(k)
+        cuDoubleComplex N_psi = cuCmul(Nin, psi_s);
+        Rout = cuCadd( Rout, N_psi );
+    }
+
+    d_Rku[ir] = Rout;
+    
+} // d_multiply_phase_shift
 
 __global__ void d_multiply_phase_shift(
     cuDoubleComplex* d_out,         // [M] output after phase shift
     const cuDoubleComplex* d_in,    // [M] input field
-    const cuDoubleComplex* psiX,    // [Nx]
-    const cuDoubleComplex* psiY,    // [Ny]
-    const cuDoubleComplex* psiZ,    // [Nz]
-    const int m,
-    const int Nu_tot,
+    const cuDoubleComplex* psiX,    // [Nx*Nu_tot] x-phase shift
+    const cuDoubleComplex* psiY,    // [Ny*Nu_tot] y-phase shift
+    const cuDoubleComplex* psiZ,    // [Nz*Nu_tot] z-phase shift
+    const int m,                    // angle index \in [0, Nu_tot)
+    const int Nu_tot,               // Number of possible angles
     const int power,
     const int dim,
     const int* Nx,
@@ -93,30 +167,43 @@ __global__ void d_multiply_phase_shift(
     d_unstack(ir, nn, Nx, dim);
     ix = nn[0];
     iy = nn[1];
-
-    // Extract specific psi_x, psi_y components
-    // ERROR IN INDEXES
-    cuDoubleComplex px = psiX[ix*Nu_tot + m];
-    cuDoubleComplex py = psiY[iy*Nu_tot + m];
-
-    // Construct total phase shift psi
     cuDoubleComplex psi;
-    psi.x = px.x * py.x - px.y * py.y;
-    psi.y = px.x * py.y + px.y * py.x;
+    
+    if ( power != 0 ) {
+        // Extract specific psi_x, psi_y components
+        cuDoubleComplex px = psiX[ix*Nu_tot + m];
+        cuDoubleComplex py = psiY[iy*Nu_tot + m];
 
-    // if 3D, build in z phase shift
-    if ( dim == 3 ) {
-        iz = nn[2];
+        // Construct total phase shift psi
 
-        cuDoubleComplex pz = psiZ[iz*Nu_tot + m];
+        psi = cuCmul( px, py) ;
 
-        psi.x = psi.x * pz.x - psi.y * pz.y;
-        psi.y = psi.x * pz.y + psi.y * pz.x;
+        // if 3D, build in z phase shift
+        if ( dim == 3 ) {
+            iz = nn[2];
+            cuDoubleComplex pz = psiZ[iz*Nu_tot + m];
+            psi = cuCmul(psi, pz);
+        }
+
+        cuDoubleComplex cpx1;
+        cpx1.x = 1.0;
+        cpx1.y = 0.0;
+        
+        if ( power < 0 ) psi = cuCdiv( cpx1, psi );
+
+        for ( int p=1 ; p<abs(power) ; p++ ) {
+            psi = cuCmul(psi, psi);
+        }
+    }
+
+    // power = 0
+    else {
+        psi.x = 1.0;
+        psi.y = 0.0;
     }
 
     // out
-    d_out[ir].x = d_in[ir].x * psi.x - d_in[ir].y * psi.y;
-    d_out[ir].y = d_in[ir].x * psi.y + d_in[ir].y * psi.x;
+    d_out[ir] = cuCmul( d_in[ir] , psi );
     
 } // d_multiply_phase_shift
 

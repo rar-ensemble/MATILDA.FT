@@ -838,6 +838,8 @@ double FTS_Box::convergenceCheck() {
     }
 }
 
+__global__ void d_integrate_circle(cuDoubleComplex*, const cuDoubleComplex*,
+    const double, const int, const int);
 
 void FTS_Box::integrate_u_fixed_r(
     cuDoubleComplex* d_out,         // [M] output after integrating over orientations
@@ -846,6 +848,13 @@ void FTS_Box::integrate_u_fixed_r(
 
     if ( Dim == 2 ) {
         // For unit circle integrations
+        double dth = PI2 / double(Nu_tot);
+        
+        d_integrate_circle<<<M_Grid, M_Block>>>(d_out, d_in, dth, Nu_tot, M);
+    }
+
+    else if ( Dim == 3 ) {
+        die("3D sphere integration not yet implemented");
     }
     
 }

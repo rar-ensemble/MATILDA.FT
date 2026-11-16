@@ -3,7 +3,7 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-CUDA_LOC = /usr/local/cuda
+CUDA_LOC = /usr
 
 
 
@@ -13,7 +13,7 @@ CC = ${CUDA_LOC}/bin/nvcc
 # GIT_DIRECTORY := $(shell git rev-parse --show-toplevel)
 
 
-CFLAGS = -std=c++17 -arch=sm_86 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
+CFLAGS = -std=c++17 -arch=sm_86 --extended-lambda -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
 # CFLAGS = -std=c++14 -arch=sm_70 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
 CPPFLAGS = --expt-relaxed-constexpr
 

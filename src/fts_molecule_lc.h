@@ -19,6 +19,8 @@ class LCMolec : public FTS_Molec {
         int Ntot;                                           // total mesogen length
         double bond_length;
         int smear_written = 0;
+
+        cufftHandle fftBatchPlan;
         
         std::string lc_style;
         std::vector<std::string>    text_species;           // [Ntot] text labels per site

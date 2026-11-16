@@ -57,6 +57,10 @@ __global__ void d_multiply_phase_shift(cuDoubleComplex*, const cuDoubleComplex*,
         const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*,
         const int, const int, const int, const int, const int*, const int);
 
+__global__ void d_Ntot_phase_shifts(cuDoubleComplex*, const cuDoubleComplex*, 
+        const cuDoubleComplex*, const cuDoubleComplex*, const cuDoubleComplex*,
+        const int, const int, const int, const int, const int*, const int);        
+
 double ran2(void);
 std::string giveQuote(void);
 

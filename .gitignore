@@ -39,6 +39,7 @@ matilda.ft
 
 # Extras
 git-version.h
+build/
 
 examples/*
 makefile
