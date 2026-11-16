@@ -1,25 +1,40 @@
-# DEVELOPMENT INPUT THAT IS IN PROGRESS AND NOT FULLY TESTED
+# 2D SCFT of a three-site rigid mesogen that forms a smectic-A phase.
+# Only the central site carries the Maier-Saupe interaction (lc_style middle).
 box fts scft
 Dim 2
-grid 63 63
-u_grid 60
+grid 48 48
+
+# Number of orientations on the unit circle. Must come before any
+# species with a tensor field and before the liquid-crystal molecule.
+u_grid 32
+
 boxLengths 12.0 12.0
 Nr 5
-rho0 3.0
+C 0.4
+tolerance Heff 1.0e-10
 
+# 'tensor' gives this species an orientation tensor field
 species A tensor
 
 # molecule keyword, molecule type, vol fraction, total number of sites, list of site types
-molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.5 bond_length 1.0
+# optional: smear gaussian [width], bond_length [b], lc_style [middle | all]
+molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.4 bond_length 1.0 lc_style middle
 
 # potential keyword, style Helfand, kappa*Nr, time step
-potential edwards 10.0 0.001 modify zeromean updateScheme EMPC initialize random 0.0 1.0
+# The seed is a density wave along x with period 3*bond_length, the smectic layer spacing.
+# kappa*Nr must be large enough to prevent the Maier-Saupe attraction from collapsing the fluid.
+potential helfand 100.0 1.0 updateScheme EMPC initialize sin 0 0.0 0.5 4
 
+# potential keyword, style maiersaupe, species, mu*Nr, time step
+# initialize [xx | xy] [style ...] seeds one tensor component; Mxx < 0 aligns along x.
+# Homogeneous isotropic-nematic threshold: mu*Nr = 4 * Nr * Ntot / (tensor sites per molecule)^2,
+# which is 60 for this molecule.
+potential maiersaupe A 150.0 2.0 updateScheme EMPC initialize xx value -1.0 0.0
 
-logFreq 50
-chemFieldFreq 100
-densityFieldFreq 100
+logFreq 250
+chemFieldFreq 250
+densityFieldFreq 250
 
 endBox
 
-run nvt 5000
+run nvt 4000
