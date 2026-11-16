@@ -82,12 +82,25 @@ class FTS_Box : public Box {
 
         
         // Variables and functions for orientation/unit sphere 
+        // In 2D the orientations are Nu_tot equally spaced angles on the unit
+        // circle; in 3D they are the points of a Lebedev rule with Nu_tot points.
+        // Orientation integrals are \int du f(u) = \sum_m uwts[m] f(u_m), 
+        // with \sum_m uwts[m] = Omega (2 pi in 2D, 4 pi in 3D).
         int Ntens;          // dim*(dim+1)/2 - 1, number of ind tensor comps
         int Nu[2], Nu_tot;  // Number of unit sphere grid points
+        double Omega;       // Total solid angle
+        void initOrientations(void);
         void integrate_u_fixed_r(cuDoubleComplex*, const cuDoubleComplex*);
         
-        thrust::host_vector<double>     uvecs,   Stens;
-        thrust::device_vector<double> d_uvecs, d_Stens;
+        // uvecs     [Dim*Nu_tot]   unit vectors
+        // uwts      [Nu_tot]       quadrature weights
+        // Stens     [Ntens*Nu_tot] independent components of S(u) = uu - I/d
+        //                          2D: xx, xy.  3D: xx, yy, xy, xz, yz
+        // Scontract [Ntens*Nu_tot] coefficients c such that for a symmetric traceless T
+        //                          stored by its independent components, 
+        //                          T:S(u) = \sum_nt c[nt] * T[nt]
+        thrust::host_vector<double>     uvecs,   uwts,   Stens,   Scontract;
+        thrust::device_vector<double> d_uvecs, d_uwts, d_Stens, d_Scontract;
 };
 
 #endif // FTS_BOX

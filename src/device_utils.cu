@@ -10,63 +10,33 @@
 __device__ void d_unstack(int, int*, const int*, const int ) ;
 
 // exp_M_doubledot_S computes the function 
-// f(r,u) = exp( -M(r):S(u) )
-// Kernel is parallelized over M, and each instance
-// loops over u
+// f(r) = exp( -M(r):S(u_m) ) for a single orientation m.
+// M is stored by its independent components and c holds the 
+// coefficients for which M:S(u) = sum_nt c[nt] * M[nt]
 __global__ void d_exp_M_doubledot_S(
-    cuDoubleComplex* expM,      // [M*Nu_tot] exp(-M(r):S(u) )
+    cuDoubleComplex* expM,      // [M] exp(-M(r):S(u_m) )
     const cuDoubleComplex* MW,  // [M*Ntens] tensor field M
-    const double* S,            // [Nu_tot*Ntens]
-    const int Nu_tot,           // Total number of orientations
-    const int dim,              // spatial dimension
+    const double* c,            // [Nu_tot*Ntens] contraction coefficients
+    const int m,                // orientation index
+    const int Ntens,            // independent tensor components
     const int M                 // spatial grid points
 ) {
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
     if (ir >= M) return;
 
-    int nS = dim*(dim+1)/2 - 1;
-    cuDoubleComplex Mxx, Myy, Mzz, Mxy, Mxz, Myz;
-    
-    // Extract M(r) components
-    if ( dim == 2 ) {
-        Mxx = MW[0 * M + ir];
-        Mxy = MW[1 * M + ir];
-
-        Myy.x = -Mxx.x; // Based on traceless condition
-        Myy.y = -Mxx.y; // Based on traceless condition
+    double re = 0.0, im = 0.0;
+    for ( int nt=0 ; nt<Ntens ; nt++ ) {
+        double cn = c[m*Ntens + nt];
+        re += cn * MW[nt*M + ir].x;
+        im += cn * MW[nt*M + ir].y;
     }
 
-    else if ( dim == 3 ) {
-        // TODO
-    }
-
-
-    for ( int j=0 ; j<Nu_tot ; j++ ) {
-        if ( dim == 2 ) {
-            double Sxx = S[j*nS + 0];
-            double Syy = -Sxx;          // From traceless condition
-
-            double Sxy = S[j*nS + 1];
-
-            cuDoubleComplex MddotS;
-
-            // FActor of 2.0 from symmetry and inclusion of yx terms
-            MddotS.x = Mxx.x * Sxx + 2.0 * Sxy * Mxy.x + Myy.x * Syy;
-            MddotS.y = Mxx.y * Sxx + 2.0 * Sxy * Mxy.y + Myy.y * Syy;
-
-            // expM[j*M + ir] = cuCexp(MddotS);
-            // exp(-(a + ib)) = exp(-a) * ( cos(b) - i sin(b) )
-            double exp_temp = exp(-MddotS.x);
-            double c, s;
-            sincos(MddotS.y, &s, &c);
-            expM[j*M + ir].x =  exp_temp * c;
-            expM[j*M + ir].y = -exp_temp * s;
-        }
-
-        else if ( dim == 3 ) {
-            // TODO
-        }
-    }// j=0:Nu_tot
+    // exp(-(a + ib)) = exp(-a) * ( cos(b) - i sin(b) )
+    double exp_temp = exp(-re);
+    double cs, sn;
+    sincos(im, &sn, &cs);
+    expM[ir].x =  exp_temp * cs;
+    expM[ir].y = -exp_temp * sn;
 }// d_exp_M_doubledot_S
 
 __global__ void d_Ntot_phase_shifts(
@@ -204,10 +174,11 @@ __global__ void d_multiply_phase_shift(
 } // d_multiply_phase_shift
 
 
-__global__ void d_integrate_circle(
+// d_out(r) = sum_u wts[u] * d_in(r,u)
+__global__ void d_integrate_u(
     cuDoubleComplex* d_out,         // [M] after integrating orientations
     const cuDoubleComplex* d_in,    // [M*Nu_tot] input with r, u dependence
-    const double d_th,              // 2*pi/Nu_tot
+    const double* wts,              // [Nu_tot] orientation quadrature weights
     const int Nu_tot,               // Total u grid points
     const int M                     // Total spatial points
 ) {
@@ -218,13 +189,11 @@ __global__ void d_integrate_circle(
     cuDoubleComplex rsum;
     rsum.x = rsum.y = 0.0;
     for (int iu = 0; iu < Nu_tot; iu++) {
-        rsum.x += d_in[iu * M + ir].x;
-        rsum.y += d_in[iu * M + ir].y;
+        rsum.x += wts[iu] * d_in[iu * M + ir].x;
+        rsum.y += wts[iu] * d_in[iu * M + ir].y;
     }
     
-    d_out[ir].x = rsum.x * d_th;
-    d_out[ir].y = rsum.y * d_th;
-
+    d_out[ir] = rsum;
 }
 
 

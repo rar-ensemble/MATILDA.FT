@@ -12,7 +12,7 @@
 //                                                              //
 // with M/Nr entering the molecular partition function as       //
 // exp( -(M/Nr):(uu - I/d) ). The force on each independent     //
-// component is taken with respect to the full tensor,          //
+// component is taken with respect to the full tensor (2D & 3D),//
 //                                                              //
 //   dH/dM_ab = C M_ab / muN + S_ab / Nr,                       //
 //                                                              //
@@ -27,6 +27,7 @@
 
 __global__ void d_makeMaierSaupeForce(cuDoubleComplex*, const cuDoubleComplex*,
     const cuDoubleComplex*, const double, const double, const double, const int);
+__global__ void d_removeNoiseTrace(cuDoubleComplex*, const int, const int, const int);
 
 class FTS_Box;
 
@@ -48,7 +49,9 @@ class PotentialMaierSaupe : public FTS_Potential {
         double muN;             // Strength of the potential
         double delt;            // Size of the time step
 
-        // [Ntens*M] independent components of M(r); in 2D these are xx, xy
+        // [Ntens*M] independent components of M(r)
+        // 2D: xx, xy (Myy = -Mxx).  3D: xx, yy, xy, xz, yz (Mzz = -Mxx - Myy)
+        std::vector<std::string> compNames;
         thrust::device_vector<thrust::complex<double>> d_M;
 
         // [Ntens*M] force, and stored data for predictor-corrector updates
@@ -56,7 +59,7 @@ class PotentialMaierSaupe : public FTS_Potential {
         thrust::device_vector<thrust::complex<double>> d_dHdMo;
         thrust::device_vector<thrust::complex<double>> d_Mo;
 
-        // [Ntens*M] noise for complex Langevin
+        // [(Ntens+1)*M] noise for complex Langevin
         thrust::device_vector<thrust::complex<double>> d_noise;
 
     private:

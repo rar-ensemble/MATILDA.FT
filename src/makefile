@@ -13,7 +13,11 @@ CC = ${CUDA_LOC}/bin/nvcc
 # GIT_DIRECTORY := $(shell git rev-parse --show-toplevel)
 
 
-CFLAGS = -std=c++17 -arch=sm_86 --extended-lambda -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
+# Lebedev quadrature rules for integration over the unit sphere (3D orientations)
+LEBEDEV_LOC = ../include/lebedev
+vpath %.cpp ${LEBEDEV_LOC}
+
+CFLAGS = -std=c++17 -arch=sm_86 --extended-lambda -rdc=true -O3 -I${CUDA_LOC}/include -I${LEBEDEV_LOC} -Wno-deprecated-gpu-targets
 # CFLAGS = -std=c++14 -arch=sm_70 -rdc=true -O3 -I${CUDA_LOC}/include -Wno-deprecated-gpu-targets
 CPPFLAGS = --expt-relaxed-constexpr
 
@@ -62,6 +66,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 
 SRCS_C = gsd.c
 #SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
+SRCS_CPP = sphere_lebedev_rule.cpp
 
 OBJFOLDER := objects
 OBJS_MAKE  	  = $(addprefix $(OBJFOLDER)/, ${OBJS})

@@ -4,7 +4,7 @@
 
 #include "include_libs.h"
 #include "fts_potential_maiersaupe.h"
-#include <thrust/transform_reduce.h>
+#include <thrust/inner_product.h>
 #include "FTS_Box.h"
 #include "fts_species.h"
 
@@ -13,8 +13,10 @@ void die(const char*);
 // Input: potential maiersaupe [species] [muN] [delt] (optional arguments)
 // Optional arguments:
 //   updateScheme EM | EMPC
-//   initialize [component] ...   component is xx or xy (2D), followed by any
-//                                of the standard field initialization options.
+//   initialize [component] ...   component is xx, xy (2D) or xx, yy, xy, xz, yz (3D),
+//                                followed by any of the standard field 
+//                                initialization options. The remaining diagonal
+//                                component follows from M being traceless.
 //                                May be given once per component, but the 
 //                                biased-phase options consume the rest of the 
 //                                line and so must come last.
@@ -30,10 +32,14 @@ PotentialMaierSaupe::PotentialMaierSaupe(std::istringstream& iss, FTS_Box* p_box
 
     const int M = mybox->M;
     const int dim = mybox->returnDimension();
-    if ( dim != 2 ) {
-        die("Maier-Saupe FTS potential only set up for 2D");
+    if ( dim != 2 && dim != 3 ) {
+        die("Maier-Saupe FTS potential only set up for 2D and 3D");
     }
     Ntens = dim*(dim+1)/2 - 1;
+
+    // Names of the stored independent components
+    if ( dim == 2 ) compNames = {"xx", "xy"};
+    else            compNames = {"xx", "yy", "xy", "xz", "yz"};
 
     iss >> s1;
     actsOn.push_back(s1);
@@ -59,8 +65,10 @@ PotentialMaierSaupe::PotentialMaierSaupe(std::istringstream& iss, FTS_Box* p_box
     d_M.resize(Ntens*M, 0.0);
     d_dHdM.resize(Ntens*M, 0.0);
 
+    // One extra slice of noise holds the last diagonal component
+    // before the trace is removed
     if ( mybox->ftsStyle == "cl" ) {
-        d_noise.resize(Ntens*M, 0.0);
+        d_noise.resize((Ntens+1)*M, 0.0);
     }
     
     updateScheme = "EM";
@@ -73,9 +81,12 @@ PotentialMaierSaupe::PotentialMaierSaupe(std::istringstream& iss, FTS_Box* p_box
         if ( s1 == "initialize" ) {
             iss >> s1;
             int comp = -1;
-            if ( s1 == "xx" ) comp = 0;
-            else if ( s1 == "xy" ) comp = 1;
-            else { die("Maier-Saupe initialize expects a component (xx or xy) before the initialization style"); }
+            for ( int nt=0 ; nt<Ntens ; nt++ ) {
+                if ( s1 == compNames[nt] ) comp = nt;
+            }
+            if ( comp < 0 ) { 
+                die("Maier-Saupe initialize expects a tensor component (xx, xy in 2D; xx, yy, xy, xz, yz in 3D) before the initialization style"); 
+            }
 
             thrust::fill(htmp.begin(), htmp.end(), 0.0);
             initializeField(iss, htmp);
@@ -141,14 +152,29 @@ void PotentialMaierSaupe::updateFields() {
     cuDoubleComplex* _d_M = (cuDoubleComplex*)thrust::raw_pointer_cast(d_M.data());
     cuDoubleComplex* _d_noise = (cuDoubleComplex*)thrust::raw_pointer_cast(d_noise.data());
 
-    // Generate real noise for each component if doing CL. The RNG states
-    // are per grid point, so the components are drawn one at a time.
+    // Generate real, symmetric, traceless tensor noise if doing CL. 
+    // The update below moves each stored component with the force taken with
+    // respect to the full tensor, dM_ab = -delt * dH/dM_ab + noise_ab. The
+    // matching noise is a Gaussian symmetric tensor with its trace removed: 
+    // independent diagonal draws of variance 2*delt/gvol minus their mean, and 
+    // off-diagonal draws of variance delt/gvol. The RNG states are per grid 
+    // point, so the components are drawn one at a time.
     if ( doCL ) {
-        double noiseMag = sqrt(2.0 * delt / mybox->gvol );
+        const int dim = mybox->returnDimension();
+        const int nDiag = dim - 1;                  // stored diagonal components
+        const double diagMag = sqrt(2.0 * delt / mybox->gvol );
+        const double offMag  = sqrt(delt / mybox->gvol );
+
         for ( int nt=0 ; nt<Ntens ; nt++ ) {
             d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_noise + nt*M, 
-                mybox->d_states, noiseMag, M);
+                mybox->d_states, ( nt < nDiag ? diagMag : offMag ), M);
         }
+
+        // Last diagonal component, stored in the extra slice
+        d_makeDoubleNoise<<<mybox->M_Grid, mybox->M_Block>>>(_d_noise + Ntens*M, 
+            mybox->d_states, diagMag, M);
+
+        d_removeNoiseTrace<<<mybox->M_Grid, mybox->M_Block>>>(_d_noise, nDiag, Ntens, M);
     }
 
     makeForce();
@@ -196,16 +222,63 @@ void PotentialMaierSaupe::storePredictorData() {
 // Computes this potential's contribution to the effective Hamiltonian,
 // C/(2 muN) \int dr M:M
 std::complex<double> PotentialMaierSaupe::calcHamiltonian() {
+    const int M = mybox->M;
+    const int dim = mybox->returnDimension();
+    const int nDiag = dim - 1;
+    const thrust::complex<double> zero(0.0);
 
-    // sum over independent components of M_ab^2
-    thrust::complex<double> sum = thrust::transform_reduce(d_M.begin(), d_M.end(),
-        [] __device__ (thrust::complex<double> x) -> thrust::complex<double> { return x * x; },
-        thrust::complex<double>(0.0), thrust::plus<thrust::complex<double>>());
+    // sum_r M_a(r) * M_b(r) for stored components a, b
+    auto dot = [&](int a, int b) {
+        return thrust::inner_product(d_M.begin() + a*M, d_M.begin() + (a+1)*M, 
+            d_M.begin() + b*M, zero);
+    };
 
-    // 2D: M:M = Mxx^2 + 2 Mxy^2 + Myy^2 = 2 * (Mxx^2 + Mxy^2)
-    Hterm = 2.0 * sum * mybox->gvol * mybox->C / 2.0 / muN;
+    // Diagonal part, including the component removed by the traceless condition:
+    // 2D: Mxx^2 + Myy^2 = 2 Mxx^2
+    // 3D: Mxx^2 + Myy^2 + (Mxx + Myy)^2 = 2 ( Mxx^2 + Myy^2 + Mxx Myy )
+    thrust::complex<double> sum = zero;
+    for ( int a=0 ; a<nDiag ; a++ ) {
+        sum += 2.0 * dot(a, a);
+        for ( int b=a+1 ; b<nDiag ; b++ ) {
+            sum += 2.0 * dot(a, b);
+        }
+    }
+
+    // Off-diagonal components each appear twice in M:M
+    for ( int a=nDiag ; a<Ntens ; a++ ) {
+        sum += 2.0 * dot(a, a);
+    }
+
+    Hterm = sum * mybox->gvol * mybox->C / 2.0 / muN;
 
     return Hterm;
+}
+
+
+// Converts independent Gaussian draws for the diagonal of a symmetric tensor
+// into a traceless diagonal by subtracting their mean. On input the stored 
+// diagonal components are slices [0, nDiag) and the final diagonal component 
+// is in slice Ntens.
+__global__ void d_removeNoiseTrace(
+    cuDoubleComplex* noise,         // [(Ntens+1)*M] noise field
+    const int nDiag,                // stored diagonal components, dim-1
+    const int Ntens,                // independent tensor components
+    const int M                     // grid points
+    ) {
+
+    const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind >= M)
+        return;
+
+    double mean = noise[Ntens*M + ind].x;
+    for ( int a=0 ; a<nDiag ; a++ ) {
+        mean += noise[a*M + ind].x;
+    }
+    mean /= double(nDiag + 1);
+
+    for ( int a=0 ; a<nDiag ; a++ ) {
+        noise[a*M + ind].x -= mean;
+    }
 }
 
 
@@ -231,14 +304,13 @@ __global__ void d_makeMaierSaupeForce(
 
 void PotentialMaierSaupe::writeFields(int potInd) {
     const int M = mybox->M;
-    const char* comp[2] = {"xx", "xy"};
     char nm[40];
 
     thrust::host_vector<thrust::complex<double>> hM = d_M;
     thrust::host_vector<thrust::complex<double>> htmp(M);
 
     for ( int nt=0 ; nt<Ntens ; nt++ ) {
-        sprintf(nm, "M%s_MaierSaupe%d.dat", comp[nt], potInd);
+        sprintf(nm, "M%s_MaierSaupe%d.dat", compNames[nt].c_str(), potInd);
         thrust::copy(hM.begin() + nt*M, hM.begin() + (nt+1)*M, htmp.begin());
         mybox->writeTComplexGridData(nm, htmp);
     }

@@ -44,7 +44,7 @@ class LCMolec : public FTS_Molec {
         // [nUnique*M] exp(-w) for each unique species
         thrust::device_vector<thrust::complex<double>> d_E;
         
-        // [(Dim*(Dim+1)/2-1)*M] M(r) tensor field (scratch, one species at a time)
+        // [nTensSlots*(Dim*(Dim+1)/2-1)*M] smeared M(r) tensor field for each species with tensor sites
         thrust::device_vector<thrust::complex<double>> d_Mr;
 
         // [nUnique*(Dim*(Dim+1)/2-1)*M] smeared orientational order field
@@ -55,14 +55,17 @@ class LCMolec : public FTS_Molec {
         thrust::host_vector<thrust::complex<double>> cStilde;
         thrust::device_vector<thrust::complex<double>> d_cStilde;
 
-        // [nUnique*Nu_tot*M] rho(r,u) for each unique species
-        thrust::device_vector<thrust::complex<double>> d_rhou;
+        // Functions of (r,u) are generated one orientation at a time and 
+        // integrated on the fly, so nothing of size [Nu_tot*M] is stored.
 
-        // [Nu_tot*M] N(r,u), and [M] its integral over u
-        thrust::device_vector<thrust::complex<double>> d_Nru;
+        // [M] N(r,u) and R_j(r,u) at the current orientation, 
+        // and [M] N(r) = \int du N(r,u)
+        thrust::device_vector<thrust::complex<double>> d_Nu;
+        thrust::device_vector<thrust::complex<double>> d_Ru;
         thrust::device_vector<thrust::complex<double>> d_Nr;
 
-        // [nTensSlots*Nu_tot*M] exp(-M(r):S(u)) for each species with tensor sites
+        // [nTensSlots*M] exp(-M(r):S(u)) at the current orientation for
+        // each species with tensor sites
         thrust::device_vector<thrust::complex<double>> d_expMddS;
 
         // [M] scratch storage

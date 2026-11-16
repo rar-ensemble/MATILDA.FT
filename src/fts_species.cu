@@ -47,9 +47,6 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
         }
         int dim = box->returnDimension();
         int Ntensor = dim*(dim+1)/2 - 1;
-        this->density_ru.resize(M*Nu_tot);
-        this->d_density_ru.resize(M*Nu_tot);
-
         this->d_Mw.resize(M*Ntensor);
         this->d_S.resize(M*Ntensor);
     }
@@ -70,7 +67,6 @@ void FTS_Species::zeroDensity() {
     thrust::fill(d_density.begin(), d_density.end(), 0.0);
     if ( tensor_field ) {
         thrust::fill(d_S.begin(), d_S.end(), 0.0);
-        thrust::fill(d_density_ru.begin(), d_density_ru.end(), 0.0);
     }
 }
 
@@ -229,22 +225,45 @@ void FTS_Species::writeDensity(const int id) {
             box->writeTComplexGridData(std::string(nm), htmp);
         }
 
-        // 2D: largest eigenvalue of S is sqrt(Sxx^2 + Sxy^2); a perfectly aligned
-        // site contributes 1/2, so 2*lambda/rho is the order parameter per site
-        // of this species. Real part is the magnitude, imag part the director
-        // angle in radians.
-        if ( Ntensor == 2 ) {
-            for ( int i=0 ; i<M ; i++ ) {
+        // Scalar order parameter per site of this species from the largest
+        // eigenvalue lambda of the real part of S. A perfectly aligned site 
+        // has lambda = (d-1)/d, so the order parameter is d/(d-1) * lambda / rho.
+        // 2D: real part is the order parameter, imag part the director angle (radians).
+        // 3D: real part is the order parameter, imag part is zero.
+        for ( int i=0 ; i<M ; i++ ) {
+            double rho = density[i].real();
+            double lam = 0.0, angle = 0.0;
+
+            if ( Ntensor == 2 ) {
                 double sxx = hS[i].real();
                 double sxy = hS[M + i].real();
-                double rho = density[i].real();
-                double lam = sqrt(sxx*sxx + sxy*sxy);
-                double op = ( fabs(rho) > 1.0E-12 ? 2.0 * lam / rho : 0.0 );
-                htmp[i] = thrust::complex<double>(op, 0.5 * atan2(sxy, sxx));
+                lam = 2.0 * sqrt(sxx*sxx + sxy*sxy);
+                angle = 0.5 * atan2(sxy, sxx);
             }
-            sprintf(nm, "orderParamSpecies%d.dat", id);
-            box->writeTComplexGridData(std::string(nm), htmp);
+
+            else if ( Ntensor == 5 ) {
+                double sxx = hS[i].real(),       syy = hS[M + i].real();
+                double sxy = hS[2*M + i].real(), sxz = hS[3*M + i].real(), syz = hS[4*M + i].real();
+                double szz = -sxx - syy;
+
+                // Largest eigenvalue of a traceless symmetric 3x3 matrix:
+                // lambda = 2 sqrt(p/3) cos( acos( 3q/(2p) sqrt(3/p) ) / 3 ),
+                // p = (S:S)/2, q = det(S)
+                double pp = 0.5 * ( sxx*sxx + syy*syy + szz*szz ) + sxy*sxy + sxz*sxz + syz*syz;
+                if ( pp > 1.0E-300 ) {
+                    double q = sxx*(syy*szz - syz*syz) - sxy*(sxy*szz - syz*sxz) + sxz*(sxy*syz - syy*sxz);
+                    double arg = 1.5 * q / pp * sqrt(3.0/pp);
+                    if ( arg > 1.0 ) arg = 1.0;
+                    if ( arg < -1.0 ) arg = -1.0;
+                    lam = 1.5 * 2.0 * sqrt(pp/3.0) * cos( acos(arg) / 3.0 );
+                }
+            }
+
+            double op = ( fabs(rho) > 1.0E-12 ? lam / rho : 0.0 );
+            htmp[i] = thrust::complex<double>(op, angle);
         }
+        sprintf(nm, "orderParamSpecies%d.dat", id);
+        box->writeTComplexGridData(std::string(nm), htmp);
     }
 }
 

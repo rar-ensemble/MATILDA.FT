@@ -8,6 +8,7 @@
 #include "fts_species.h"
 #include "fts_potential.h"
 #include "include_libs.h"
+#include "sphere_lebedev_rule.hpp"
 
 void die(const char*);
 FTS_Molec* FTS_MolecFactory(std::istringstream&, FTS_Box*);
@@ -232,42 +233,8 @@ void FTS_Box::finishInitialization() {
     }
 
     // Orientation initialization if needed
-    if ( Nu[0] > 0 ) {
-
-        // Memory allocation on host and device //
-        uvecs.resize(Dim*Nu_tot);
-        d_uvecs.resize(Dim*Nu_tot);
-
-        int nS = Dim*(Dim+1)/2 - 1;
-        int u_alloc = nS * Nu_tot;    
-        Stens.resize(u_alloc);
-        d_Stens.resize(u_alloc);
-
-        Ntens = nS;
-
-        // Set up 2D orientation, S tensor host arrays
-        if ( Dim == 2 ) {
-            double dth = 2.0 * M_PI / double(Nu[0]);
-            for (int i=0 ; i<Nu[0] ; i++ ) {
-                double theta = dth * i;
-                double ux = cos(theta);
-                double uy = sin(theta);
-                uvecs[2*i + 0] = ux;
-                uvecs[2*i + 1] = uy;
-
-                Stens[nS * i + 0] =  ux * ux - 0.5; 
-                Stens[nS * i + 1] =  ux * uy;
-            }
-        }
-
-        //
-        else if ( Dim == 3 ) {
-            die("Orientation stuff not yet set up for 3D!");
-        }
-
-        // Send arrays to device
-        d_uvecs = uvecs;
-        d_Stens = Stens;
+    if ( Nu_tot > 0 ) {
+        initOrientations();
     }
 
     // Molecule-specific setup that must precede the first density calculation
@@ -504,11 +471,13 @@ void FTS_Box::readInput(std::ifstream& inp) {
             }
             
             else if ( firstWord == "u_grid" ) {
+                // 2D: number of equally spaced angles on the unit circle
+                // 3D: number of points in the Lebedev rule on the unit sphere
+                if ( !readDimension ) { die("Dim must be defined before u_grid!"); }
                 iss >> Nu[0] ;
-                if ( Dim == 3 ) { iss >> Nu[1]; }
-                else { Nu[1] = 1; }
-
-                Nu_tot = Nu[0] * Nu[1];
+                Nu[1] = 1;
+                Nu_tot = Nu[0];
+                if ( Nu_tot <= 0 ) { die("u_grid must be a positive integer"); }
             }
 
             else {
@@ -840,25 +809,113 @@ double FTS_Box::convergenceCheck() {
     }
 }
 
-__global__ void d_integrate_circle(cuDoubleComplex*, const cuDoubleComplex*,
-    const double, const int, const int);
+__global__ void d_integrate_u(cuDoubleComplex*, const cuDoubleComplex*,
+    const double*, const int, const int);
 
+// d_out(r) = \int du d_in(r,u) using the box's orientation quadrature
 void FTS_Box::integrate_u_fixed_r(
     cuDoubleComplex* d_out,         // [M] output after integrating over orientations
-    const cuDoubleComplex* d_in     // [M*Nu[0]*Nu[1]] Input with r,phi,theta dependence
+    const cuDoubleComplex* d_in     // [M*Nu_tot] Input with r, u dependence
 ) {
+    const double* _d_uwts = (const double*)thrust::raw_pointer_cast(d_uwts.data());
+    d_integrate_u<<<M_Grid, M_Block>>>(d_out, d_in, _d_uwts, Nu_tot, M);
+}
 
+
+// Sets up the orientation grid, its quadrature weights, and the S(u) tensors.
+void FTS_Box::initOrientations() {
+
+    const int nS = Dim*(Dim+1)/2 - 1;
+    Ntens = nS;
+
+    uvecs.resize(Dim*Nu_tot);
+    uwts.resize(Nu_tot);
+    Stens.resize(nS*Nu_tot);
+    Scontract.resize(nS*Nu_tot);
+
+    // Equally spaced points on the unit circle
     if ( Dim == 2 ) {
-        // For unit circle integrations
-        double dth = 2.0 * M_PI / double(Nu_tot);
-        
-        d_integrate_circle<<<M_Grid, M_Block>>>(d_out, d_in, dth, Nu_tot, M);
+        Omega = 2.0 * M_PI;
+        double dth = Omega / double(Nu_tot);
+        for (int i=0 ; i<Nu_tot ; i++ ) {
+            double theta = dth * i;
+            double ux = cos(theta);
+            double uy = sin(theta);
+            uvecs[2*i + 0] = ux;
+            uvecs[2*i + 1] = uy;
+            uwts[i] = dth;
+
+            // S = uu - I/2, with Syy = -Sxx
+            Stens[nS * i + 0] =  ux * ux - 0.5; 
+            Stens[nS * i + 1] =  ux * uy;
+
+            // T:S = Txx Sxx + Tyy Syy + 2 Txy Sxy = 2 Txx Sxx + 2 Txy Sxy
+            Scontract[nS * i + 0] = 2.0 * Stens[nS * i + 0];
+            Scontract[nS * i + 1] = 2.0 * Stens[nS * i + 1];
+        }
     }
 
+    // Lebedev rule on the unit sphere
     else if ( Dim == 3 ) {
-        die("3D sphere integration not yet implemented");
+        Omega = 4.0 * M_PI;
+
+        // Check that a rule with this many points exists
+        bool found = false;
+        std::string valid;
+        for ( int rule=1 ; rule<=65 ; rule++ ) {
+            if ( available_table(rule) != 1 ) continue;
+            valid += std::to_string(order_table(rule)) + " ";
+            if ( order_table(rule) == Nu_tot ) found = true;
+        }
+        if ( !found ) {
+            std::string LW = "In 3D, u_grid must be the number of points in a Lebedev rule. Valid values: " + valid;
+            die(LW.c_str());
+        }
+
+        std::vector<double> x(Nu_tot), y(Nu_tot), z(Nu_tot), w(Nu_tot);
+        ld_by_order(Nu_tot, x.data(), y.data(), z.data(), w.data());
+
+        for ( int i=0 ; i<Nu_tot ; i++ ) {
+            uvecs[3*i + 0] = x[i];
+            uvecs[3*i + 1] = y[i];
+            uvecs[3*i + 2] = z[i];
+
+            // Lebedev weights sum to one
+            uwts[i] = Omega * w[i];
+
+            // S = uu - I/3, with Szz = -Sxx - Syy
+            double Sxx = x[i]*x[i] - 1.0/3.0;
+            double Syy = y[i]*y[i] - 1.0/3.0;
+            double Sxy = x[i]*y[i];
+            double Sxz = x[i]*z[i];
+            double Syz = y[i]*z[i];
+            Stens[nS * i + 0] = Sxx;
+            Stens[nS * i + 1] = Syy;
+            Stens[nS * i + 2] = Sxy;
+            Stens[nS * i + 3] = Sxz;
+            Stens[nS * i + 4] = Syz;
+
+            // T:S = Txx Sxx + Tyy Syy + Tzz Szz + 2 ( Txy Sxy + Txz Sxz + Tyz Syz )
+            //     = Txx (2 Sxx + Syy) + Tyy (Sxx + 2 Syy) + 2 ( ... )
+            Scontract[nS * i + 0] = 2.0 * Sxx + Syy;
+            Scontract[nS * i + 1] = Sxx + 2.0 * Syy;
+            Scontract[nS * i + 2] = 2.0 * Sxy;
+            Scontract[nS * i + 3] = 2.0 * Sxz;
+            Scontract[nS * i + 4] = 2.0 * Syz;
+        }
     }
-    
+
+    else {
+        die("Orientations only defined in 2D and 3D");
+    }
+
+    // Send arrays to device
+    d_uvecs = uvecs;
+    d_uwts = uwts;
+    d_Stens = Stens;
+    d_Scontract = Scontract;
+
+    std::cout << "    orientation grid initialized with " << Nu_tot << " points" << std::endl;
 }
 
 void FTS_Box::initTolerances() {

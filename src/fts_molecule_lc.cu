@@ -145,7 +145,6 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
 
     // Allocate field variables
     int M = mybox->M;
-    int Nru = M * mybox->Nu_tot;
     int dim = mybox->returnDimension();
     int Ntens = (dim*(dim+1)/2 - 1) * M;
 
@@ -161,7 +160,7 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     d_tmp.resize(M);
     
     // M(r) and Stilde fields
-    d_Mr.resize(Ntens);
+    d_Mr.resize(nTensSlots*Ntens);
 
     Stilde.resize(nUnique*Ntens);
     d_Stilde.resize(nUnique*Ntens);
@@ -169,10 +168,10 @@ LCMolec::LCMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p_box
     cStilde.resize(nUnique*Ntens);
     d_cStilde.resize(nUnique*Ntens);
 
-    // functions of (r, u)
-    d_rhou.resize(nUnique*Nru);
-    d_Nru.resize(Nru);
-    d_expMddS.resize(nTensSlots*Nru);
+    // functions of r at one orientation
+    d_Nu.resize(M);
+    d_Ru.resize(M);
+    d_expMddS.resize(nTensSlots*M);
     
     // int du N(r,u)
     d_Nr.resize(M);
@@ -208,38 +207,30 @@ void LCMolec::calcDensity() {
     const int Ntens = dim*(dim+1)/2 - 1;
     const int mid = int(Ntot/2);
 
-    // Orientation quadrature weight and total solid angle
-    double du, Omega;
-    if ( dim == 2 ) {
-        Omega = 2.0 * M_PI;
-        du = Omega / double(Nu_tot);
-    }
-    else {
-        die("LCMolec::calcDensity only set up for 2D");
-        return;
-    }
+    // Total solid angle; orientation integrals are sum_m uwts[m] f(u_m)
+    const double Omega = mybox->Omega;
 
     cuDoubleComplex* _d_expMddS = (cuDoubleComplex*)thrust::raw_pointer_cast(d_expMddS.data());
     cuDoubleComplex* _d_Mr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Mr.data());
     double* _d_Stens = (double*)thrust::raw_pointer_cast(mybox->d_Stens.data());
+    double* _d_Scontract = (double*)thrust::raw_pointer_cast(mybox->d_Scontract.data());
     cuDoubleComplex* _d_tmp = (cuDoubleComplex*)thrust::raw_pointer_cast(d_tmp.data());
     cuDoubleComplex* _d_psi_x = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_x.data());
     cuDoubleComplex* _d_psi_y = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_y.data());
     cuDoubleComplex* _d_psi_z = (cuDoubleComplex*)thrust::raw_pointer_cast(d_psi_z.data());
-    cuDoubleComplex* _d_Nru = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Nru.data());
-    cuDoubleComplex* _d_Nr = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Nr.data());
+    cuDoubleComplex* _d_Nu = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Nu.data());
+    cuDoubleComplex* _d_Ru = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Ru.data());
     cuDoubleComplex* _d_Ek = (cuDoubleComplex*)thrust::raw_pointer_cast(d_Ek.data());
     cuDoubleComplex* _d_cStilde = (cuDoubleComplex*)thrust::raw_pointer_cast(d_cStilde.data());
-    cuDoubleComplex* _d_cDensity = (cuDoubleComplex*)thrust::raw_pointer_cast(d_cDensity.data());
-    cuDoubleComplex* _d_rhou = (cuDoubleComplex*)thrust::raw_pointer_cast(d_rhou.data());
     int* _d_site_mask = (int*)thrust::raw_pointer_cast(d_site_mask.data());
 
     thrust::fill(d_cStilde.begin(),  d_cStilde.end(),  0.0);
     thrust::fill(d_cDensity.begin(), d_cDensity.end(), 0.0);
+    thrust::fill(d_Nr.begin(), d_Nr.end(), 0.0);
 
     //////////////////////////////////////////////////////////////
     // Fields for each unique species j on the mesogen:         //
-    // E_j(r) = exp(-w_j) and, if needed, exp(-M_j(r):S(u))     //
+    // E_j(r) = exp(-w_j) and, if needed, the smeared M_j(r)    //
     //////////////////////////////////////////////////////////////
     for ( int j=0 ; j<nUnique ; j++ ) {
         FTS_Species &sp = mybox->Species[unique_species[j]];
@@ -263,35 +254,47 @@ void LCMolec::calcDensity() {
             thrust::copy(d_tmp.begin(), d_tmp.end(), d_Ek.begin() + j*M);
         }
 
-        // exp(-M(r):S(u)) for all r, u, using this species' tensor field
+        // This species' tensor field, smeared one independent component at a time
         if ( tens_slot[j] >= 0 ) {
+            const int off = tens_slot[j] * Ntens * M;
 
-            // Smear each independent component of M
             if ( doSmear ) {
                 for ( int nt=0 ; nt<Ntens ; nt++ ) {
                     thrust::copy(sp.d_Mw.begin() + nt*M, sp.d_Mw.begin() + (nt+1)*M, d_tmp.begin());
 
                     mybox->convolveTComplexDouble(d_tmp, d_tmp, d_smearFunc);
 
-                    thrust::copy(d_tmp.begin(), d_tmp.end(), d_Mr.begin() + nt*M);
+                    thrust::copy(d_tmp.begin(), d_tmp.end(), d_Mr.begin() + off + nt*M);
                 }
             }
             else {
-                d_Mr = sp.d_Mw;
+                thrust::copy(sp.d_Mw.begin(), sp.d_Mw.end(), d_Mr.begin() + off);
             }
-
-            d_exp_M_doubledot_S<<<grid, block>>>(_d_expMddS + tens_slot[j]*Nu_tot*M, 
-                _d_Mr, _d_Stens, Nu_tot, dim, M);
         }
     }// j=0:nUnique
     
 
     /////////////////////////////////////////////////////
     // N(r,u) = prod_s E_s(r + (s-mid) b u, u), R(r,u) //
+    // generated and integrated one orientation at a   //
+    // time, without the n/(Omega V Q) prefactor       //
     /////////////////////////////////////////////////////
-    thrust::fill(d_Nru.begin(), d_Nru.end(), 1.0);
-
     for ( int m=0 ; m<Nu_tot ; m++ ) { 
+
+        // Quadrature weight of this orientation
+        const double wm = mybox->uwts[m];
+        auto plus_wm_times = [=] __device__ (thrust::complex<double> f, 
+            thrust::complex<double> sum) -> thrust::complex<double> { return sum + wm * f; };
+
+        // exp(-M_j(r):S(u_m)) for each species with tensor sites
+        for ( int j=0 ; j<nUnique ; j++ ) {
+            if ( tens_slot[j] < 0 ) continue;
+            d_exp_M_doubledot_S<<<grid, block>>>(_d_expMddS + tens_slot[j]*M, 
+                _d_Mr + tens_slot[j]*Ntens*M, _d_Scontract, m, Ntens, M);
+        }
+
+        thrust::fill(d_Nu.begin(), d_Nu.end(), 1.0);
+
         for ( int s=0 ; s<Ntot ; s++ ) { 
             const int j = site_slot[s];
 
@@ -301,7 +304,7 @@ void LCMolec::calcDensity() {
 
             if ( tensor_flag[s] == 1 ) {
                 // d_tmp(r) = exp(-M(r):S)*exp(-w(r))
-                const int off = (tens_slot[j]*Nu_tot + m) * M;
+                const int off = tens_slot[j] * M;
                 thrust::transform(d_expMddS.begin() + off, d_expMddS.begin() + off + M, 
                     d_E.begin() + j*M, d_tmp.begin(), thrust::multiplies<thrust::complex<double>>());
             }
@@ -331,40 +334,44 @@ void LCMolec::calcDensity() {
             }
 
             // N(r,u) *= E_s(r + (s-mid) b u, u)
-            thrust::transform(d_tmp.begin(), d_tmp.end(), d_Nru.begin() + m*M,
-                                d_Nru.begin() + m*M, 
-                                thrust::multiplies<thrust::complex<double>>());
+            thrust::transform(d_tmp.begin(), d_tmp.end(), d_Nu.begin(),
+                                d_Nu.begin(), thrust::multiplies<thrust::complex<double>>());
         }// s=0:Ntot
 
 
-        // Only the central site carries orientation: S(r) += du * S(u_m) N(r,u_m),
+        // N(r) += w_m N(r,u_m)
+        thrust::transform(d_Nu.begin(), d_Nu.end(), d_Nr.begin(), d_Nr.begin(), plus_wm_times);
+
+        // Only the central site carries orientation: S(r) += w_m * S(u_m) N(r,u_m),
         // credited to the central site's species
         if ( lc_style == "middle" ) {
             d_accumulate_S<<<grid, block>>>(_d_cStilde + site_slot[mid]*Ntens*M, 
-                _d_Nru + m*M, _d_Stens, m, Ntens, du, M);
+                _d_Nu, _d_Stens, m, Ntens, wm, M);
         }
 
         // d_tmp = N(k,u)
-        thrust::copy(d_Nru.begin()+m*M, d_Nru.begin()+(m+1)*M, d_tmp.begin());
-        mybox->cufftWrapperDouble(d_tmp, d_tmp, 1);
+        mybox->cufftWrapperDouble(d_Nu, d_tmp, 1);
 
         // Density of each unique species: sum the translated center
         // distribution over the sites of that species
         for ( int j=0 ; j<nUnique ; j++ ) {
-            cuDoubleComplex* _rhou_jm = _d_rhou + (j*Nu_tot + m)*M;
 
             // Gabe = \sum_{s in j} \psi^(s-mid) N(k,u) = R_j(k,u)
             d_Ntot_phase_shifts<<<grid, block>>>(mybox->d_cpxGabe, _d_tmp, 
                 _d_psi_x, _d_psi_y, _d_psi_z, _d_site_mask + j*Ntot,
                 m, Nu_tot, Ntot, dim, mybox->_d_Nx, M);
 
-            // Back to real space: rho_j(r,u) = R_j(r,u)
-            mybox->cufftWrapperDouble(mybox->d_cpxGabe, _rhou_jm, -1);
+            // Back to real space: R_j(r,u)
+            mybox->cufftWrapperDouble(mybox->d_cpxGabe, _d_Ru, -1);
 
-            // All sites carry orientation: S_j(r) += du * S(u_m) R_j(r,u_m)
+            // rho_j(r) += w_m R_j(r,u_m)
+            thrust::transform(d_Ru.begin(), d_Ru.end(), d_cDensity.begin() + j*M, 
+                d_cDensity.begin() + j*M, plus_wm_times);
+
+            // All sites carry orientation: S_j(r) += w_m * S(u_m) R_j(r,u_m)
             if ( lc_style == "all" ) {
-                d_accumulate_S<<<grid, block>>>(_d_cStilde + j*Ntens*M, _rhou_jm, 
-                    _d_Stens, m, Ntens, du, M);
+                d_accumulate_S<<<grid, block>>>(_d_cStilde + j*Ntens*M, _d_Ru, 
+                    _d_Stens, m, Ntens, wm, M);
             }
         }
 
@@ -374,9 +381,6 @@ void LCMolec::calcDensity() {
     ///////////////////////////////////////
     // Partition function and prefactors //
     ///////////////////////////////////////
-
-    // N(r) = \int du N(r,u)
-    mybox->integrate_u_fixed_r(_d_Nr, _d_Nru);
 
     // Q = 1/(Omega V) \int dr N(r)
     Q = thrust::reduce(d_Nr.begin(), d_Nr.end(), thrust::complex<double>(0.0), 
@@ -397,17 +401,15 @@ void LCMolec::calcDensity() {
     }
 
     auto scale = [=] __device__ (thrust::complex<double> x) -> thrust::complex<double> { return x * prefactor; };
-    thrust::transform( d_rhou.begin(), d_rhou.end(), d_rhou.begin(), scale );
+    thrust::transform( d_cDensity.begin(), d_cDensity.end(), d_cDensity.begin(), scale );
     thrust::transform( d_cStilde.begin(), d_cStilde.end(), d_cStilde.begin(), scale );
-        
+
+
     //////////////////////////////////////////////////////////
     // Integrate, smear, and pass operators to each species //
     //////////////////////////////////////////////////////////
     for ( int j=0 ; j<nUnique ; j++ ) {
         FTS_Species &sp = mybox->Species[unique_species[j]];
-
-        // center density rho_j(r) = \int du rho_j(r,u)
-        mybox->integrate_u_fixed_r(_d_cDensity + j*M, _d_rhou + j*Nu_tot*M);
 
         if ( doSmear ) {
             thrust::copy(d_cDensity.begin() + j*M, d_cDensity.begin() + (j+1)*M, d_tmp.begin());
@@ -437,10 +439,6 @@ void LCMolec::calcDensity() {
         if ( sp.tensor_field == 1 ) {
             thrust::transform(d_Stilde.begin() + j*Ntens*M, d_Stilde.begin() + (j+1)*Ntens*M, 
                 sp.d_S.begin(), sp.d_S.begin(), thrust::plus<thrust::complex<double>>());
-
-            thrust::transform(d_rhou.begin() + j*Nu_tot*M, d_rhou.begin() + (j+1)*Nu_tot*M, 
-                sp.d_density_ru.begin(), sp.d_density_ru.begin(), 
-                thrust::plus<thrust::complex<double>>());
         }
     }// j=0:nUnique
 

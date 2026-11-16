@@ -53,6 +53,8 @@ class FTS_Species {
 
         // Infrastructure to handle tensor field interactions
         int tensor_field;
+        // rho(r,u) is integrated over u as it is generated and is not stored: 
+        // [M*Nu_tot] is prohibitive in 3D. These are left unallocated.
         thrust::host_vector<thrust::complex<double>> density_ru;     // [M*Nu_tot] \rho(r, u)
         thrust::device_vector<thrust::complex<double>> d_density_ru; // device version
         
@@ -60,7 +62,7 @@ class FTS_Species {
         // acting on this species (already scaled by 1/Nr, like d_w)
         thrust::device_vector<thrust::complex<double>> d_Mw;         
 
-        // [M*(dim*(dim+1)/2-1)] independent components of the (smeared)
+        // [M*(dim*(dim+1)/2-1)] independent components (2D: xx, xy; 3D: xx, yy, xy, xz, yz) of the (smeared)
         // orientation tensor density S(r) = \int du (uu - I/d) rho(r,u)
         thrust::device_vector<thrust::complex<double>> d_S;
 
