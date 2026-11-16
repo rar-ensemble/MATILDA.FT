@@ -56,8 +56,13 @@ class FTS_Species {
         thrust::host_vector<thrust::complex<double>> density_ru;     // [M*Nu_tot] \rho(r, u)
         thrust::device_vector<thrust::complex<double>> d_density_ru; // device version
         
-        // [M*(dim*(dim+1)/2-1)] M(r):S(u)
+        // [M*(dim*(dim+1)/2-1)] independent components of the tensor field M(r)
+        // acting on this species (already scaled by 1/Nr, like d_w)
         thrust::device_vector<thrust::complex<double>> d_Mw;         
+
+        // [M*(dim*(dim+1)/2-1)] independent components of the (smeared)
+        // orientation tensor density S(r) = \int du (uu - I/d) rho(r,u)
+        thrust::device_vector<thrust::complex<double>> d_S;
 
 
 

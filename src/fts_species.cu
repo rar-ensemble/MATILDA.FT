@@ -3,6 +3,7 @@
 
 
 #include "fts_species.h"
+#include "fts_potential_maiersaupe.h"
 
 void die(const char*);
 
@@ -41,12 +42,16 @@ FTS_Species::FTS_Species(std::istringstream &iss, FTS_Box* p_box) : box(p_box) {
     // Define tensor fields as needed
     if ( tensor_field ) {
         int Nu_tot = box->Nu_tot;
+        if ( Nu_tot == 0 ) {
+            die("u_grid must be defined before a species with a tensor field");
+        }
         int dim = box->returnDimension();
         int Ntensor = dim*(dim+1)/2 - 1;
         this->density_ru.resize(M*Nu_tot);
         this->d_density_ru.resize(M*Nu_tot);
 
         this->d_Mw.resize(M*Ntensor);
+        this->d_S.resize(M*Ntensor);
     }
 
     return;
@@ -63,6 +68,10 @@ FTS_Species::FTS_Species() {
 // Loops over all of the molecules and zeroes the species densities
 void FTS_Species::zeroDensity() {
     thrust::fill(d_density.begin(), d_density.end(), 0.0);
+    if ( tensor_field ) {
+        thrust::fill(d_S.begin(), d_S.end(), 0.0);
+        thrust::fill(d_density_ru.begin(), d_density_ru.end(), 0.0);
+    }
 }
 
 // Allows one step to directly add I * q * wpl field to species field for 
@@ -95,6 +104,9 @@ void FTS_Species::buildPotentialField() {
 
     // Zero the fields
     thrust::fill(d_w.begin(), d_w.end(), thrust::complex<double>(0.0,0.0));
+    if ( tensor_field ) {
+        thrust::fill(d_Mw.begin(), d_Mw.end(), thrust::complex<double>(0.0,0.0));
+    }
 
     for ( int i=0 ; i<box->Potentials.size() ; i++ ) {
 
@@ -155,6 +167,16 @@ void FTS_Species::buildPotentialField() {
 
         }
 
+        else if ( box->Potentials[i]->printStyle() == "MaierSaupe" ) {
+            if ( tensor_field && fts_species == box->Potentials[i]->actsOn[0] ) {
+                PotentialMaierSaupe* ms = static_cast<PotentialMaierSaupe*>(box->Potentials[i]);
+
+                // d_Mw += M for each independent tensor component
+                thrust::transform(d_Mw.begin(), d_Mw.end(), ms->d_M.begin(),
+                    d_Mw.begin(), thrust::plus<thrust::complex<double>>());
+            }
+        }
+
         else if (box->Potentials[i]->printStyle() == "Particle" ) {
             if (fts_species == box->Potentials[i]->actsOn[0] ) {
                 // AN: add C* chi* rho_exp_Nr to field...this is wpl from particle pot.
@@ -170,6 +192,13 @@ void FTS_Species::buildPotentialField() {
     thrust::transform(d_w.begin(), d_w.end(), invNr.begin(), d_w.begin(),   
                         thrust::multiplies<thrust::complex<double>>());
 
+    // Tensor field carries the same 1/Nr scaling
+    if ( tensor_field ) {
+        const double inv = 1.0 / double(box->Nr);
+        thrust::transform(d_Mw.begin(), d_Mw.end(), d_Mw.begin(),
+            [=] __device__ (thrust::complex<double> x) -> thrust::complex<double> { return x * inv; });
+    }
+
 
 }
 
@@ -183,6 +212,40 @@ void FTS_Species::writeDensity(const int id) {
     // Transfer data to host
     density = d_density;
     box->writeTComplexGridData(std::string(nm), density);
+
+    // Orientation tensor components and scalar order parameter
+    if ( tensor_field ) {
+        const int M = box->M;
+        const int Ntensor = d_S.size() / M;
+        const char* comp2[2] = {"xx", "xy"};
+        const char* comp3[5] = {"xx", "yy", "xy", "xz", "yz"};
+
+        thrust::host_vector<thrust::complex<double>> hS = d_S;
+        thrust::host_vector<thrust::complex<double>> htmp(M);
+
+        for ( int nt=0 ; nt<Ntensor ; nt++ ) {
+            sprintf(nm, "S%sSpecies%d.dat", (Ntensor == 2 ? comp2[nt] : comp3[nt]), id);
+            thrust::copy(hS.begin() + nt*M, hS.begin() + (nt+1)*M, htmp.begin());
+            box->writeTComplexGridData(std::string(nm), htmp);
+        }
+
+        // 2D: largest eigenvalue of S is sqrt(Sxx^2 + Sxy^2); a perfectly aligned
+        // site contributes 1/2, so 2*lambda/rho is the order parameter per site
+        // of this species. Real part is the magnitude, imag part the director
+        // angle in radians.
+        if ( Ntensor == 2 ) {
+            for ( int i=0 ; i<M ; i++ ) {
+                double sxx = hS[i].real();
+                double sxy = hS[M + i].real();
+                double rho = density[i].real();
+                double lam = sqrt(sxx*sxx + sxy*sxy);
+                double op = ( fabs(rho) > 1.0E-12 ? 2.0 * lam / rho : 0.0 );
+                htmp[i] = thrust::complex<double>(op, 0.5 * atan2(sxy, sxx));
+            }
+            sprintf(nm, "orderParamSpecies%d.dat", id);
+            box->writeTComplexGridData(std::string(nm), htmp);
+        }
+    }
 }
 
 // Adds the current density field into the running CL sample sum

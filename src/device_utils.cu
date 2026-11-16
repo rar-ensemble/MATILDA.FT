@@ -55,11 +55,12 @@ __global__ void d_exp_M_doubledot_S(
             MddotS.y = Mxx.y * Sxx + 2.0 * Sxy * Mxy.y + Myy.y * Syy;
 
             // expM[j*M + ir] = cuCexp(MddotS);
+            // exp(-(a + ib)) = exp(-a) * ( cos(b) - i sin(b) )
             double exp_temp = exp(-MddotS.x);
             double c, s;
             sincos(MddotS.y, &s, &c);
-            expM[j*M + ir].x = exp_temp * c;
-            expM[j*M + ir].y = exp_temp * s;
+            expM[j*M + ir].x =  exp_temp * c;
+            expM[j*M + ir].y = -exp_temp * s;
         }
 
         else if ( dim == 3 ) {
@@ -74,6 +75,7 @@ __global__ void d_Ntot_phase_shifts(
     const cuDoubleComplex* psiX,    // [Nx*Nu_tot] x-phase shift
     const cuDoubleComplex* psiY,    // [Ny*Nu_tot] y-phase shift
     const cuDoubleComplex* psiZ,    // [Nz*Nu_tot] z-phase shift
+    const int* site_mask,           // [Ntot] 1 for the sites to include in the sum
     const int m,                    // angle index \in [0, Nu_tot)
     const int Nu_tot,               // Number of possible angles
     const int Ntot,                 // Sites per LC
@@ -85,64 +87,51 @@ __global__ void d_Ntot_phase_shifts(
     int ir = blockIdx.x * blockDim.x + threadIdx.x;
     if (ir >= M) return;
 
-    cuDoubleComplex Rout = d_Rku[ir];
     cuDoubleComplex Nin = d_Nku[ir];
+    const int mid = int(Ntot/2);
 
-    // Figure out indices in [0, Nx), [0, Ny) etc
-    int nn[3], ix, iy, iz;
-    d_unstack(ir, nn, Nx, dim);
-    ix = nn[0];
-    iy = nn[1];
-    cuDoubleComplex psi, psi_s;
+    // Site s sits at r_c + (s-mid)*b*u, so its density is the center
+    // distribution translated by +(s-mid)*b*u, which is psi^(s-mid) in k-space.
+    // Sum of these shifts over the masked sites:
+    cuDoubleComplex shift_sum;
+    shift_sum.x = ( site_mask[mid] ? 1.0 : 0.0 );
+    shift_sum.y = 0.0;
 
-    if ( Ntot == 1 ) {
-        psi.x = 1.0;
-        psi.y = 0.0;
-
-        psi_s = psi;
-    }
-    else {
-        cuDoubleComplex px = psiX[ix*Nu_tot + m];
-        cuDoubleComplex py = psiY[iy*Nu_tot + m];
+    if ( Ntot > 1 ) {
+        // Figure out indices in [0, Nx), [0, Ny) etc
+        int nn[3];
+        d_unstack(ir, nn, Nx, dim);
 
         // Construct total phase shift psi
-        psi = cuCmul( px, py) ;
+        cuDoubleComplex psi = cuCmul( psiX[nn[0]*Nu_tot + m], psiY[nn[1]*Nu_tot + m] );
 
         // if 3D, build in z phase shift
         if ( dim == 3 ) {
-            iz = nn[2];
-            cuDoubleComplex pz = psiZ[iz*Nu_tot + m];
-            psi = cuCmul(psi, pz);
+            psi = cuCmul( psi, psiZ[nn[2]*Nu_tot + m] );
         }
 
-        psi_s.x = 1.0;
-        psi_s.y = 0.0;
-        
-        // scale psi to start at s=0 end of molecule
-        psi_s = cuCdiv( psi_s, psi );
-        for ( int s=1 ; s<int(Ntot/2) ; s++ ) {
-            psi_s = cuCmul( psi_s, psi_s );
+        // |psi| = 1 except at a zeroed Nyquist mode, where the inverse
+        // is also taken as zero
+        cuDoubleComplex psi_inv = cuConj(psi);
+        double mag2 = psi.x*psi.x + psi.y*psi.y;
+        if ( mag2 > 0.0 ) {
+            psi_inv.x /= mag2;
+            psi_inv.y /= mag2;
         }
 
+        cuDoubleComplex psi_p = psi, psi_m = psi_inv;
+        for ( int p=1 ; p<=mid ; p++ ) {
+            if ( site_mask[mid + p] ) shift_sum = cuCadd( shift_sum, psi_p );
+            if ( site_mask[mid - p] ) shift_sum = cuCadd( shift_sum, psi_m );
+            psi_p = cuCmul( psi_p, psi );
+            psi_m = cuCmul( psi_m, psi_inv );
+        }
     }
 
-    // accumulate first bead density
-    cuDoubleComplex N_psi = cuCmul(Nin, psi_s);
-    Rout = cuCadd( Rout, N_psi );
+    // Output is overwritten, not accumulated
+    d_Rku[ir] = cuCmul( Nin, shift_sum );
 
-    // update phase shift and accumulate s=1:Ntot densities
-    for ( int s=1 ; s<Ntot ; s++ ) {
-        // Increment psi_s by one power
-        psi_s = cuCmul( psi_s, psi );
-
-        // R_psi = psi_s(k) * N(k)
-        cuDoubleComplex N_psi = cuCmul(Nin, psi_s);
-        Rout = cuCadd( Rout, N_psi );
-    }
-
-    d_Rku[ir] = Rout;
-    
-} // d_multiply_phase_shift
+} // d_Ntot_phase_shifts
 
 __global__ void d_multiply_phase_shift(
     cuDoubleComplex* d_out,         // [M] output after phase shift
@@ -185,14 +174,21 @@ __global__ void d_multiply_phase_shift(
             psi = cuCmul(psi, pz);
         }
 
-        cuDoubleComplex cpx1;
-        cpx1.x = 1.0;
-        cpx1.y = 0.0;
-        
-        if ( power < 0 ) psi = cuCdiv( cpx1, psi );
+        // Negative powers: invert psi. |psi| = 1 except at a zeroed
+        // Nyquist mode, where the inverse is also taken as zero.
+        if ( power < 0 ) {
+            double mag2 = psi.x*psi.x + psi.y*psi.y;
+            psi = cuConj(psi);
+            if ( mag2 > 0.0 ) {
+                psi.x /= mag2;
+                psi.y /= mag2;
+            }
+        }
 
+        // psi^|power|
+        const cuDoubleComplex base = psi;
         for ( int p=1 ; p<abs(power) ; p++ ) {
-            psi = cuCmul(psi, psi);
+            psi = cuCmul(psi, base);
         }
     }
 
@@ -229,6 +225,30 @@ __global__ void d_integrate_circle(
     d_out[ir].x = rsum.x * d_th;
     d_out[ir].y = rsum.y * d_th;
 
+}
+
+
+// Accumulates one orientation's contribution to the orientation tensor,
+// S_out(r) += d_u * S(u_m) * f(r, u_m)
+// for each of the Ntens independent tensor components.
+__global__ void d_accumulate_S(
+    cuDoubleComplex* S_out,         // [Ntens*M] accumulated tensor components
+    const cuDoubleComplex* f,       // [M] distribution at orientation m
+    const double* S,                // [Nu_tot*Ntens] S(u) = uu - I/d
+    const int m,                    // orientation index
+    const int Ntens,                // independent tensor components
+    const double d_u,               // orientation quadrature weight
+    const int M                     // Total spatial points
+) {
+
+    int ir = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ir >= M) return;
+
+    for ( int nt=0 ; nt<Ntens ; nt++ ) {
+        double wt = d_u * S[m*Ntens + nt];
+        S_out[nt*M + ir].x += wt * f[ir].x;
+        S_out[nt*M + ir].y += wt * f[ir].y;
+    }
 }
 
 

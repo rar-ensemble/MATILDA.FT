@@ -51,7 +51,7 @@ class Box {
         void cufftWrapperDouble(cuDoubleComplex*, cuDoubleComplex*, const int);
 
         void convolveTComplexDouble(thrust::device_vector<thrust::complex<double>>&,
-            thrust::device_vector<thrust::complex<double>>&, thrust::device_vector<thrust::complex<double>>);
+            thrust::device_vector<thrust::complex<double>>&, const thrust::device_vector<thrust::complex<double>>&);
         void computeGrad2FieldDouble(cuDoubleComplex*, cuDoubleComplex*, const int);
 
         void cufftWrapperSingle(cuComplex*, cuComplex*, const int);

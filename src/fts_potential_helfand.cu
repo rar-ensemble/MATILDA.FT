@@ -68,6 +68,9 @@ PotentialHelfand::PotentialHelfand(std::istringstream& iss, FTS_Box* p_box) : FT
         mybox->PCflag = true;
     }
 
+    // transfer the (possibly initialized) field to the device
+    d_wpl = wpl;
+
 }// PotentialHelfand constructor
 
 

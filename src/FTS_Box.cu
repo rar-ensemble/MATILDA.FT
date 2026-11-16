@@ -231,6 +231,51 @@ void FTS_Box::finishInitialization() {
         outline = outline + "H_" + Potentials[i]->printStyle() + " " ;
     }
 
+    // Orientation initialization if needed
+    if ( Nu[0] > 0 ) {
+
+        // Memory allocation on host and device //
+        uvecs.resize(Dim*Nu_tot);
+        d_uvecs.resize(Dim*Nu_tot);
+
+        int nS = Dim*(Dim+1)/2 - 1;
+        int u_alloc = nS * Nu_tot;    
+        Stens.resize(u_alloc);
+        d_Stens.resize(u_alloc);
+
+        Ntens = nS;
+
+        // Set up 2D orientation, S tensor host arrays
+        if ( Dim == 2 ) {
+            double dth = 2.0 * M_PI / double(Nu[0]);
+            for (int i=0 ; i<Nu[0] ; i++ ) {
+                double theta = dth * i;
+                double ux = cos(theta);
+                double uy = sin(theta);
+                uvecs[2*i + 0] = ux;
+                uvecs[2*i + 1] = uy;
+
+                Stens[nS * i + 0] =  ux * ux - 0.5; 
+                Stens[nS * i + 1] =  ux * uy;
+            }
+        }
+
+        //
+        else if ( Dim == 3 ) {
+            die("Orientation stuff not yet set up for 3D!");
+        }
+
+        // Send arrays to device
+        d_uvecs = uvecs;
+        d_Stens = Stens;
+    }
+
+    // Molecule-specific setup that must precede the first density calculation
+    // (e.g. the liquid-crystal phase shift tables)
+    for ( int i=0 ; i<Molecs.size() ; i++ ) {
+        Molecs[i]->finish_initialization();
+    }
+
     std::cout << "    first density calculation" << std::endl;
     // Calculate all density fields, including populating species densities
     for ( int i=0 ; i<Molecs.size(); i++ ) {
@@ -253,50 +298,6 @@ void FTS_Box::finishInitialization() {
 
     }
 
-
-    // Orientation initialization if needed
-    if ( Nu[0] > 0 ) {
-
-        // Memory allocation on host and device //
-        uvecs.resize(Dim*Nu_tot);
-        d_uvecs.resize(Dim*Nu_tot);
-
-        int nS = Dim*(Dim+1)/2 - 1;
-        int u_alloc = nS * Nu_tot;    
-        Stens.resize(u_alloc);
-        d_Stens.resize(u_alloc);
-
-        Ntens = nS;
-
-        // Set up 2D orientation, S tensor host arrays
-        if ( Dim == 2 ) {
-            double dth = 2.0 * PI / double(Nu[0]);
-            for (int i=0 ; i<Nu[0] ; i++ ) {
-                double theta = dth * i;
-                double ux = cos(theta);
-                double uy = sin(theta);
-                uvecs[2*i + 0] = ux;
-                uvecs[2*i + 1] = uy;
-
-                Stens[nS * i + 0] =  ux * ux - 0.5; 
-                Stens[nS * i + 1] =  ux * uy;
-            }
-        }
-
-        //
-        else if ( Dim == 3 ) {
-            die("Orientation stuff not yet set up for 3D!");
-        }
-
-        // Send arrays to device
-        cudaMemcpy(d_Nu, Nu, 2 * sizeof(int), cudaMemcpyHostToDevice);
-        d_uvecs = uvecs;
-        d_Stens = Stens;
-    }
-
-    for ( int i=0 ; i<Molecs.size() ; i++ ) {
-        Molecs[i]->finish_initialization();
-    }
 
     // Initialize the output stream
     OTP.open("fts_data.dat");
@@ -377,6 +378,7 @@ void FTS_Box::readInput(std::ifstream& inp) {
     tolMetric = "Heff";
     PCflag = false;
     Nu_tot = 0;
+    Nu[0] = Nu[1] = 0;
     totSteps = 0;
     idum = time(0);
     threads = 512;
@@ -848,7 +850,7 @@ void FTS_Box::integrate_u_fixed_r(
 
     if ( Dim == 2 ) {
         // For unit circle integrations
-        double dth = PI2 / double(Nu_tot);
+        double dth = 2.0 * M_PI / double(Nu_tot);
         
         d_integrate_circle<<<M_Grid, M_Block>>>(d_out, d_in, dth, Nu_tot, M);
     }

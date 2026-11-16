@@ -85,7 +85,7 @@ void Box::computeGrad2FieldDouble(
 void Box::convolveTComplexDouble(
     thrust::device_vector<thrust::complex<double>> &input_r,     // Input data, assumed in real-space to convolved
     thrust::device_vector<thrust::complex<double>> &dest_r,     // destiny array to store result
-    thrust::device_vector<thrust::complex<double>> convFunc_k)  // Convolution function, assumed stored in k-space
+    const thrust::device_vector<thrust::complex<double>> &convFunc_k)  // Convolution function, assumed stored in k-space
     {
 
         // Take input to k-space

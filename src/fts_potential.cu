@@ -9,6 +9,7 @@
 #include "fts_potential_charges.h"
 #include "fts_potential_flory.h"
 #include "fts_potentialParticle.h"
+#include "fts_potential_maiersaupe.h"
 #include "include_libs.h"
 #include <istream>
 void die(const char*);
@@ -48,6 +49,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
         return new PotentialCharge(iss, box);
     }
 
+
+    else if ( s1 == "maiersaupe" || s1 == "MaierSaupe" || s1 == "maier-saupe" ) {
+        return new PotentialMaierSaupe(iss, box);
+    }
 
     else if ( s1 == "particle" || s1 == "Particle" ) {
         return new PotentialParticle(iss, box);

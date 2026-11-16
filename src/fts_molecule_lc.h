@@ -28,28 +28,49 @@ class LCMolec : public FTS_Molec {
         thrust::host_vector<int>    tensor_flag;            // [Ntot] M(r) for this particle?
         thrust::device_vector<int> d_int_species;           // [Ntot] type for each site
 
-        // [M] Potential field for sites
+        // The sites may be of different species. Fields and operators are stored
+        // once per unique species on the molecule, indexed by its "slot".
+        int nUnique;                                        // unique species on the mesogen
+        std::vector<int> unique_species;                    // [nUnique] species index of each slot
+        std::vector<int> site_slot;                         // [Ntot] slot of each site
+        std::vector<int> tens_slot;                         // [nUnique] index into d_expMddS, -1 if no tensor sites
+        std::vector<int> needs_Ek;                          // [nUnique] 1 if d_Ek is used for this slot
+        int nTensSlots;                                     // slots with tensor-carrying sites
+        thrust::device_vector<int> d_site_mask;             // [nUnique*Ntot] 1 if site belongs to slot
+
+        // [M] Potential field scratch
         thrust::device_vector<thrust::complex<double>> d_W;
-        thrust::device_vector<thrust::complex<double>> d_expW;
+
+        // [nUnique*M] exp(-w) for each unique species
         thrust::device_vector<thrust::complex<double>> d_E;
         
-        // [(Dim*(Dim+1)/2-1)*M] M(r) tensor field
+        // [(Dim*(Dim+1)/2-1)*M] M(r) tensor field (scratch, one species at a time)
         thrust::device_vector<thrust::complex<double>> d_Mr;
 
-        // [(Dim*(Dim+1)/2-1)*M] orientational order field
+        // [nUnique*(Dim*(Dim+1)/2-1)*M] smeared orientational order field
         thrust::host_vector<thrust::complex<double>> Stilde;       
         thrust::device_vector<thrust::complex<double>> d_Stilde;
         
-        // [(Dim*(Dim+1)/2-1)*M] orientational order field
+        // [nUnique*(Dim*(Dim+1)/2-1)*M] center orientational order field
         thrust::host_vector<thrust::complex<double>> cStilde;
         thrust::device_vector<thrust::complex<double>> d_cStilde;
 
-        // [Nu_tot*M] orientational order field
-        thrust::host_vector<thrust::complex<double>> rhou;
+        // [nUnique*Nu_tot*M] rho(r,u) for each unique species
         thrust::device_vector<thrust::complex<double>> d_rhou;
+
+        // [Nu_tot*M] N(r,u), and [M] its integral over u
         thrust::device_vector<thrust::complex<double>> d_Nru;
         thrust::device_vector<thrust::complex<double>> d_Nr;
+
+        // [nTensSlots*Nu_tot*M] exp(-M(r):S(u)) for each species with tensor sites
         thrust::device_vector<thrust::complex<double>> d_expMddS;
+
+        // [M] scratch storage
+        thrust::device_vector<thrust::complex<double>> d_tmp;
+
+        // [nUnique*M] k-space Boltzmann weights for sites with no orientation
+        // dependence, which can be transformed once per density calculation
+        thrust::device_vector<thrust::complex<double>> d_Ek;
 
         // Storage for the vectors that translate the Boltzmann weights
         thrust::host_vector<thrust::complex<double>> psi_x, psi_y, psi_z;
