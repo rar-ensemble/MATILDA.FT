@@ -65,7 +65,6 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 
 
 SRCS_C = gsd.c
-#SRCS_CPP = tensor_potential_MaierSaupe_eigenvalue.cpp
 SRCS_CPP = sphere_lebedev_rule.cpp
 
 OBJFOLDER := objects

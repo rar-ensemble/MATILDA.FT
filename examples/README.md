@@ -34,3 +34,12 @@ From the subfolder containing the input file, run the command:
 ft:
 Calculates the equilibrium structure of an A-B homopolymer blend at chi*N = 3.5. The system is initialized to a sine wave potential profile.
 
+lc-scft:
+2D SCFT of a three-site rigid mesogen with a Maier-Saupe interaction on the central site. Seeded with a density wave, it converges to a smectic-A phase with a layer spacing of three bond lengths. Run with ../../matilda.ft -in input
+
+lc-scft-3d:
+3D SCFT of a three-site rigid mesogen with a Maier-Saupe interaction on every site, using a 110-point Lebedev rule for the orientations. Converges to a uniform nematic with order parameter 0.747. Run with ../../matilda.ft -in input
+
+lc-interface-scft:
+2D SCFT of a three-site rigid mesogen with sites A-A-B blended with a C homopolymer. A and C are strongly incompatible while the B end is only weakly repelled by C, so the mesogens and polymer phase separate and the B ends are enriched on the polymer side of the interface. Run with ../../matilda.ft -in input
+

@@ -1,0 +1,56 @@
+# 2D SCFT of a three-site rigid mesogen A-A-B blended with a C homopolymer.
+# A and C are strongly incompatible, so the mesogens and polymer phase separate.
+# The B end of the mesogen is only weakly repelled by C, so it preferentially
+# sits on the polymer side of the interface (compare rhoSpecies1.dat to
+# rhoSpecies0.dat across the interface).
+box fts scft
+Dim 2
+grid 64 32
+
+# Number of orientations on the unit circle. Must come before any
+# species with a tensor field and before the liquid-crystal molecule.
+u_grid 32
+
+boxLengths 16.0 8.0
+Nr 10
+C 0.4
+tolerance Heff 1.0e-9
+
+# A carries the orientation tensor field; B is the mesogen end group; C is the polymer
+species A tensor
+species B
+species C
+
+# molecule keyword, liquid-crystal, vol fraction, number of sites, species of each site in order
+# The sites may be of different species. With lc_style middle only the central
+# site (the second A here) carries the Maier-Saupe interaction, and its species
+# must be declared with 'tensor'.
+molecule liquid-crystal phi 0.5 3 A A B smear gaussian 0.4 bond_length 1.0 lc_style middle
+
+# molecule keyword, linear, vol fraction, number of blocks, block length, block species
+molecule linear phi 0.5 1 20 C smear gaussian 0.4
+
+# potential keyword, style Helfand, kappa*Nr, time step
+potential helfand 50.0 0.5 updateScheme EMPC
+
+# potential keyword, style Flory, type I, type J, chi*Nr, delt+, delt-
+# Strong A-C repulsion, seeded with one period of a sine wave along x to
+# place two flat interfaces in the box.
+potential flory A C 14.0 0.5 0.5 updateScheme EMPC initialize sin 0 2.0 0.0 1
+
+# Weak B-C repulsion: the B end is the site that adsorbs to the interface.
+potential flory B C 2.0 0.5 0.5 updateScheme EMPC
+
+# potential keyword, style maiersaupe, species, mu*Nr, time step
+# The homogeneous isotropic-nematic threshold for this mesogen at full density is
+# mu*Nr = 4 * Nr * Ntot = 120, so the bulk mesogen phase is isotropic here and
+# the orientational order (SxxSpecies0.dat, orderParamSpecies0.dat) is induced by the interface.
+potential maiersaupe A 100.0 2.0 updateScheme EMPC initialize xx random 0.05 0.0 initialize xy random 0.05 0.0
+
+logFreq 250
+chemFieldFreq 1000
+densityFieldFreq 250
+
+endBox
+
+run nvt 3000

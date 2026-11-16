@@ -1,0 +1,41 @@
+# 3D SCFT of a three-site rigid mesogen in which every site carries the
+# Maier-Saupe interaction (lc_style all). Converges to a uniform nematic.
+box fts scft
+Dim 3
+grid 8 8 8
+
+# In 3D, u_grid is the number of points in a Lebedev rule on the unit sphere.
+# Valid values: 6 14 26 38 50 74 86 110 146 170 194 230 266 302 350 434 590 ...
+# About 110 points or more are needed for an accurate nematic order parameter.
+u_grid 110
+
+boxLengths 4.0 4.0 4.0
+Nr 5
+C 0.4
+tolerance Heff 1.0e-10
+
+# 'tensor' gives this species an orientation tensor field
+species A tensor
+
+# molecule keyword, molecule type, vol fraction, total number of sites, list of site types
+molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.5 bond_length 1.0 lc_style all
+
+# potential keyword, style Helfand, kappa*Nr, time step
+potential helfand 100.0 1.0 updateScheme EMPC
+
+# potential keyword, style maiersaupe, species, mu*Nr, time step
+# In 3D the stored tensor components are xx, yy, xy, xz, yz (zz = -xx - yy).
+# Seeding Mxx = Myy > 0 gives a director along z.
+# The Maier-Saupe coupling for a homogeneous system is
+#   Lambda = (2/3) * mu*Nr * (tensor sites per molecule)^2 / (Nr * Ntot),
+# with the isotropic phase unstable for Lambda > 5 and the nematic stable for Lambda > 4.54.
+# Here Lambda = 6, for which the order parameter is S2 = 0.747.
+potential maiersaupe A 15.0 2.0 updateScheme EMPC initialize xx value 0.1 0.0 initialize yy value 0.1 0.0
+
+logFreq 250
+chemFieldFreq 500
+densityFieldFreq 250
+
+endBox
+
+run nvt 1500
