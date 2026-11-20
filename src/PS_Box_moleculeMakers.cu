@@ -29,6 +29,11 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
 
     std::string s1;
 
+    // Use a physical property to determine number of molecs
+    int do_balance = 0;
+    std::string balance_what;
+
+
     // read either phi or nmolecs keyword
     iss >> s1;
 
@@ -37,6 +42,10 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     }
     else if ( s1 == "nmolecs" ) {
         iss >> nmolecs;
+    }
+    else if ( s1 == "balance" ) {
+        iss >> balance_what;
+        do_balance = 1;
     }
     else { 
         std::cout << "invalid keyword: " << s1 << std::endl;
@@ -135,6 +144,35 @@ void PS_Box::makeLinear(std::istringstream& iss ) {
     // Compute number of molecules of this type to add
     // if volume fraction was read
     if ( phi > 0.0 ) { nmolecs = int( rho0 * V * phi / float(Ntot) ); }
+    else if ( do_balance ) {
+        if ( balance_what == "charge" ) {
+            // Charge of this molecule
+            float molec_q = 0.0;
+            for ( int j=0 ; j<numBlocks ; j++ ) {
+                molec_q += blockCharge[j] * Nblocks[j];
+            }
+
+            // Charge of rest of the box
+            float box_charge = 0.0;
+            for ( int i=0 ; i<nstot; i++ ) {
+                box_charge += charges[i];
+            }
+
+            if ( int(box_charge) % int(molec_q) != 0 ) {
+                std::string last_words = "cannot balance box charge " + std::to_string(box_charge) + " with integer num of molecs of charge " + std::to_string(molec_q);
+
+                die(last_words);
+            }
+
+            nmolecs = int(box_charge) / int(molec_q);
+
+        }
+
+        else {
+            std::string last_words = "cannot balance on " + balance_what + " in molecule-linear";
+            die(last_words);
+        }
+    }
 
     std::cout << "Generating " << nmolecs << " molecules each with " << Ntot << " sites" << std::endl;
 
