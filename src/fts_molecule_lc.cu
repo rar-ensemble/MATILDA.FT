@@ -442,7 +442,7 @@ void LCMolec::calcDensity() {
         }
     }// j=0:nUnique
 
-}
+}// calcDensity
 
 // Builds the tables of phase shifts psi_alpha(k_alpha, u) = exp(-i b k_alpha u_alpha).
 // Multiplying a field's Fourier transform by prod_alpha psi_alpha translates it

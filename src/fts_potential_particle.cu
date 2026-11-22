@@ -2,7 +2,7 @@
 // Part of MATILDA.FT, released under the GNU Public License version 2 (GPLv2).
 
 #include "include_libs.h"
-#include "fts_potentialParticle.h"
+#include "fts_potential_particle.h"
 #include "FTS_Box.h"
 #include "fts_species.h"
 

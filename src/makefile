@@ -3,7 +3,7 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-CUDA_LOC = /usr
+CUDA_LOC ?= /usr/local/cuda
 
 
 
@@ -29,7 +29,7 @@ LIBS = -lm -lcudart -lcufft -L${CUDA_LOC}/lib
 SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	FTS_Box.cu fts_species.cu fts_potential.cu fts_potential_helfand.cu fts_potential_flory.cu \
 	fts_molecule.cu fts_molecule_linear.cu fts_updateSchemes.cu fts_potential_edwards.cu \
-	fts_potential_incompress.cu fts_moleculeHParticle.cu fts_potentialParticle.cu \
+	fts_potential_incompress.cu fts_moleculeHParticle.cu fts_potential_particle.cu \
 	fts_make_CLnoise.cu fts_potential_charges.cu fts_molecule_lc.cu \
 	fts_potential_maiersaupe.cu \
 	FTS_BoxFindSpinodal.cu \

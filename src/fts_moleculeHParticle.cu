@@ -32,7 +32,7 @@ ParticleMolec::ParticleMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Mole
  // column 1 = particle number
  // column 2 = NP radius 
  // column 3 = NP xi 
- //column 4 = x center position 
+ // column 4 = x center position 
  // column 5 = y center position 
  // column 6 = z center position 
   
