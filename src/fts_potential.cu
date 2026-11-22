@@ -8,7 +8,7 @@
 #include "fts_potential_edwards.h"
 #include "fts_potential_charges.h"
 #include "fts_potential_flory.h"
-#include "fts_potentialParticle.h"
+#include "fts_potential_particle.h"
 #include "fts_potential_maiersaupe.h"
 #include "include_libs.h"
 #include <istream>

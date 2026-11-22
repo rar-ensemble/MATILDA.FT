@@ -179,6 +179,7 @@ void FTS_Species::buildPotentialField() {
                 thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(), d_w.begin(), thrust::plus<thrust::complex<double>>()); 
             }
         }
+
         
     }// i=0:potentials.size()
 

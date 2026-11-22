@@ -22,25 +22,22 @@ class WallMolec : public FTS_Molec {
 	protected:
 
 	public:
-		int particleNum;			// redundant with nmolecs
-		float phiNP;				// redundant with phi
-		float Vnptot;
-		std::string particleSpecies;
-		thrust::device_vector<double> d_Rp; // radius of each particle
-		thrust::host_vector<double> Rp; // radius of each particle
 		
-		thrust::device_vector<double> d_xi; //xi of each particle
-		thrust::host_vector<double> xi; //xi of each particle 
-
-		thrust::device_vector<double> d_center; //center x,y,z position of each particle
-		thrust::host_vector<double> center; //center xyz position of each particle
+		float V_walltot;
 		
-		thrust::device_vector<thrust::complex<double>> d_NPdensity;
+		std::string wall_style;		// planar, cylinder, etc
+		std::string species;
+		int int_species;
+		
+		double xi;		// Width of interface
+		double size;	// Wall size (width for plane, radius for cylinder)
+		int dir;		// Defines orientation (normal to plan, along cylinder)
 
-		thrust::host_vector<int> intSpecies;
-		thrust::device_vector<int> d_intSpecies;
-		~ParticleMolec();
-		ParticleMolec(std::istringstream& iss, FTS_Box*);
+		thrust::device_vector<double> d_R;  // Wall position on device
+		thrust::host_vector<double> R; 		// wall position on host
+		
+		~WallMolec();
+		WallMolec(std::istringstream& iss, FTS_Box*);
 
 		void calcDensity() override;
 		void computeLinearTerms() override;
