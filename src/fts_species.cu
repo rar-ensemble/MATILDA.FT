@@ -180,6 +180,12 @@ void FTS_Species::buildPotentialField() {
             }
         }
 
+        else if (box->Potentials[i]->printStyle() == "Wall" ) {
+            if (fts_species == box->Potentials[i]->actsOn[0] ) {
+                // AN: add C* chi* rho_exp_Nr to field...this is wpl from particle pot.
+                thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(), d_w.begin(), thrust::plus<thrust::complex<double>>()); 
+            }
+        }
         
     }// i=0:potentials.size()
 

@@ -6,6 +6,7 @@
 #include "fts_molecule_linear.h"
 #include "fts_molecule_lc.h"
 #include "fts_moleculeHParticle.h"
+#include "fts_molecule_wall.h"
 #include "include_libs.h"
 #include "FTS_Box.h"
 
@@ -19,21 +20,23 @@ FTS_Molec::FTS_Molec(std::istringstream &iss, FTS_Box* bx) {
 
     phi = nmolecs = activity = -1.0;
     
-    std::string s1;
-    iss >> s1;
     
-    if ( s1 == "phi" ) {
-        iss >> phi;
-    }
-    else if ( s1 == "nmolecs" ) {
-        iss >> nmolecs; 
-    }
-    else if ( s1 == "activity" ) {
-        iss >> activity;
-    }
-    else {
-        std::string LW = s1 + " is not a valid way to define the number of particles/molecules";
-        die(LW.c_str());
+    if ( molec_type != "wall" ) {
+        std::string s1;
+        iss >> s1;
+        if ( s1 == "phi" ) {
+            iss >> phi;
+        }
+        else if ( s1 == "nmolecs" ) {
+            iss >> nmolecs; 
+        }
+        else if ( s1 == "activity" ) {
+            iss >> activity;
+        }
+        else {
+            std::string LW = s1 + " is not a valid way to define the number of particles/molecules";
+            die(LW.c_str());
+        }
     }
 
     // std::cout << "Molecule genereated with: " << input_command << std::endl;
@@ -66,6 +69,10 @@ FTS_Molec* FTS_MolecFactory(std::istringstream &iss, FTS_Box* box) {
 
     else if ( s1 == "liquid-crystal") {
         return new LCMolec(iss, box);
+    }
+
+    else if ( s1 == "wall" ) {
+        return new WallMolec(iss, box);
     }
     
 	else {

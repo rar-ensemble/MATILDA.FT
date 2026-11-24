@@ -9,6 +9,7 @@
 #include "fts_potential_charges.h"
 #include "fts_potential_flory.h"
 #include "fts_potential_particle.h"
+#include "fts_potential_wall.h"
 #include "fts_potential_maiersaupe.h"
 #include "include_libs.h"
 #include <istream>
@@ -56,6 +57,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
 
     else if ( s1 == "particle" || s1 == "Particle" ) {
         return new PotentialParticle(iss, box);
+    }
+
+    else if ( s1 == "wall" || s1 == "Wall" ) {
+        return new PotentialWall(iss, box);
     }
 	
 	else {

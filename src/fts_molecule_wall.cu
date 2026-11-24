@@ -56,7 +56,7 @@ WallMolec::WallMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p
     
 
     // Parse optoinal arguments    
-    if ( iss.tellg() != -1 ) {
+    while ( iss.tellg() != -1 ) {
         std::string s1;
         iss >> s1;
 
@@ -105,7 +105,6 @@ WallMolec::WallMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p
 
 
 
-
     double gvol = 1.0;
     for ( int j=0 ; j<mybox->returnDimension() ; j++ ) {
         gvol *= mybox->L[j] / double(mybox->Nx[j]);
@@ -132,6 +131,7 @@ WallMolec::WallMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p
     // Also need to accumulate density onto the relevant species fields
     int is = int_species; // short species index
     thrust::transform(d_density.begin(), d_density.end(),  mybox->Species[is].d_density.begin(), mybox->Species[is].d_density.begin(), thrust::plus<thrust::complex<double>>());
+
 }
 
 
