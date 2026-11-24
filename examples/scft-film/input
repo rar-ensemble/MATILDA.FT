@@ -1,0 +1,30 @@
+box fts scft
+Dim 2
+grid 125 63
+boxLengths 20.0 10.0
+species A
+species B
+species C
+Nr 5
+C 1
+
+# molecule keyword, molecule type, vol fraction number of blocks, block N, block type, block N, block type...
+molecule linear phi 0.5 1 10 A smear Gaussian 0.15
+molecule linear phi 0.5 1 10 B smear Gaussian 0.15
+molecule wall C planar dir 0 xi 0.1 width 2.0
+
+# potential keyword, style Helfand, kappa*Nr, time step
+potential Helfand 50.0 0.1 modify zeromean updateScheme EMPC
+
+# potential keyword, style Flory, type I, type J, chi*Nr, delt+, delt-
+potential Flory A B 2.9 0.1 0.01 initialize random 0.2 0.0 updateScheme EMPC
+
+potential wall A C 1.0 xrange 0.0 2.5
+
+logFreq 250
+chemFieldFreq 1000
+densityFieldFreq 250
+
+endBox
+
+run nvt 3000
