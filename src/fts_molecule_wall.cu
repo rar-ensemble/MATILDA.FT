@@ -86,7 +86,7 @@ WallMolec::WallMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p
 
     V_walltot = 0.0;
 
-    double mdr2, r[dim], dr[dim], r0[dim], mdr;
+    double r[dim], dr[dim], r0[dim], mdr;
     for ( int j=0 ; j<dim ; j++ ) r0[j] = R[j];
     double prefactor = mybox->Nr * mybox->C * 0.5;
 
@@ -94,7 +94,7 @@ WallMolec::WallMolec(std::istringstream& iss, FTS_Box* p_box) : FTS_Molec(iss, p
         mybox->get_r(i, r);
 
         // dr = r - r0
-        mdr2 = mybox->pbc_dr2(dr, r, r0);
+        (void) mybox->pbc_dr2(dr, r, r0);
 
         if ( wall_style == "planar" ) {
             // Planar walls only care about | r - r0 | in [dir]-direction
