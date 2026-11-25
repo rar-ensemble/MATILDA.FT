@@ -27,17 +27,34 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	
 	iss >> typeI;
 	iss >> typeJ;
-	std::cout << "   TWall Flory-like potential acting on species " << typeI << std::endl;
+	std::cout << "   tensor wall Flory-like potential acting on species " << typeI << std::endl;
 	std::cout << "   Assumes wall is species " << typeJ << std::endl;
 
-	iss >> chi;
 
 
-	
+	iss >> Ao;
+
+
+
+	// Initialize orientation vector
+	double u[3];
+	u[0] = u[1] = u[2] = 0.0;
+	u[0] = 1.0;
+
+
 	while ( iss.tellg() != -1 ) {
 		std::string s1;
 		iss >> s1;
-		if ( s1 == "xrange" ) {
+		if ( s1 == "u" || s1 == "orientation" ) {
+			double mg2 = 0.0;
+			for ( int j=0 ; j<dim ; j++ ) {
+				iss >> u[j];
+				mg2 += u[j] * u[j];
+			}
+			double mg = sqrt(mg2);
+			for ( int j=0 ; j<dim ; j++ ) u[j] *= 1.0 / mg;
+		}
+		else if ( s1 == "xrange" ) {
 			iss >> rmin[0];
 			iss >> rmax[0];
 		}
@@ -50,7 +67,7 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 			iss >> rmax[2];
 		}
 		else {
-			std::string last_words = s1 + " is not a valid option for potential wall";
+			std::string last_words = s1 + " is not a valid option for potential tensor wall";
 			die(last_words);
 		}
 	}
@@ -74,12 +91,19 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	if ( intSpecies[0] < 0 || intSpecies[1] < 0 ) {
 		die("Failed to find species in PotentialTWall");
 	}
-	wpl.resize(mybox->M);
-	d_wpl.resize(mybox->M);
 
 	//update w[X] to incorporate wall interaction term
 	int is1 = intSpecies[0] ;
 	int is2 = intSpecies[1] ;
+	
+	if ( mybox->Species[is2].tensor_field == 0 ) {
+		std::string last_words = "Species " + actsOn[1] + " not initialized with a tensor field when setting up potential tensor wall";
+		die(last_words);
+	}
+
+
+	wpl.resize(mybox->M);
+	d_wpl.resize(mybox->M);
 
 
 	thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
@@ -97,7 +121,7 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 			}
 		}
 
-		wpl[i] = heavi * htmp[i] * chi / mybox->C ;
+		wpl[i] = heavi * htmp[i] * Ao / mybox->C ;
 	}
 
 	// Send the field to the device

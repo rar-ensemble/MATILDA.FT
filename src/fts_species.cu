@@ -186,6 +186,16 @@ void FTS_Species::buildPotentialField() {
                 thrust::transform(d_w.begin(), d_w.end(), box->Potentials[i]->d_wpl.begin(), d_w.begin(), thrust::plus<thrust::complex<double>>()); 
             }
         }
+
+        else if ( box->Potentials[i]->printStyle() == "TWall" ) {
+            if ( tensor_field && fts_species == box->Potentials[i]->actsOn[0] ) {
+                PotentialMaierSaupe* ms = static_cast<PotentialMaierSaupe*>(box->Potentials[i]);
+
+                // d_Mw += M for each independent tensor component
+                thrust::transform(d_Mw.begin(), d_Mw.end(), ms->d_M.begin(),
+                    d_Mw.begin(), thrust::plus<thrust::complex<double>>());
+            }
+        }
         
     }// i=0:potentials.size()
 
