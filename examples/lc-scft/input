@@ -2,7 +2,7 @@
 # Only the central site carries the Maier-Saupe interaction (lc_style middle).
 box fts scft
 Dim 2
-grid 48 48
+grid 49 49
 
 # Number of orientations on the unit circle. Must come before any
 # species with a tensor field and before the liquid-crystal molecule.
