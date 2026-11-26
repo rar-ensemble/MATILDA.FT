@@ -11,6 +11,8 @@
 #include "fts_potential_particle.h"
 #include "fts_potential_wall.h"
 #include "fts_potential_maiersaupe.h"
+#include "fts_potential_tensor_wall.h"
+
 #include "include_libs.h"
 #include <istream>
 void die(const char*);
@@ -63,6 +65,10 @@ FTS_Potential* FTS_PotentialFactory(std::istringstream &iss, FTS_Box* box) {
         return new PotentialWall(iss, box);
     }
 	
+    else if ( s1 == "twall" || s1 == "TWall" || s1 == "tensor_wall" ) {
+        return new PotentialTWall(iss, box);
+    }
+
 	else {
         std::string s2 = s1 + " is not a valid FTS_Potential"; 
         die(s2.c_str());

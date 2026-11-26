@@ -32,11 +32,17 @@ class PotentialTWall : public FTS_Potential {
 		void storePredictorData() override;
 		
 
+		thrust::device_vector<thrust::complex<double>> d_M;
+
 		double Ao; //Strength of the potential
+		
 		std::string typeI, typeJ; //Types involved in the potential
-		double rmin[3], rmax[3];
 		int intTypeI, intTypeJ; //species integer for types I, J 
 		thrust::host_vector<int> intSpecies;
+
+		double rmin[3], rmax[3];
+
+		
 };
 
 #endif

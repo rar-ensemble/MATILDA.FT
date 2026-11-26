@@ -16,6 +16,8 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	iss >> s1;
 
 	int dim = mybox->returnDimension();
+	int M = mybox->M;
+	int Ntens = mybox->Ntens;
 	for ( int j=0 ; j<dim ; j++ ) {
 		rmin[j] = -1.0;
 		rmax[j] = mybox->L[j]+1.0;
@@ -41,6 +43,7 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	u[0] = u[1] = u[2] = 0.0;
 	u[0] = 1.0;
 
+	wpl.resize(M);
 
 	while ( iss.tellg() != -1 ) {
 		std::string s1;
@@ -70,7 +73,22 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 			std::string last_words = s1 + " is not a valid option for potential tensor wall";
 			die(last_words);
 		}
+	}// while( iss.tellg() != 1 )
+
+
+	double Stp[5];
+	if ( dim == 2 ) { 
+		Stp[0] = u[0] * u[0] - 0.5;
+		Stp[1] = u[0] * u[1]; 
 	}
+	else if ( dim == 3 ) { 
+		Stp[0] = u[0] * u[0] - 1.0/3.0;
+		Stp[1] = u[1] * u[1] - 1.0/3.0;
+		Stp[2] = u[0] * u[1]; 
+		Stp[3] = u[0] * u[2]; 
+		Stp[4] = u[1] * u[2]; 
+	}
+
 
 
 	actsOn.push_back(typeI);
@@ -102,11 +120,11 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	}
 
 
-	wpl.resize(mybox->M);
-	d_wpl.resize(mybox->M);
+	d_M.resize(Ntens * M, 0.0);
 
 
-	thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
+	thrust::host_vector<thrust::complex<double>> Mtmp(Ntens * M);
+	thrust::host_vector<thrust::complex<double>> htmp(M);
 	htmp = mybox->Molecs[2]->d_density;
 
 	for ( int i=0 ; i<mybox->M ; i++ ) {
@@ -115,6 +133,7 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 
 		mybox->get_r(i, r);
 
+
 		for ( int j=0 ; j<dim ; j++ ) {
 			if ( r[j] < rmin[j] || r[j] > rmax[j] ) {
 				heavi = 0.0;
@@ -122,10 +141,23 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 		}
 
 		wpl[i] = heavi * htmp[i] * Ao / mybox->C ;
-	}
+
+		
+		if ( dim == 2 ) {
+			Mtmp[0 * M + i] = Stp[0] * wpl[i];
+			Mtmp[1 * M + i] = Stp[1] * wpl[i];
+		}
+		if ( dim == 3 ) {
+			Mtmp[0 * M + i] = Stp[0] * wpl[i];
+			Mtmp[1 * M + i] = Stp[1] * wpl[i];
+			Mtmp[2 * M + i] = Stp[2] * wpl[i];
+			Mtmp[3 * M + i] = Stp[3] * wpl[i];
+			Mtmp[4 * M + i] = Stp[4] * wpl[i];
+		}
+	}//i=0:M
 
 	// Send the field to the device
-	d_wpl = wpl;	
+	d_M = Mtmp;	
 
 }
 

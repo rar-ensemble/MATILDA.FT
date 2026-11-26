@@ -4,6 +4,7 @@
 
 #include "fts_species.h"
 #include "fts_potential_maiersaupe.h"
+#include "fts_potential_tensor_wall.h"
 
 void die(const char*);
 
@@ -189,7 +190,7 @@ void FTS_Species::buildPotentialField() {
 
         else if ( box->Potentials[i]->printStyle() == "TWall" ) {
             if ( tensor_field && fts_species == box->Potentials[i]->actsOn[0] ) {
-                PotentialMaierSaupe* ms = static_cast<PotentialMaierSaupe*>(box->Potentials[i]);
+                PotentialTWall* ms = static_cast<PotentialTWall*>(box->Potentials[i]);
 
                 // d_Mw += M for each independent tensor component
                 thrust::transform(d_Mw.begin(), d_Mw.end(), ms->d_M.begin(),

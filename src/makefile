@@ -3,8 +3,8 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-#CUDA_LOC ?= /usr/local/cuda
-CUDA_LOC = /usr
+CUDA_LOC ?= /usr/local/cuda
+#CUDA_LOC = /usr
 
 
 
@@ -33,7 +33,7 @@ SRCS = 	Box.cu main.cu die.cu random.cu device_utils.cu \
 	fts_potential_incompress.cu fts_moleculeHParticle.cu fts_potential_particle.cu \
 	fts_make_CLnoise.cu fts_potential_charges.cu fts_molecule_lc.cu \
 	fts_molecule_wall.cu fts_potential_maiersaupe.cu fts_potential_wall.cu \
-	FTS_BoxFindSpinodal.cu \
+	FTS_BoxFindSpinodal.cu fts_potential_tensor_wall.cu \
 	PS_Box.cu PS_Box_initialization.cu PS_Box_gsdUtils.cu PS_Box_moleculeMakers.cu \
 	ps_species.cu ps_grid_utils.cu ps_groups.cu \
 	ps_integrator.cu ps_integratorGJF.cu ps_integratorEM.cu ps_integratorVV.cu \
