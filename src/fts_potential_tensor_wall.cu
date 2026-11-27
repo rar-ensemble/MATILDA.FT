@@ -3,6 +3,7 @@
 
 #include "include_libs.h"
 #include "fts_potential_tensor_wall.h"
+#include "fts_molecule_wall.h"
 #include "FTS_Box.h"
 #include "fts_species.h"
 
@@ -17,7 +18,7 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 
 	int dim = mybox->returnDimension();
 	int M = mybox->M;
-	int Ntens = mybox->Ntens;
+	int Ntens = dim*(dim+1)/2 - 1;
 	for ( int j=0 ; j<dim ; j++ ) {
 		rmin[j] = -1.0;
 		rmax[j] = mybox->L[j]+1.0;
@@ -114,8 +115,8 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 	int is1 = intSpecies[0] ;
 	int is2 = intSpecies[1] ;
 	
-	if ( mybox->Species[is2].tensor_field == 0 ) {
-		std::string last_words = "Species " + actsOn[1] + " not initialized with a tensor field when setting up potential tensor wall";
+	if ( mybox->Species[is1].tensor_field == 0 ) {
+		std::string last_words = "Species " + actsOn[0] + " not initialized with a tensor field when setting up potential tensor wall";
 		die(last_words);
 	}
 
@@ -125,7 +126,15 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 
 	thrust::host_vector<thrust::complex<double>> Mtmp(Ntens * M);
 	thrust::host_vector<thrust::complex<double>> htmp(M);
-	htmp = mybox->Molecs[2]->d_density;
+
+	int iw = -1;
+	for ( int m=0 ; m<mybox->Molecs.size() ; m++ ) {
+		WallMolec* wm = dynamic_cast<WallMolec*>(mybox->Molecs[m]);
+		if ( wm && wm->int_species == intSpecies[1] ) iw = m;
+	}
+	if ( iw < 0 ) die("tensor wall: no wall molecule of species " + typeJ + " (must be defined before the potential)");
+	htmp = mybox->Molecs[iw]->d_density;
+
 
 	for ( int i=0 ; i<mybox->M ; i++ ) {
 		double heavi = 1.0;
@@ -156,8 +165,13 @@ PotentialTWall::PotentialTWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Po
 		}
 	}//i=0:M
 
-	// Send the field to the device
-	d_M = Mtmp;	
+	// Send the fields to the device. d_wpl holds the scalar mask
+	// heavi * rho_wall * Ao / C so writeFields (and anything else that
+	// reads d_wpl) sees a valid M-sized array. wplAlloc_flag stays 0
+	// because this field is static and needs no save/restore.
+	d_M = Mtmp;
+	d_wpl.resize(M);
+	d_wpl = wpl;
 
 }
 
@@ -165,11 +179,29 @@ void PotentialTWall::initLinearCoeffs() {
 }
 
 void PotentialTWall::writeFields(int potInd) {
-	char nm[30];
+	const int M = mybox->M;
+	const int dim = mybox->returnDimension();
+	const int Ntens = dim*(dim+1)/2 - 1;
+	char nm[40];
+
+	// Scalar mask, heavi * rho_wall * Ao / C
 	sprintf(nm, "wpl_TWall%d.dat", potInd);
-	
 	wpl = d_wpl;
 	mybox->writeTComplexGridData(nm, wpl);
+
+	// Independent components of the imposed tensor field, same
+	// ordering and naming as the Maier-Saupe output
+	const char* comp2[] = {"xx", "xy"};
+	const char* comp3[] = {"xx", "yy", "xy", "xz", "yz"};
+
+	thrust::host_vector<thrust::complex<double>> hM = d_M;
+	thrust::host_vector<thrust::complex<double>> htmp(M);
+
+	for ( int nt=0 ; nt<Ntens ; nt++ ) {
+		sprintf(nm, "M%s_TWall%d.dat", ( dim == 2 ? comp2[nt] : comp3[nt] ), potInd);
+		thrust::copy(hM.begin() + nt*M, hM.begin() + (nt+1)*M, htmp.begin());
+		mybox->writeTComplexGridData(nm, htmp);
+	}
 
 }
 

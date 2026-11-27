@@ -3,8 +3,8 @@
 #
 ####################################################
 # Modify the line below to point to the CUDA library
-CUDA_LOC ?= /usr/local/cuda
-#CUDA_LOC = /usr
+#CUDA_LOC ?= /usr/local/cuda
+CUDA_LOC = /usr
 
 
 

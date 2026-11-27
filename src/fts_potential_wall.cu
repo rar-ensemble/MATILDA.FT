@@ -83,7 +83,7 @@ PotentialWall::PotentialWall(std::istringstream& iss, FTS_Box* p_box) : FTS_Pote
 
 
 	thrust::host_vector<thrust::complex<double>> htmp(mybox->M);
-	htmp = mybox->Molecs[2]->d_density;
+	htmp = mybox->Molecs[is2]->d_density;
 
 	for ( int i=0 ; i<mybox->M ; i++ ) {
 		double heavi = 1.0;
