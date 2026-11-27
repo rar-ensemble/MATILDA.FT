@@ -15,10 +15,11 @@ tolerance Heff 1.0e-10
 
 # 'tensor' gives this species an orientation tensor field
 species A tensor
+species B
 
 # molecule keyword, molecule type, vol fraction, total number of sites, list of site types
 # optional: smear gaussian [width], bond_length [b], lc_style [middle | all]
-molecule liquid-crystal phi 1.0 3 A A A smear gaussian 0.4 bond_length 1.0 lc_style middle
+molecule liquid-crystal phi 1.0 3 B A B smear gaussian 0.4 bond_length 1.0 lc_style middle
 
 # potential keyword, style Helfand, kappa*Nr, time step
 # The seed is a density wave along x with period 3*bond_length, the smectic layer spacing.
