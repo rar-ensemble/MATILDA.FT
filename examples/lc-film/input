@@ -33,14 +33,14 @@ potential helfand 100.0 1.0 updateScheme EMPC initialize random 0.0 0.5
 # initialize [xx | xy] [style ...] seeds one tensor component; Mxx < 0 aligns along x.
 # Homogeneous isotropic-nematic threshold: mu*Nr = 4 * Nr * Ntot / (tensor sites per molecule)^2,
 # which is 60 for this molecule.
-potential maiersaupe A 150.0 0.5 updateScheme EMPC
+potential maiersaupe A 105.0 0.5 updateScheme EMPC
 # potential maiersaupe A 150.0 0.25 updateScheme EMPC initialize xx value -1.0 0.0
 
 potential twall A C 5.0 xrange 0.0 3.0 u 1.0 0.0
 potential twall A C 5.0 xrange 37.0 40.0 u 0.0 1.0
 
-#potential twall A C 5.0 yrange 0.0 2.0 u 1.0 0.0
-#potential twall A C 5.0 yrange 18.0 20.0 u 0.0 1.0
+#potential twall A C 5.0 yrange 0.0 3.0 u 1.0 0.0
+#potential twall A C 5.0 yrange 37.0 40.0 u 0.0 1.0
 
 logFreq 250
 chemFieldFreq 500
